@@ -10,6 +10,14 @@ This document summarizes the modular, linear processing pipeline (left→right) 
 - Post-processing: translation and TTS for multi-lingual audio output
 - UI: Gradio app that surfaces video, counts, logs, summaries, and audio
 
+## Team assignments
+These are the current owners for each pipeline area:
+- **Joe**: Video Processing (MiniCPMV-4.6 / multimodal track)
+- **Javier**: Language Reasoning (Nemotron models / `llama.cpp` runtime)
+- **Hanhee**: Translation & transcription services (Cohere models)
+
+Note: the names above match the labels used in the diagram (Joe, Javier, Hanhee) and indicate who is responsible for implementation and testing of the corresponding blocks.
+
 ## 1. Input Stage
 - INPUT Video Footage: raw camera streams or uploaded clips (RTSP, MP4).
 - Video is forked concurrently into the Object Detection track and the Video Processing track.
@@ -22,7 +30,7 @@ This document summarizes the modular, linear processing pipeline (left→right) 
 
 - Video Processing (Multimodal)
   - Purpose: richer scene understanding, actions, and candidate-event extraction.
-  - Candidate models: MiniCPMo-4.5 Omni (full) or MiniCPMV-4.6 1.3B ("Joe") for a lighter alternative.
+  - Candidate models: MiniCPMo-4.5 Omni (full) or MiniCPMV-4.6 1.3B for a lighter alternative.
   - Output: short-clip-level annotations (actions, object interactions, timestamps).
 
 ## 3. Event Structuring
@@ -36,7 +44,7 @@ This document summarizes the modular, linear processing pipeline (left→right) 
 ## 4. Language Reasoning (local LLM via llama.cpp)
 - Purpose: convert structured events into natural-language summaries, alerts, and QA responses.
 - Runtime: runs locally using `llama.cpp` bindings.
-- Candidate models: Nemotron 3 Nano 4B ("Javier") for lightweight local reasoning, or Nemotron 3 Nano 30B-A3B for stronger reasoning where hardware allows.
+  - Candidate models: Nemotron 3 Nano 4B for lightweight local reasoning, or Nemotron 3 Nano 30B-A3B for stronger reasoning where hardware allows.
 - Typical prompts/functions:
   - Summarize a time window ("overnight summary").
   - Generate an alert description from a suspicious event.
@@ -49,7 +57,7 @@ This document summarizes the modular, linear processing pipeline (left→right) 
 
 - Translation
   - Optional localization block for multilingual deployments.
-  - Suggested models: Cohere-transcribe-03-2026 ("Hanhee") or Cohere Tiny Aya for lighter load.
+  - Suggested models: Cohere-transcribe-03-2026 or Cohere Tiny Aya for lighter load.
   - Use-case: translate alerts and summaries before TTS or UI display.
 
 - Voice Output (TTS)
