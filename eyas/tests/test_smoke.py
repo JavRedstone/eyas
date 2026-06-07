@@ -1,3 +1,14 @@
+import sys
+from pathlib import Path
+
+_REPO_ROOT = Path(__file__).parent.parent.parent
+_EYAS_ROOT = Path(__file__).parent.parent
+for _p in (_REPO_ROOT, _EYAS_ROOT):
+    if str(_p) not in sys.path:
+        sys.path.insert(0, str(_p))
+
+import pytest
+
 from video_processing.process import PERSON_STATUS_PROMPT, parse_person_observation
 from event_structuring.structurer import EventStructurer, Zone
 from object_detection.detector import Track
@@ -123,3 +134,7 @@ def test_tiny_track_cannot_infer_pickup():
     events = structurer.update([tiny_track], 1.0, frame)
 
     assert events[0].pickup_confirmed is False
+
+
+if __name__ == "__main__":
+    sys.exit(pytest.main([__file__] + sys.argv[1:]))

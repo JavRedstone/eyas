@@ -1,9 +1,14 @@
 """Tests for eyas/storage/manager.py — clip storage and index management."""
 
 import json
+import sys
 from pathlib import Path
 
 import pytest
+
+_REPO_ROOT = Path(__file__).parent.parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
 import eyas.storage.manager as storage
 
@@ -157,3 +162,7 @@ class TestDelete:
         remaining = storage.list_clips()
         assert len(remaining) == 1
         assert "keep.mp4" in remaining[0]["filename"]
+
+
+if __name__ == "__main__":
+    sys.exit(pytest.main([__file__] + sys.argv[1:]))

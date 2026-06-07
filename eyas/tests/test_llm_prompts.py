@@ -1,5 +1,14 @@
 """Tests for eyas/llm/prompts.py — template structure and required placeholders."""
 
+import sys
+from pathlib import Path
+
+_REPO_ROOT = Path(__file__).parent.parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+import pytest
+
 from eyas.llm.prompts import (
     ALERT_GRAMMAR,
     ALERT_PROMPT,
@@ -79,3 +88,7 @@ class TestGrammarStrings:
 
     def test_alert_grammar_has_clip(self):
         assert "clip" in ALERT_GRAMMAR
+
+
+if __name__ == "__main__":
+    sys.exit(pytest.main([__file__] + sys.argv[1:]))
