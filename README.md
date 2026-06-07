@@ -10,11 +10,13 @@ Docs
 - `docs/AI_THEFT_DETECTION.md` — practical overview of AI theft-detection capabilities and limits
 
 Quick start (prototype)
-1. Create a Python virtual environment:
+1. Navigate to the `eyas/` directory and create a virtual environment there:
 
 ```bash
+cd eyas
 python -m venv .venv
-.venv\Scripts\activate   # Windows
+.venv\Scripts\activate        # Windows
+# source .venv/bin/activate   # macOS / Linux
 ```
 
 2. Install dependencies
