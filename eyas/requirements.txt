@@ -5,21 +5,6 @@ ffmpeg-python
 pillow
 torch
 torchaudio
-
-# --- Visual processing track ---
-# YOLOv11 person detection + tracking (BoT-SORT needs lap)
-ultralytics>=8.3.0
-lap>=0.5.12
-
-# --- MiniCPM-V 4.6 object-identity VLM (1.3B, ~3GB bf16) ---
-# Pocket-sized; runs on a laptop GPU / Apple Silicon (MPS) or CPU.
-# Native transformers API (>=5.7.0) — NOT the old MiniCPM-o model.chat() path.
-# The pipeline falls back to a mock VLM if these are absent, so dev still works.
-# torchcodec decodes video; use 'av' (PyAV) instead if torchcodec/CUDA mismatch.
-transformers>=5.7.0
-torchvision
-av
-accelerate
-
-# --- LLM reasoning track (Javier) ---
-llama-cpp-python
+transformers
+voxcpm
+pytest

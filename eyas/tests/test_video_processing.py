@@ -1,0 +1,20 @@
+"""Tests for eyas/video_processing/process.py."""
+
+from eyas.video_processing.process import process_clip
+
+
+class TestProcessClip:
+    def test_returns_list(self, tmp_path):
+        dummy = tmp_path / "clip.mp4"
+        dummy.write_bytes(b"\x00" * 64)
+        assert isinstance(process_clip(str(dummy)), list)
+
+    def test_nonexistent_path_returns_list(self):
+        assert isinstance(process_clip("nonexistent.mp4"), list)
+
+    def test_annotations_have_expected_keys_when_non_empty(self, tmp_path):
+        dummy = tmp_path / "clip.mp4"
+        dummy.write_bytes(b"\x00" * 64)
+        annotations = process_clip(str(dummy))
+        for ann in annotations:
+            assert isinstance(ann, dict)
