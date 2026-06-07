@@ -1,165 +1,115 @@
-"""Smoke tests — run without a real model by mocking llama_cpp."""
+"""Smoke tests — validate the whole system is importable and wired up.
 
-from unittest.mock import MagicMock, patch
-import json
-import sys
+Run this first. If anything here fails, the module-specific test files
+will tell you exactly what broke.
+"""
 
+# ---------------------------------------------------------------------------
+# Module imports
+# ---------------------------------------------------------------------------
 
-def _make_events():
-    return [
-        {
-            "type": "entry",
-            "start_time": "02:14:22",
-            "end_time": "02:14:35",
-            "zone": "back_door",
-            "metadata": {"confidence": 0.91, "clip_pointer": "cam2_02h14.mp4"},
-        },
-        {
-            "type": "dwell",
-            "start_time": "02:14:40",
-            "end_time": "02:19:12",
-            "zone": "aisle_3",
-            "metadata": {"confidence": 0.87, "clip_pointer": "cam1_02h14.mp4"},
-        },
-    ]
+def test_storage_imports():
+    import eyas.storage.manager as m
+    assert callable(m.store)
+    assert callable(m.list_clips)
+    assert callable(m.choices)
+    assert callable(m.path_from_choice)
+    assert callable(m.delete)
 
 
-def _mock_llama(json_response: dict):
-    """Return a mock Llama class whose __call__ returns json_response as text."""
-    mock_instance = MagicMock()
-    mock_instance.return_value = {
-        "choices": [{"text": json.dumps(json_response)}]
-    }
-    mock_class = MagicMock(return_value=mock_instance)
-    return mock_class
+def test_streaming_imports():
+    from eyas.streaming.capture import default_capture
+    assert hasattr(default_capture, "start")
+    assert hasattr(default_capture, "stop")
+    assert hasattr(default_capture, "get_rgb")
+    assert hasattr(default_capture, "start_recording")
+    assert hasattr(default_capture, "stop_recording")
 
 
-def test_smoke():
-    assert True
+def test_llm_prompts_imports():
+    from eyas.llm.prompts import (
+        SYSTEM_PROMPT, SUMMARIZE_PROMPT, QA_PROMPT, ALERT_PROMPT,
+        SUMMARIZE_GRAMMAR, QA_GRAMMAR, ALERT_GRAMMAR,
+    )
+    for obj in (SYSTEM_PROMPT, SUMMARIZE_PROMPT, QA_PROMPT, ALERT_PROMPT,
+                SUMMARIZE_GRAMMAR, QA_GRAMMAR, ALERT_GRAMMAR):
+        assert isinstance(obj, str) and obj
 
 
-def test_format_events_contains_fields():
-    """_format_events serialises all required event fields."""
+def test_llm_reasoner_imports():
+    from eyas.llm.reasoner import Reasoner, summarize_events, answer_query
+    assert callable(summarize_events)
+    assert callable(answer_query)
+    r = Reasoner("dummy.gguf")
+    assert callable(r.summarize_events)
+    assert callable(r.answer_query)
+    assert callable(r.generate_alert)
+
+
+def test_event_structuring_imports():
+    from eyas.event_structuring.structurer import build_events
+    assert callable(build_events)
+
+
+def test_object_detection_imports():
+    from eyas.object_detection.detector import detect_objects
+    assert callable(detect_objects)
+
+
+def test_video_processing_imports():
+    from eyas.video_processing.process import process_clip
+    assert callable(process_clip)
+
+
+# ---------------------------------------------------------------------------
+# Gradio app builds without error
+# ---------------------------------------------------------------------------
+
+def test_gradio_app_builds():
+    from eyas.ui.gradio_app import EyasTheme, build_app
+    theme = EyasTheme(color="night", dark=True)
+    assert theme.name == "eyas-night-dark"
+    app = build_app(color="night", dark=True)
+    assert app is not None
+
+
+def test_all_four_themes_build():
+    from eyas.ui.gradio_app import EyasTheme
+    for color in ("night", "amber", "cyber", "sentinel"):
+        for dark in (True, False):
+            t = EyasTheme(color=color, dark=dark)
+            assert t.name.startswith("eyas-")
+
+
+# ---------------------------------------------------------------------------
+# Pipeline interfaces are callable with minimal inputs
+# ---------------------------------------------------------------------------
+
+def test_reasoner_empty_events_no_model_needed():
     from eyas.llm.reasoner import Reasoner
-
-    r = Reasoner("dummy.gguf")
-    events = _make_events()
-    formatted = r._format_events(events)
-
-    assert "[entry]" in formatted
-    assert "back_door" in formatted
-    assert "02:14:22" in formatted
-    assert "0.91" in formatted
-    assert "cam2_02h14.mp4" in formatted
-
-
-def test_trim_events_respects_max_chars():
-    """_trim_events drops leading events when the log exceeds max_chars."""
-    from eyas.llm.reasoner import Reasoner
-
-    r = Reasoner("dummy.gguf")
-    events = _make_events()
-    # Force a tiny limit so we must trim to 1 event
-    trimmed = r._trim_events(events, max_chars=80)
-    assert len(trimmed) <= len(events)
-
-
-def test_parse_json_valid():
-    from eyas.llm.reasoner import Reasoner, _SUMMARIZE_FALLBACK
-
-    r = Reasoner("dummy.gguf")
-    payload = {"summary": "ok", "flags": [], "suspicious_clips": [], "risk_level": "none"}
-    result = r._parse_json(json.dumps(payload), _SUMMARIZE_FALLBACK)
-    assert result["summary"] == "ok"
-
-
-def test_parse_json_fallback_on_invalid():
-    from eyas.llm.reasoner import Reasoner, _SUMMARIZE_FALLBACK
-
-    r = Reasoner("dummy.gguf")
-    result = r._parse_json("not json at all", _SUMMARIZE_FALLBACK)
-    assert result == _SUMMARIZE_FALLBACK
-
-
-def test_summarize_events_empty():
-    """summarize_events with no events never calls the model."""
-    from eyas.llm.reasoner import Reasoner
-
     r = Reasoner("dummy.gguf")
     result = r.summarize_events([])
-    assert "No events" in result["summary"]
-    assert result["risk_level"] == "none"
+    assert isinstance(result, dict)
+    assert "summary" in result
+    assert "risk_level" in result
+
+    result = r.answer_query([], "Anything unusual?")
+    assert isinstance(result, dict)
+    assert "answer" in result
 
 
-def test_summarize_events_calls_model():
-    """summarize_events builds a prompt containing event data and returns parsed JSON."""
-    expected = {
-        "summary": "1 after-hours entry.",
-        "flags": ["after-hours entry"],
-        "suspicious_clips": ["cam2_02h14.mp4"],
-        "risk_level": "medium",
-    }
-    mock_llama_cls = _mock_llama(expected)
+def test_storage_round_trip(tmp_path, monkeypatch):
+    import eyas.storage.manager as m
+    monkeypatch.setattr(m, "_CLIPS", tmp_path / "clips")
+    monkeypatch.setattr(m, "_INDEX", tmp_path / "index.json")
 
-    llama_cpp_mock = MagicMock()
-    llama_cpp_mock.Llama = mock_llama_cls
-    llama_cpp_mock.LlamaGrammar = MagicMock()
-    llama_cpp_mock.LlamaGrammar.from_string.return_value = None
+    dummy = tmp_path / "clip.mp4"
+    dummy.write_bytes(b"\x00" * 512)
 
-    with patch.dict(sys.modules, {"llama_cpp": llama_cpp_mock}), \
-         patch("os.path.isfile", return_value=True):
-        from importlib import reload
-        import eyas.llm.reasoner as mod
-        reload(mod)
-
-        r = mod.Reasoner("dummy.gguf")
-        result = r.summarize_events(_make_events())
-
-    assert result["summary"] == expected["summary"]
-    assert result["risk_level"] == "medium"
-    assert "cam2_02h14.mp4" in result["suspicious_clips"]
-
-
-def test_answer_query_calls_model():
-    """answer_query embeds the query in the prompt and returns parsed JSON."""
-    expected = {
-        "answer": "Yes, after-hours entry at back door.",
-        "relevant_event_indices": [0],
-        "clips": ["cam2_02h14.mp4"],
-    }
-    mock_llama_cls = _mock_llama(expected)
-
-    llama_cpp_mock = MagicMock()
-    llama_cpp_mock.Llama = mock_llama_cls
-    llama_cpp_mock.LlamaGrammar = MagicMock()
-    llama_cpp_mock.LlamaGrammar.from_string.return_value = None
-
-    with patch.dict(sys.modules, {"llama_cpp": llama_cpp_mock}), \
-         patch("os.path.isfile", return_value=True):
-        from importlib import reload
-        import eyas.llm.reasoner as mod
-        reload(mod)
-
-        r = mod.Reasoner("dummy.gguf")
-        result = r.answer_query(_make_events(), "Was there unusual activity?")
-
-    assert "after-hours" in result["answer"]
-    assert 0 in result["relevant_event_indices"]
-
-
-def test_summarize_prompt_contains_few_shot():
-    """SUMMARIZE_PROMPT includes a worked example to ground the small model."""
-    from eyas.llm.prompts import SUMMARIZE_PROMPT
-
-    assert "EXAMPLE" in SUMMARIZE_PROMPT
-    assert "risk_level" in SUMMARIZE_PROMPT
-    assert "{period}" in SUMMARIZE_PROMPT
-    assert "{event_log}" in SUMMARIZE_PROMPT
-
-
-def test_qa_prompt_contains_few_shot():
-    from eyas.llm.prompts import QA_PROMPT
-
-    assert "EXAMPLE" in QA_PROMPT
-    assert "{query}" in QA_PROMPT
-    assert "relevant_event_indices" in QA_PROMPT
+    entry = m.store(str(dummy))
+    assert entry["filename"]
+    assert m.list_clips()
+    assert m.choices()
+    assert m.path_from_choice(m.choices()[0])
+    assert m.delete(entry["filename"])
+    assert m.list_clips() == []
