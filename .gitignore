@@ -1,0 +1,55 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+pip-wheel-metadata/
+
+# Pytest / caches
+.pytest_cache/
+.mypy_cache/
+
+# Jupyter
+.ipynb_checkpoints
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs and databases
+*.log
+logs/
+*.sqlite3
+
+# Hugging Face / model caches
+.cache/
+.huggingface/
+transformers_cache/
+torch_cache/
+
+# Local secrets
+.env
+secrets.json
+credentials.yml
+
+# IDEs
+.vscode/
+.idea/
+
+# Large data directory (untracked by default — use LFS for large files instead)
+data/
+eyas/data/
+
+# Temporary files
+*.tmp
+*.bak
