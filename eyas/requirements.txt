@@ -6,4 +6,5 @@ pillow
 llama-cpp-python
 torch
 torchaudio
-# add model-specific deps as needed
+transformers
+voxcpm
