@@ -1,0 +1,1 @@
+An eyas (plural: eyases or eyasses) is an unfledged, very young hawk or falcon that is still in the nest.
