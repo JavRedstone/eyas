@@ -41,7 +41,7 @@ VOXCPM2_MODEL = VoxCPM.from_pretrained("openbmb/VoxCPM2", load_denoiser=False)
 TTS_SAMPLE_RATE = VOXCPM2_MODEL.tts_model.sample_rate
 
 VOXCPM2_SUPPORTED_LANGUAGES = [
-    "Arabic", "Burmese", "Chinese", "Danish", "Dutch", "English", "Finnish", "French", 
+    "Arabic", "Burmese", "Simplified Chinese", "Traditional Chinese", "Danish", "Dutch", "English", "Finnish", "French", 
     "German", "Greek", "Hebrew", "Hindi", "Indonesian", "Italian", "Japanese", "Khmer", 
     "Korean", "Lao", "Malay", "Norwegian", "Polish", "Portuguese", "Russian", "Spanish", 
     "Swahili", "Swedish", "Tagalog", "Thai", "Turkish", "Vietnamese"
