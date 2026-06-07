@@ -125,8 +125,11 @@ class StreamCapture:
     # ── Internal ──────────────────────────────────────────────────────────
 
     def _loop(self) -> None:
-        while self.running and self._cap is not None and self._cap.isOpened():
-            ok, frame = self._cap.read()
+        while self.running:
+            cap = self._cap
+            if cap is None or not cap.isOpened():
+                break
+            ok, frame = cap.read()
             if ok:
                 with self._lock:
                     self._latest = frame
