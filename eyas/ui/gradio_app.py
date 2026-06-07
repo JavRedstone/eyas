@@ -12,6 +12,9 @@ import gradio as gr
 from gradio.themes.base import Base
 from gradio.themes.utils import colors, fonts, sizes
 
+from storage import manager as storage
+from streaming.capture import default_capture as _stream
+
 # ---------------------------------------------------------------------------
 # Palette definitions
 # ---------------------------------------------------------------------------
@@ -302,8 +305,9 @@ def build_app(
             with gr.Column(scale=3):
                 video_input = gr.Video(label="Upload CCTV clip (.mp4)", sources=["upload"])
             with gr.Column(scale=1):
-                analyze_btn = gr.Button("Analyze", variant="primary", size="lg")
-                status_box  = gr.Textbox(label="Status", interactive=False, lines=3, elem_id="status-box")
+                analyze_btn  = gr.Button("Analyze", variant="primary", size="lg")
+                status_box   = gr.Textbox(label="Status", interactive=False, lines=3, elem_id="status-box")
+                upload_status = gr.Textbox(label="Storage", interactive=False, lines=1, visible=True)
 
         video_input.change(fn=None, inputs=[video_input], js=_REC_JS)
 
@@ -369,6 +373,44 @@ def build_app(
                 audio_output      = gr.Audio(label="TTS Report", interactive=False)
                 generate_audio_btn = gr.Button("Generate Audio Report", variant="secondary")
 
+            # ── Live Feed ────────────────────────────────────────────────────
+            with gr.TabItem("Live Feed"):
+                _section_title("Camera Stream")
+                gr.Markdown(
+                    "*Enter an RTSP URL, a file path, or `0` for the default webcam. "
+                    "Click **Start** to connect.*"
+                )
+                with gr.Row():
+                    stream_src = gr.Textbox(
+                        placeholder="rtsp://192.168.1.x:554/stream  or  0",
+                        label="Source", scale=4, lines=1,
+                    )
+                    start_stream_btn = gr.Button("Start", variant="primary", scale=1)
+                    stop_stream_btn  = gr.Button("Stop",  variant="secondary", scale=1)
+
+                stream_status = gr.Textbox(label="Stream status", interactive=False, lines=1)
+                live_image    = gr.Image(label="Live Feed", interactive=False, height=420)
+                feed_timer    = gr.Timer(value=0.1, active=False)
+
+                with gr.Row():
+                    start_rec_btn = gr.Button("Start Recording", variant="primary")
+                    stop_rec_btn  = gr.Button("Stop Recording",  variant="secondary")
+                rec_status = gr.Textbox(label="Recording", interactive=False, lines=1)
+
+            # ── Clip Library ─────────────────────────────────────────────────
+            with gr.TabItem("Clip Library"):
+                _section_title("Stored Clips")
+                with gr.Row():
+                    refresh_lib_btn = gr.Button("Refresh", size="sm", variant="secondary")
+                    lib_dd = gr.Dropdown(
+                        label="Clips", choices=storage.choices(), interactive=True, scale=4,
+                    )
+                    load_clip_btn   = gr.Button("Load for Analysis", variant="primary", scale=1)
+                    delete_clip_btn = gr.Button("Delete", variant="stop", scale=1)
+
+                lib_status   = gr.Textbox(label="Status", interactive=False, lines=1)
+                lib_preview  = gr.Video(label="Preview", interactive=False)
+
             with gr.TabItem("Settings"):
                 _section_title("Theme")
                 gr.Markdown(
@@ -385,6 +427,23 @@ def build_app(
                 theme_status  = gr.Markdown("")
 
         # ── Callbacks ───────────────────────────────────────────────────────
+
+        _CLIPS_DIR = str(Path(__file__).parent.parent / "data" / "clips")
+
+        # Upload → auto-store (skip if already in the clip store)
+        def on_upload(video_path):
+            if video_path is None:
+                return ""
+            norm = video_path.replace("\\", "/")
+            if _CLIPS_DIR.replace("\\", "/") in norm:
+                return "Clip from library — already stored."
+            try:
+                entry = storage.store(video_path, source="upload")
+                return f"Stored: {entry['filename']}  ({entry['size_mb']} MB)"
+            except Exception as exc:
+                return f"Storage error: {exc}"
+
+        video_input.change(on_upload, inputs=[video_input], outputs=[upload_status])
 
         def run_pipeline(video_path):
             if video_path is None:
@@ -450,6 +509,76 @@ def build_app(
             return None
 
         generate_audio_btn.click(generate_audio, inputs=[event_log_state], outputs=[audio_output])
+
+        # ── Live Feed callbacks ──────────────────────────────────────────────
+
+        def start_stream(src: str):
+            src = src.strip()
+            if not src:
+                return "No source specified.", gr.Timer(active=False)
+            try:
+                source = int(src) if src.isdigit() else src
+                _stream.start(source)
+                return f"Connected: {src}", gr.Timer(active=True)
+            except Exception as exc:
+                return f"Error: {exc}", gr.Timer(active=False)
+
+        def stop_stream():
+            _stream.stop()
+            return "Stream stopped.", gr.Timer(active=False)
+
+        def poll_frame():
+            return _stream.get_rgb()
+
+        def start_recording():
+            if not _stream.is_open():
+                return "No active stream."
+            path = _stream.start_recording()
+            return f"Recording → {path}"
+
+        def stop_recording():
+            path = _stream.stop_recording()
+            if path is None:
+                return "No recording in progress."
+            try:
+                entry = storage.store(path, source="stream")
+                return f"Saved: {entry['filename']}  ({entry['size_mb']} MB)"
+            except Exception as exc:
+                return f"Saved to {path}. Storage error: {exc}"
+
+        start_stream_btn.click(start_stream, inputs=[stream_src],  outputs=[stream_status, feed_timer])
+        stop_stream_btn.click(stop_stream,   inputs=[],            outputs=[stream_status, feed_timer])
+        feed_timer.tick(poll_frame, outputs=[live_image])
+        start_rec_btn.click(start_recording, outputs=[rec_status])
+        stop_rec_btn.click(stop_recording,   outputs=[rec_status])
+
+        # ── Clip Library callbacks ───────────────────────────────────────────
+
+        def refresh_library():
+            return gr.Dropdown(choices=storage.choices())
+
+        def preview_clip(choice: str):
+            path = storage.path_from_choice(choice) if choice else None
+            return path
+
+        def load_for_analysis(choice: str):
+            path = storage.path_from_choice(choice) if choice else None
+            if path is None:
+                return None, "Clip not found."
+            return path, f"Loaded: {choice}"
+
+        def delete_clip(choice: str):
+            if not choice:
+                return "Nothing selected.", gr.Dropdown(choices=storage.choices())
+            filename = choice.split(" — ", 1)[1].split("  ")[0].strip() if " — " in choice else ""
+            ok = storage.delete(filename) if filename else False
+            msg = f"Deleted {filename}." if ok else "Delete failed."
+            return msg, gr.Dropdown(choices=storage.choices())
+
+        refresh_lib_btn.click(refresh_library, outputs=[lib_dd])
+        lib_dd.change(preview_clip, inputs=[lib_dd], outputs=[lib_preview])
+        load_clip_btn.click(load_for_analysis, inputs=[lib_dd], outputs=[video_input, lib_status])
+        delete_clip_btn.click(delete_clip, inputs=[lib_dd], outputs=[lib_status, lib_dd])
 
         def save_theme(label: str) -> str:
             if prefs_path is None:
