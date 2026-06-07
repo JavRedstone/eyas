@@ -4,13 +4,16 @@ Wrap translation APIs or local models and a TTS backend.
 """
 
 from collections.abc import Iterator
+
 import numpy as np
 
 from . import (
     TINYAYA_GLOBAL_MODEL,
     TINYAYA_GLOBAL_TOKENIZER,
     TINYAYA_SUPPORTED_LANGUAGES,
+    TTS_SAMPLE_RATE,
     VOXCPM2_MODEL,
+    VOXCPM2_SUPPORTED_LANGUAGES,
 )
 
 
@@ -39,8 +42,12 @@ def translate(text: str, target_lang: str = "English") -> str:
     return TINYAYA_GLOBAL_TOKENIZER.decode(new_tokens, skip_special_tokens=True)
 
 
-def tts(text: str, voice: str = "A young woman, gentle and sweet voice") -> Iterator[bytes]:
+def tts(text: str, target_lang: str = "English", voice: str = "A young woman, gentle and sweet voice") -> Iterator[tuple[int, np.ndarray]]:
     # https://huggingface.co/openbmb/VoxCPM2
+
+    if target_lang not in VOXCPM2_SUPPORTED_LANGUAGES:
+        raise ValueError(f"Target language {target_lang} not supported")
+
     if not text.strip():
         raise ValueError("Text is empty")
 
@@ -48,5 +55,4 @@ def tts(text: str, voice: str = "A young woman, gentle and sweet voice") -> Iter
         text = f"({voice}){text}"
 
     for chunk in VOXCPM2_MODEL.generate_streaming(text=text):
-        pcm_samples = (chunk * 32767).astype(np.int16)
-        yield pcm_samples.tobytes()
+        yield TTS_SAMPLE_RATE, chunk.astype(np.float32)
