@@ -2,7 +2,12 @@
 
 import json
 import sys
+from pathlib import Path
 from unittest.mock import MagicMock, patch
+
+_REPO_ROOT = Path(__file__).parent.parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
 import pytest
 
@@ -215,3 +220,7 @@ class TestModelNotFound:
         r = Reasoner("nonexistent_model.gguf")
         with pytest.raises(RuntimeError, match="not found"):
             r._load_model()
+
+
+if __name__ == "__main__":
+    sys.exit(pytest.main([__file__] + sys.argv[1:]))

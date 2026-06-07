@@ -1,5 +1,14 @@
 """Tests for eyas/video_processing/process.py."""
 
+import sys
+from pathlib import Path
+
+import pytest
+
+_REPO_ROOT = Path(__file__).parent.parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
 from eyas.video_processing.process import process_clip
 
 
@@ -18,3 +27,7 @@ class TestProcessClip:
         annotations = process_clip(str(dummy))
         for ann in annotations:
             assert isinstance(ann, dict)
+
+
+if __name__ == "__main__":
+    sys.exit(pytest.main([__file__] + sys.argv[1:]))

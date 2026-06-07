@@ -70,21 +70,50 @@ class Reasoner:
             verbose=False,
         )
 
+    @staticmethod
+    def _is_observation_schema(ev: Dict) -> bool:
+        """True for ObservationEvent dicts (structurer output); False for legacy dicts."""
+        return "timestamp" in ev and "activity" in ev and "track_id" in ev
+
+    @staticmethod
+    def _format_observation(i: int, ev: Dict) -> str:
+        conf = ev.get("confidence", "?")
+        conf_s = f"{conf:.2f}" if isinstance(conf, float) else str(conf)
+        held = ev.get("held_objects") or []
+        held_s = ", ".join(f"{h['name']} x{h.get('count',1)}" for h in held) if held else "-"
+        pickup = ev.get("pickup_confirmed", False)
+        picked = ev.get("picked_up_items") or []
+        pickup_s = ("YES -> " + ", ".join(f"{p['name']} x{p.get('count',1)}" for p in picked)) if pickup else "no"
+        return (
+            f"Event {i}: [Track {ev.get('track_id','?')} | t={ev.get('timestamp','?'):.2f}s] "
+            f"Zone: {ev.get('zone','?')} | "
+            f"{ev.get('activity','?')} | "
+            f"Held: {held_s} | "
+            f"Pickup: {pickup_s} | "
+            f"Conf: {conf_s}"
+        )
+
+    @staticmethod
+    def _format_legacy(i: int, ev: Dict) -> str:
+        meta = ev.get("metadata", {})
+        conf = meta.get("confidence", meta.get("conf", "?"))
+        conf_s = f"{conf:.2f}" if isinstance(conf, float) else str(conf)
+        clip = meta.get("clip_pointer", meta.get("clip", ""))
+        return (
+            f"Event {i}: [{ev.get('type', '?')}] "
+            f"{ev.get('start_time', '?')}–{ev.get('end_time', '?')} | "
+            f"Zone: {ev.get('zone', '?')} | "
+            f"Conf: {conf_s} | "
+            f"clip: {clip}"
+        )
+
     def _format_events(self, events: List[Dict]) -> str:
         lines: List[str] = []
         for i, ev in enumerate(events):
-            meta = ev.get("metadata", {})
-            conf = meta.get("confidence", meta.get("conf", "?"))
-            if isinstance(conf, float):
-                conf = f"{conf:.2f}"
-            clip = meta.get("clip_pointer", meta.get("clip", ""))
-            lines.append(
-                f"Event {i}: [{ev.get('type', '?')}] "
-                f"{ev.get('start_time', '?')}–{ev.get('end_time', '?')} | "
-                f"Zone: {ev.get('zone', '?')} | "
-                f"Conf: {conf} | "
-                f"clip: {clip}"
-            )
+            if self._is_observation_schema(ev):
+                lines.append(self._format_observation(i, ev))
+            else:
+                lines.append(self._format_legacy(i, ev))
         return "\n".join(lines)
 
     def _trim_events(self, events: List[Dict], max_chars: int = 3000) -> List[Dict]:
