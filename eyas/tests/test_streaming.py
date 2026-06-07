@@ -1,6 +1,12 @@
 """Tests for eyas/streaming/capture.py — StreamCapture lifecycle and properties."""
 
+import sys
+from pathlib import Path
 from unittest.mock import MagicMock, patch
+
+_REPO_ROOT = Path(__file__).parent.parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
 import numpy as np
 import pytest
@@ -157,3 +163,7 @@ class TestMissingCv2:
             cap = StreamCapture()
             with pytest.raises(RuntimeError, match="opencv"):
                 cap.start(0)
+
+
+if __name__ == "__main__":
+    sys.exit(pytest.main([__file__] + sys.argv[1:]))
