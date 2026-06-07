@@ -13,7 +13,20 @@ from video_processing.process import PERSON_STATUS_PROMPT, parse_person_observat
 from event_structuring.structurer import EventStructurer, Zone
 from object_detection.detector import Track
 
+import textwrap
+
 import numpy as np
+
+_W = 72
+
+
+def _box(title: str, body: str) -> None:
+    print(f"\n{'=' * _W}")
+    print(f"  {title}")
+    print(f"{'-' * _W}")
+    for line in str(body).splitlines():
+        print(textwrap.fill(line, width=_W - 4, initial_indent="  ", subsequent_indent="    ") if line.strip() else "")
+    print(f"{'=' * _W}")
 
 
 def test_smoke():
@@ -21,6 +34,7 @@ def test_smoke():
 
 
 def test_status_prompt_does_not_suggest_specific_products():
+    _box("PERSON_STATUS_PROMPT (preview)", PERSON_STATUS_PROMPT[:300].strip())
     assert "red object" not in PERSON_STATUS_PROMPT
     assert "chocolate bar" not in PERSON_STATUS_PROMPT
 
@@ -31,6 +45,12 @@ def test_vague_activity_is_not_promoted_to_held_object():
         '"pickup_confirmed":false,"picked_up_items":[]}'
     )
 
+    _box(
+        "parse_person_observation | vague activity",
+        f"held_objects:    {observation.held_objects}\n"
+        f"pickup_confirmed: {observation.pickup_confirmed}\n"
+        f"picked_up_items: {observation.picked_up_items}",
+    )
     assert observation.held_objects == []
     assert observation.picked_up_items == []
 

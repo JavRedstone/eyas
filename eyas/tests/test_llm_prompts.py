@@ -1,6 +1,7 @@
 """Tests for eyas/llm/prompts.py — template structure and required placeholders."""
 
 import sys
+import textwrap
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).parent.parent.parent
@@ -19,9 +20,21 @@ from eyas.llm.prompts import (
     SYSTEM_PROMPT,
 )
 
+_W = 72
+
+
+def _box(title: str, body: str) -> None:
+    print(f"\n{'=' * _W}")
+    print(f"  {title}")
+    print(f"{'-' * _W}")
+    for line in str(body).splitlines():
+        print(textwrap.fill(line, width=_W - 4, initial_indent="  ", subsequent_indent="    ") if line.strip() else "")
+    print(f"{'=' * _W}")
+
 
 class TestSystemPrompt:
     def test_mentions_security_analyst(self):
+        _box("SYSTEM_PROMPT (preview)", SYSTEM_PROMPT[:300].strip())
         assert "security" in SYSTEM_PROMPT.lower()
 
     def test_instructs_json_only(self):
@@ -30,6 +43,7 @@ class TestSystemPrompt:
 
 class TestSummarizePrompt:
     def test_has_period_placeholder(self):
+        _box("SUMMARIZE_PROMPT (preview)", SUMMARIZE_PROMPT[:400].strip())
         assert "{period}" in SUMMARIZE_PROMPT
 
     def test_has_event_log_placeholder(self):

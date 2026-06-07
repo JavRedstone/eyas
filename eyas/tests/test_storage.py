@@ -2,6 +2,7 @@
 
 import json
 import sys
+import textwrap
 from pathlib import Path
 
 import pytest
@@ -11,6 +12,17 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 import eyas.storage.manager as storage
+
+_W = 72
+
+
+def _box(title: str, body: str) -> None:
+    print(f"\n{'=' * _W}")
+    print(f"  {title}")
+    print(f"{'-' * _W}")
+    for line in str(body).splitlines():
+        print(textwrap.fill(line, width=_W - 4, initial_indent="  ", subsequent_indent="    ") if line.strip() else "")
+    print(f"{'=' * _W}")
 
 
 @pytest.fixture(autouse=True)
@@ -42,6 +54,7 @@ class TestStore:
 
     def test_returns_entry_with_expected_keys(self, sample_video):
         entry = storage.store(sample_video)
+        _box("store() entry", json.dumps({k: str(v) for k, v in entry.items()}, indent=2))
         assert {"filename", "path", "timestamp", "source", "size_mb"} <= entry.keys()
 
     def test_default_source_is_upload(self, sample_video):
