@@ -1,6 +1,7 @@
 """Tests for eyas/object_detection/detector.py."""
 
 import sys
+import textwrap
 from pathlib import Path
 
 import numpy as np
@@ -14,11 +15,23 @@ from eyas.object_detection.detector import Track, crop
 
 ultralytics = pytest.importorskip.__module__  # just to note the pattern below
 
+_W = 72
+
+
+def _box(title: str, body: str) -> None:
+    print(f"\n{'=' * _W}")
+    print(f"  {title}")
+    print(f"{'-' * _W}")
+    for line in str(body).splitlines():
+        print(textwrap.fill(line, width=_W - 4, initial_indent="  ", subsequent_indent="    ") if line.strip() else "")
+    print(f"{'=' * _W}")
+
 
 class TestTrack:
     def test_as_dict_contains_required_keys(self):
         t = Track(track_id=1, label="person", confidence=0.9, bbox=(10, 20, 100, 200))
         d = t.as_dict()
+        _box("Track.as_dict()", str(d))
         assert {"track_id", "label", "confidence", "bbox"} <= d.keys()
 
     def test_bbox_serialised_as_list(self):
