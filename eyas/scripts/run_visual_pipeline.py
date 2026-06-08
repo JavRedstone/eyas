@@ -69,6 +69,18 @@ def build_parser() -> argparse.ArgumentParser:
         default=0.03,
         help="Minimum fraction of frame covered by a track for inferred pickups. Default: 0.03.",
     )
+    parser.add_argument(
+        "--reid-max-gap",
+        type=float,
+        default=15.0,
+        help="Maximum disappearance time for reconnecting a similar person. Default: 15.",
+    )
+    parser.add_argument(
+        "--reid-similarity",
+        type=float,
+        default=0.40,
+        help="Minimum combined visual/description similarity for reconnecting tracks. Default: 0.40.",
+    )
     parser.add_argument("--max-frames", type=int)
     parser.add_argument("--no-annotated-video", action="store_true")
     parser.add_argument(
@@ -99,6 +111,8 @@ def main() -> None:
         evidence_frames=args.evidence_frames,
         crop_pad=args.crop_pad,
         minimum_pickup_area_ratio=args.min_pickup_area_ratio,
+        reid_max_gap_seconds=args.reid_max_gap,
+        reid_similarity_threshold=args.reid_similarity,
         max_frames=args.max_frames,
         write_annotated_video=not args.no_annotated_video,
         progress=show_progress,
