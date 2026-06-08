@@ -12,8 +12,11 @@ import cv2
 from event_structuring.structurer import EventStructurer, PersonStatus, Zone
 from object_detection.detector import PersonTracker, Track
 from video_processing.process import MiniCPMVLM
+from utils.device import get_device
+from utils.paths import models_dir
+from utils.video import create_video_writer, get_video_info
 
-_DEFAULT_YOLO_WEIGHTS = str(Path(__file__).parent / "models" / "yolo11n.pt")
+_DEFAULT_YOLO_WEIGHTS = str(models_dir() / "yolo11n.pt")
 
 
 @dataclass
@@ -33,19 +36,6 @@ class VisualPipelineResult:
             f"and generated {len(self.events)} MiniCPM-V observations."
         )
 
-
-def auto_device() -> str:
-    """Choose the best available PyTorch device for YOLO/MiniCPM-V."""
-    try:
-        import torch
-
-        if torch.cuda.is_available():
-            return "cuda"
-        if torch.backends.mps.is_available():
-            return "mps"
-    except Exception:
-        pass
-    return "cpu"
 
 
 def full_frame_zone(width: int, height: int) -> Zone:
@@ -130,16 +120,9 @@ def overlay_confirmed_pickups(
     if not confirmed or not video_path.exists():
         return
     cap = cv2.VideoCapture(str(video_path))
-    fps = cap.get(cv2.CAP_PROP_FPS) or 12.0
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fps, width, height = get_video_info(cap)
     temp_path = video_path.with_name(f"{video_path.stem}_review{video_path.suffix}")
-    writer = cv2.VideoWriter(
-        str(temp_path),
-        cv2.VideoWriter_fourcc(*"mp4v"),
-        fps,
-        (width, height),
-    )
+    writer = create_video_writer(str(temp_path), fps, width, height)
     frame_index = 0
     try:
         while cap.isOpened():
@@ -204,15 +187,13 @@ def run_visual_pipeline(
     cap = cv2.VideoCapture(str(source))
     if not cap.isOpened():
         raise ValueError(f"could not open video: {source}")
-    fps = cap.get(cv2.CAP_PROP_FPS) or 12.0
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fps, width, height = get_video_info(cap)
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     if max_frames is not None:
         total_frames = min(total_frames, max_frames)
 
     resolved_zones = zones or [full_frame_zone(width, height)]
-    resolved_device = device or auto_device()
+    resolved_device = device or get_device()
     tracker = PersonTracker(
         weights=yolo_weights,
         tracker=tracker_config,
@@ -243,8 +224,7 @@ def run_visual_pipeline(
     annotated_path = out_dir / f"{source.stem}_annotated.mp4"
     writer = None
     if write_annotated_video:
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        writer = cv2.VideoWriter(str(annotated_path), fourcc, fps, (width, height))
+        writer = create_video_writer(str(annotated_path), fps, width, height)
 
     seen_tracks = set()
     frame_index = 0

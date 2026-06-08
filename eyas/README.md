@@ -1,23 +1,43 @@
-# Eyas — Prototype CCTV processing project
+# Eyas — Offline CCTV Security Assistant
 
-This folder contains a modular prototype scaffold for the Offline CCTV Security Assistant described in `docs/PROJECT_IDEA.md` and `docs/ARCHITECTURE.md`.
+Real-time retail loss-prevention pipeline: video → person tracking → VLM observation → event structuring → LLM reasoning → alerts.
 
-Structure
-- `input/` — video ingest helpers and example clips
-- `object_detection/` — YOLO-based counting detector
-- `video_processing/` — multimodal video understanding and clip annotation
-- `event_structuring/` — heuristics to convert detections into events
-- `llm/` — local LLM prompts and reasoning via `llama.cpp`
-- `postprocessing/` — translation and TTS wrappers
-- `ui/` — Gradio app and UI components
-- `models/` — local model artifacts
-- `scripts/` — utility scripts (convert, split, annotate)
-- `data/` — sample or anonymized traces used for demo
-- `tests/` — simple unit/integration checks
+## Pipeline
 
-Quick notes
-- This is a scaffold: files contain minimal placeholder code and TODOs.
-- To add a runnable prototype, implement the detector and a small Gradio UI in `ui/`.
+```
+video / camera
+  └─ object_detection/   YOLO11 + BotSORT → person tracks
+       └─ video_processing/  MiniCPM-V 4.6 → structured observations
+            └─ event_structuring/  heuristics → timestamped event log
+                 └─ llm/           llama.cpp  → summaries, Q&A, alerts
+                      └─ postprocessing/  translation + TTS
+```
 
-Contact
-- See `docs/ARCHITECTURE.md` for ownership mapping and model choices.
+## Layout
+
+| Folder | Purpose |
+|---|---|
+| `object_detection/` | YOLO person tracker, `Track` dataclass, crop helper |
+| `video_processing/` | MiniCPM-V VLM, `PersonObservation`, frame buffer |
+| `event_structuring/` | `EventStructurer`, zone definitions, event log serialisation |
+| `llm/` | `Reasoner` (GGUF via llama.cpp), prompt templates, grammar |
+| `postprocessing/` | Translation (llama.cpp) and TTS (VoxCPM2) |
+| `streaming/` | Live camera capture with on-demand clip recording |
+| `storage/` | Clip index — store, list, delete uploaded/recorded footage |
+| `ui/` | Gradio web app |
+| `utils/` | Shared helpers: device selection, video I/O, path resolution |
+| `scripts/` | CLI entry points and batch utilities |
+| `models/` | Local model weights (YOLO `.pt`, GGUF LLM) |
+| `input/` | Sample input videos |
+| `data/` | Static demo traces and reference data |
+| `tests/` | Test suite — unit / module / e2e |
+
+## Running
+
+```bash
+# Full visual pipeline on a video file
+python scripts/run_visual_pipeline.py input/sample.mp4
+
+# Gradio UI
+python ui/gradio_app.py
+```
