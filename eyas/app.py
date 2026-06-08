@@ -56,7 +56,7 @@ def _parse_args(prefs: dict) -> dict:
 
 
 prefs = _parse_args(_load_prefs())
-app   = build_app(
+app, _theme = build_app(
     color=prefs.get("theme", "night"),
     dark=prefs.get("dark", True),
     advanced=prefs.get("advanced"),
@@ -64,4 +64,4 @@ app   = build_app(
 )
 
 if __name__ == "__main__":
-    app.launch()
+    app.launch(theme=_theme, css=_theme.custom_css)
