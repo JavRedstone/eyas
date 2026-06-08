@@ -1,6 +1,6 @@
 """Tests for eyas.postprocessing.translate_tts.
 
-Requires HuggingFace model access, transformers, voxcpm, and CUDA.
+Requires HuggingFace model access, llama-cpp-python, and voxcpm (CUDA for TTS).
 
 Run:
     pytest eyas/tests/test_translate_tts.py -v
@@ -12,15 +12,15 @@ import numpy as np
 import pytest
 import torch
 
-pytest.importorskip("transformers")
+pytest.importorskip("llama_cpp")
 pytest.importorskip("voxcpm")
 
 from eyas.postprocessing import TTS_SAMPLE_RATE
 from eyas.postprocessing.translate_tts import translate, tts
 
-pytestmark = pytest.mark.skipif(
+requires_cuda = pytest.mark.skipif(
     not torch.cuda.is_available(),
-    reason="CUDA required to run translate_tts model tests",
+    reason="CUDA required to run VoxCPM2 TTS model tests",
 )
 
 
@@ -82,6 +82,7 @@ class TestTranslate:
 # ---------------------------------------------------------------------------
 
 
+@requires_cuda
 class TestTts:
     def test_rejects_empty_text(self):
         """Empty text raises ValueError."""
