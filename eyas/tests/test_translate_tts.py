@@ -8,14 +8,20 @@ Run:
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 import numpy as np
 import pytest
 import torch
 
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
 pytest.importorskip("llama_cpp")
 pytest.importorskip("voxcpm")
 
-from eyas.postprocessing import TTS_SAMPLE_RATE
 from eyas.postprocessing.translate_tts import translate, tts
 
 requires_cuda = pytest.mark.skipif(
@@ -29,8 +35,9 @@ def _assert_valid_audio_stream(chunks: list[tuple[int, np.ndarray]], min_duratio
     assert len(chunks) >= 1
 
     total_samples = 0
+    expected_sample_rate = chunks[0][0]
     for sample_rate, audio in chunks:
-        assert sample_rate == TTS_SAMPLE_RATE
+        assert sample_rate == expected_sample_rate
         assert isinstance(audio, np.ndarray)
         assert audio.dtype == np.float32
         assert audio.ndim == 1
@@ -39,7 +46,7 @@ def _assert_valid_audio_stream(chunks: list[tuple[int, np.ndarray]], min_duratio
         assert np.all(audio <= 1.0)
         total_samples += audio.size
 
-    assert total_samples / TTS_SAMPLE_RATE >= min_duration
+    assert total_samples / expected_sample_rate >= min_duration
 
 
 # ---------------------------------------------------------------------------

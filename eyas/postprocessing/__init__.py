@@ -34,33 +34,47 @@ TINYAYA_SUPPORTED_LANGUAGES = {
 TINYAYA_GGUF_REPO = "CohereLabs/tiny-aya-global-GGUF"
 TINYAYA_GGUF_FILE = os.getenv("EYAS_TINYAYA_GGUF_FILE", "tiny-aya-global-q4_k_m.gguf")
 
-_tinyaya_model = None
+_tinyaya_models: dict[bool, object] = {}
 
 
-def get_tinyaya_model():
+def get_tinyaya_model(use_gpu: bool = True):
     """Lazy-load tiny-aya-global via llama-cpp-python."""
-    global _tinyaya_model
-    if _tinyaya_model is not None:
-        return _tinyaya_model
+    if use_gpu in _tinyaya_models:
+        return _tinyaya_models[use_gpu]
     try:
         from llama_cpp import Llama  # type: ignore
     except ImportError as exc:
         raise RuntimeError(
             "llama-cpp-python is not installed. Run: pip install llama-cpp-python"
         ) from exc
-    _tinyaya_model = Llama.from_pretrained(
+    n_gpu_layers = -1 if use_gpu else 0
+    _tinyaya_models[use_gpu] = Llama.from_pretrained(
         repo_id=TINYAYA_GGUF_REPO,
         filename=TINYAYA_GGUF_FILE,
         n_ctx=int(os.getenv("EYAS_TINYAYA_N_CTX", "4096")),
-        n_gpu_layers=int(os.getenv("EYAS_N_GPU_LAYERS", "-1")),
+        n_gpu_layers=n_gpu_layers,
         verbose=False,
     )
-    return _tinyaya_model
+    return _tinyaya_models[use_gpu]
 
 
-from voxcpm import VoxCPM
-VOXCPM2_MODEL = VoxCPM.from_pretrained("openbmb/VoxCPM2", device="auto", load_denoiser=False)
-TTS_SAMPLE_RATE = VOXCPM2_MODEL.tts_model.sample_rate
+_voxcpm2_model = None
+_voxcpm2_sample_rate = None
+
+
+def get_voxcpm2_model():
+    """Lazy-load VoxCPM2 TTS model and its output sample rate."""
+    global _voxcpm2_model, _voxcpm2_sample_rate
+    if _voxcpm2_model is not None:
+        return _voxcpm2_model, _voxcpm2_sample_rate
+    from voxcpm import VoxCPM
+
+    _voxcpm2_model = VoxCPM.from_pretrained(
+        "openbmb/VoxCPM2", device="auto", load_denoiser=False, optimize=False
+    ) 
+    # TODO: test with optimize=True if python 3.10 or higher
+    _voxcpm2_sample_rate = _voxcpm2_model.tts_model.sample_rate
+    return _voxcpm2_model, _voxcpm2_sample_rate
 
 VOXCPM2_SUPPORTED_LANGUAGES = [
     "Arabic", "Burmese", "Simplified Chinese", "Traditional Chinese", "Danish", "Dutch", "English", "Finnish", "French",
