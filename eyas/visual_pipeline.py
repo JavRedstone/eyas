@@ -59,21 +59,8 @@ def draw_tracks(
     zones: List[Zone],
     statuses: Optional[Dict[int, PersonStatus]] = None,
 ):
-    """Draw configured zones and current YOLO person tracks."""
+    """Draw current YOLO person tracks and semantic statuses."""
     rendered = frame.copy()
-    for zone in zones:
-        x1, y1, x2, y2 = zone.bbox
-        color = (0, 165, 255) if zone.kind == "shelf" else (255, 180, 0)
-        cv2.rectangle(rendered, (x1, y1), (x2, y2), color, 2)
-        cv2.putText(
-            rendered,
-            f"{zone.name} ({zone.kind})",
-            (x1 + 4, max(18, y1 + 18)),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.55,
-            color,
-            2,
-        )
     for track in tracks:
         x1, y1, x2, y2 = track.bbox
         cv2.rectangle(rendered, (x1, y1), (x2, y2), (0, 255, 0), 2)
@@ -89,49 +76,103 @@ def draw_tracks(
             (0, 255, 0),
             2,
         )
+        detail_lines = []
         if status and status.current_activity:
-            activity_label = status.current_activity[:70]
-            activity_y = min(rendered.shape[0] - 8, y2 + 22)
-            if activity_y <= y2:
-                activity_y = max(18, y2 - 8)
-            cv2.putText(
-                rendered,
-                activity_label,
-                (x1, activity_y),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.52,
-                (255, 255, 0),
-                2,
-            )
+            detail_lines.append((status.current_activity[:70], (255, 255, 0), 0.52))
         if status and status.current_held_objects:
             held_text = ", ".join(
                 f"HOLDING: {item['count']} x {item['name']}"
                 for item in status.current_held_objects
             )[:70]
-            cv2.putText(
-                rendered,
-                held_text,
-                (x1, min(rendered.shape[0] - 8, y2 + 42)),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.48,
-                (0, 255, 255),
-                2,
-            )
+            detail_lines.append((held_text, (0, 255, 255), 0.48))
+        if status and status.pickup_suspected:
+            detail_lines.append(("POSSIBLE PICKUP: needs confirmation", (0, 165, 255), 0.48))
         if status and status.confirmed_pickups:
             item_text = ", ".join(
                 f"PICKUP: {item['count']} x {item['name']}"
                 for item in status.confirmed_pickups
             )[:70]
+            detail_lines.append((item_text, (0, 0, 255), 0.48))
+
+        line_gap = 22
+        required_below = line_gap * len(detail_lines)
+        if y2 + required_below + 8 < rendered.shape[0]:
+            detail_positions = [
+                y2 + line_gap * (index + 1)
+                for index in range(len(detail_lines))
+            ]
+        else:
+            # Keep labels visible when the person box reaches the bottom edge.
+            detail_positions = [
+                max(18, y2 - line_gap * (len(detail_lines) - index))
+                for index in range(len(detail_lines))
+            ]
+        for (text, color, scale), text_y in zip(detail_lines, detail_positions):
             cv2.putText(
                 rendered,
-                item_text,
-                (x1, min(rendered.shape[0] - 8, y2 + 62)),
+                text,
+                (x1, text_y),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                0.48,
-                (0, 0, 255),
+                scale,
+                color,
                 2,
             )
     return rendered
+
+
+def overlay_confirmed_pickups(
+    video_path: Path,
+    events,
+    display_seconds: float = 1.5,
+) -> None:
+    """Overlay confirmed pickups at their corrected action timestamps."""
+    confirmed = [event for event in events if event.pickup_confirmed]
+    if not confirmed or not video_path.exists():
+        return
+    cap = cv2.VideoCapture(str(video_path))
+    fps = cap.get(cv2.CAP_PROP_FPS) or 12.0
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    temp_path = video_path.with_name(f"{video_path.stem}_review{video_path.suffix}")
+    writer = cv2.VideoWriter(
+        str(temp_path),
+        cv2.VideoWriter_fourcc(*"mp4v"),
+        fps,
+        (width, height),
+    )
+    frame_index = 0
+    try:
+        while cap.isOpened():
+            ok, frame = cap.read()
+            if not ok:
+                break
+            t = frame_index / fps
+            for event in confirmed:
+                if not (event.timestamp <= t <= event.timestamp + display_seconds):
+                    continue
+                x1, y1, x2, y2 = event.bbox
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 255), 4)
+                items = ", ".join(
+                    f"{item['count']} x {item['name']}"
+                    for item in event.picked_up_items
+                )
+                label = f"PICKUP: {items}"[:80]
+                text_y = y1 - 12 if y1 > 35 else min(height - 12, y2 + 28)
+                cv2.putText(
+                    frame,
+                    label,
+                    (x1, text_y),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.65,
+                    (0, 0, 255),
+                    3,
+                )
+            writer.write(frame)
+            frame_index += 1
+    finally:
+        cap.release()
+        writer.release()
+    temp_path.replace(video_path)
 
 
 def run_visual_pipeline(
@@ -147,6 +188,8 @@ def run_visual_pipeline(
     evidence_frames: int = 5,
     crop_pad: int = 120,
     minimum_pickup_area_ratio: float = 0.03,
+    reid_max_gap_seconds: float = 15.0,
+    reid_similarity_threshold: float = 0.40,
     max_frames: Optional[int] = None,
     write_annotated_video: bool = True,
     progress: Optional[Callable[[int, int], None]] = None,
@@ -186,6 +229,8 @@ def run_visual_pipeline(
         evidence_window_s=evidence_window_seconds,
         evidence_frames=evidence_frames,
         minimum_pickup_area_ratio=minimum_pickup_area_ratio,
+        reid_max_gap_s=reid_max_gap_seconds,
+        reid_similarity_threshold=reid_similarity_threshold,
     )
 
     annotated_path = out_dir / f"{source.stem}_annotated.mp4"
@@ -206,7 +251,9 @@ def run_visual_pipeline(
             seen_tracks.update(track.track_id for track in tracks)
             structurer.update(tracks, t, latest_frame=frame)
             if writer is not None:
-                writer.write(draw_tracks(frame, tracks, resolved_zones, structurer.statuses))
+                writer.write(
+                    draw_tracks(frame, tracks, resolved_zones, structurer.display_statuses())
+                )
             frame_index += 1
             if progress and (frame_index == 1 or frame_index % 30 == 0):
                 progress(frame_index, total_frames)
@@ -214,6 +261,9 @@ def run_visual_pipeline(
         cap.release()
         if writer is not None:
             writer.release()
+
+    if writer is not None:
+        overlay_confirmed_pickups(annotated_path, structurer.events)
 
     events_path = out_dir / "events.json"
     events = [event.as_dict() for event in structurer.events]
@@ -238,6 +288,8 @@ def run_visual_pipeline(
         "evidence_frames": evidence_frames,
         "crop_pad": crop_pad,
         "minimum_pickup_area_ratio": minimum_pickup_area_ratio,
+        "reid_max_gap_seconds": reid_max_gap_seconds,
+        "reid_similarity_threshold": reid_similarity_threshold,
         "zones": [
             {"name": z.name, "bbox": list(z.bbox), "kind": z.kind}
             for z in resolved_zones

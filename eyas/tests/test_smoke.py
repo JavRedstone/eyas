@@ -25,7 +25,13 @@ def _box(title: str, body: str) -> None:
     print(f"  {title}")
     print(f"{'-' * _W}")
     for line in str(body).splitlines():
-        print(textwrap.fill(line, width=_W - 4, initial_indent="  ", subsequent_indent="    ") if line.strip() else "")
+        print(
+            textwrap.fill(
+                line, width=_W - 4, initial_indent="  ", subsequent_indent="    "
+            )
+            if line.strip()
+            else ""
+        )
     print(f"{'=' * _W}")
 
 
@@ -123,8 +129,13 @@ def test_recent_interaction_then_new_held_object_confirms_pickup():
     structurer.update([track], 0.0, frame)
     events = structurer.update([track], 1.0, frame)
 
-    assert events[0].pickup_confirmed is True
-    assert events[0].picked_up_items == [{"name": "small object", "count": 1}]
+    assert events[0].pickup_confirmed is False
+    assert structurer.events[0].timestamp == 0.0
+    assert structurer.events[0].confirmation_timestamp == 1.0
+    assert structurer.events[0].pickup_confirmed is True
+    assert structurer.events[0].picked_up_items == [
+        {"name": "small object", "count": 1}
+    ]
 
 
 def test_tiny_track_cannot_infer_pickup():
