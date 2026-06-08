@@ -7,7 +7,7 @@ import re
 from collections import deque
 from dataclasses import asdict, dataclass, field
 from difflib import SequenceMatcher
-from typing import Deque, Dict, List, Optional, Tuple
+from typing import Callable, Deque, Dict, List, Optional, Tuple
 
 import numpy as np
 import cv2
@@ -109,6 +109,7 @@ class EventStructurer:
         self._last_semantic: Dict[int, float] = {}
         self._pending_pickup_event: Dict[int, ObservationEvent] = {}
         self._track_history: Dict[int, Deque[TrackSnapshot]] = {}
+        self.on_vlm_start: Optional[Callable] = None
 
     def _description_similarity(self, left: str, right: str) -> float:
         stopwords = {
@@ -248,6 +249,8 @@ class EventStructurer:
             frames = self._evidence_crops(track.track_id)
             if not frames or frames[-1].size == 0:
                 continue
+            if self.on_vlm_start is not None:
+                self.on_vlm_start()
             observation: PersonObservation = self.vlm.observe_person(
                 frames, track_id=person_id
             )
