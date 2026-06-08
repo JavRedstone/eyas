@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, List, Optional
+from typing import Callable, Dict, List, Optional
 
 import cv2
 
@@ -18,17 +18,16 @@ from video_processing.process import MiniCPMVLM
 class VisualPipelineResult:
     video_path: str
     events_path: str
-    statuses_path: str
     annotated_video_path: Optional[str]
     frames_processed: int
     unique_tracks: int
     events: List[dict]
-    statuses: List[dict]
+
     def summary(self) -> str:
         return (
             f"Processed {self.frames_processed} frames, tracked "
-            f"{self.unique_tracks} people, retained {len(self.statuses)} live statuses, "
-            f"and generated {len(self.events)} MiniCPM-V observations."
+            f"{self.unique_tracks} people, and recorded "
+            f"{len(self.events)} MiniCPM-V observations."
         )
 
 
@@ -83,8 +82,6 @@ def draw_tracks(
                 for item in status.current_held_objects
             )[:70]
             detail_lines.append((held_text, (0, 255, 255), 0.48))
-        if status and status.pickup_suspected:
-            detail_lines.append(("POSSIBLE PICKUP: needs confirmation", (0, 165, 255), 0.48))
         if status and status.confirmed_pickups:
             item_text = ", ".join(
                 f"PICKUP: {item['count']} x {item['name']}"
@@ -185,9 +182,11 @@ def run_visual_pipeline(
     evidence_window_seconds: float = 2.0,
     evidence_frames: int = 5,
     crop_pad: int = 120,
-    minimum_pickup_area_ratio: float = 0.03,
-    reid_max_gap_seconds: float = 15.0,
-    reid_similarity_threshold: float = 0.40,
+    interaction_trigger: bool = True,
+    motion_threshold: float = 0.035,
+    post_trigger_seconds: float = 0.5,
+    vlm_max_image_size: int = 448,
+    vlm_max_tokens: int = 96,
     max_frames: Optional[int] = None,
     write_annotated_video: bool = True,
     progress: Optional[Callable[[int, int], None]] = None,
@@ -218,7 +217,12 @@ def run_visual_pipeline(
         device=resolved_device,
     )
     vlm_dtype = "float16" if resolved_device in {"mps", "cuda"} else "auto"
-    vlm = MiniCPMVLM(device=resolved_device, dtype=vlm_dtype)
+    vlm = MiniCPMVLM(
+        device=resolved_device,
+        dtype=vlm_dtype,
+        max_image_size=vlm_max_image_size,
+        max_new_tokens=vlm_max_tokens,
+    )
     structurer = EventStructurer(
         resolved_zones,
         vlm=vlm,
@@ -226,9 +230,9 @@ def run_visual_pipeline(
         semantic_interval_s=semantic_interval_seconds,
         evidence_window_s=evidence_window_seconds,
         evidence_frames=evidence_frames,
-        minimum_pickup_area_ratio=minimum_pickup_area_ratio,
-        reid_max_gap_s=reid_max_gap_seconds,
-        reid_similarity_threshold=reid_similarity_threshold,
+        interaction_trigger=interaction_trigger,
+        motion_threshold=motion_threshold,
+        post_trigger_s=post_trigger_seconds,
     )
 
     annotated_path = out_dir / f"{source.stem}_annotated.mp4"
@@ -268,10 +272,8 @@ def run_visual_pipeline(
     with events_path.open("w", encoding="utf-8") as handle:
         json.dump(events, handle, indent=2)
 
-    statuses_path = out_dir / "statuses.json"
-    statuses = structurer.statuses_as_list()
-    with statuses_path.open("w", encoding="utf-8") as handle:
-        json.dump(statuses, handle, indent=2)
+    # Do not leave a stale aggregate from older pipeline runs.
+    (out_dir / "statuses.json").unlink(missing_ok=True)
 
     config_path = out_dir / "run_config.json"
     config = {
@@ -285,9 +287,11 @@ def run_visual_pipeline(
         "evidence_window_seconds": evidence_window_seconds,
         "evidence_frames": evidence_frames,
         "crop_pad": crop_pad,
-        "minimum_pickup_area_ratio": minimum_pickup_area_ratio,
-        "reid_max_gap_seconds": reid_max_gap_seconds,
-        "reid_similarity_threshold": reid_similarity_threshold,
+        "interaction_trigger": interaction_trigger,
+        "motion_threshold": motion_threshold,
+        "post_trigger_seconds": post_trigger_seconds,
+        "vlm_max_image_size": vlm_max_image_size,
+        "vlm_max_tokens": vlm_max_tokens,
         "zones": [
             {"name": z.name, "bbox": list(z.bbox), "kind": z.kind}
             for z in resolved_zones
@@ -299,10 +303,8 @@ def run_visual_pipeline(
     return VisualPipelineResult(
         video_path=str(source),
         events_path=str(events_path),
-        statuses_path=str(statuses_path),
         annotated_video_path=str(annotated_path) if writer is not None else None,
         frames_processed=frame_index,
         unique_tracks=len(seen_tracks),
         events=events,
-        statuses=statuses,
     )
