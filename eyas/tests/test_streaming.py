@@ -1,11 +1,29 @@
 """Tests for eyas/streaming/capture.py — StreamCapture lifecycle and properties."""
 
+import sys
+import textwrap
+from pathlib import Path
 from unittest.mock import MagicMock, patch
+
+_REPO_ROOT = Path(__file__).parent.parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
 import numpy as np
 import pytest
 
 from eyas.streaming.capture import StreamCapture
+
+_W = 72
+
+
+def _box(title: str, body: str) -> None:
+    print(f"\n{'=' * _W}")
+    print(f"  {title}")
+    print(f"{'-' * _W}")
+    for line in str(body).splitlines():
+        print(textwrap.fill(line, width=_W - 4, initial_indent="  ", subsequent_indent="    ") if line.strip() else "")
+    print(f"{'=' * _W}")
 
 
 @pytest.fixture()
@@ -19,6 +37,13 @@ def cap():
 
 class TestInitialState:
     def test_not_running(self, cap):
+        _box(
+            "StreamCapture initial state",
+            f"running={cap.running}\n"
+            f"is_open={cap.is_open()}\n"
+            f"frame_size={cap.frame_size()}\n"
+            f"capture_fps={cap.capture_fps()}",
+        )
         assert not cap.running
 
     def test_is_open_false(self, cap):
@@ -157,3 +182,7 @@ class TestMissingCv2:
             cap = StreamCapture()
             with pytest.raises(RuntimeError, match="opencv"):
                 cap.start(0)
+
+
+if __name__ == "__main__":
+    sys.exit(pytest.main([__file__] + sys.argv[1:]))
