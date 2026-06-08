@@ -66,5 +66,6 @@ def main(video: str, max_frames: int = 120):
 
 
 if __name__ == "__main__":
-    vid = sys.argv[1] if len(sys.argv) > 1 else "input/sample.mp4"
+    _default = str(Path(__file__).parent.parent / "input" / "sample.mp4")
+    vid = sys.argv[1] if len(sys.argv) > 1 else _default
     main(vid)
