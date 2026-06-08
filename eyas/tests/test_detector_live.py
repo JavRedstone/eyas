@@ -22,8 +22,12 @@ def main(video: str, max_frames: int = 120):
         device = "cpu"
     print(f"device={device}")
 
-    tracker = PersonTracker(weights="yolo11n.pt", tracker="botsort.yaml",
-                            conf=0.4, device=device)
+    tracker = PersonTracker(
+        weights=str(Path(__file__).parent.parent / "models" / "yolo11n.pt"),
+        tracker="botsort.yaml",
+        conf=0.4,
+        device=device,
+    )
 
     cap = cv2.VideoCapture(video)
     seen_ids = set()
