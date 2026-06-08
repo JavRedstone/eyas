@@ -6,28 +6,25 @@ Wrap translation APIs or local models and a TTS backend.
 from collections.abc import Iterator
 import sys
 from pathlib import Path
-
 import numpy as np
-
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from eyas.postprocessing import (
     TINYAYA_SUPPORTED_LANGUAGES,
-    TTS_SAMPLE_RATE,
-    VOXCPM2_MODEL,
     VOXCPM2_SUPPORTED_LANGUAGES,
     get_tinyaya_model,
+    get_voxcpm2_model,
 )
 
-
-def translate(text: str, target_lang: str = "English") -> str:
+# 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
+def translate(text: str, target_lang: str = "English", use_gpu: bool = True) -> str:
     # https://huggingface.co/CohereLabs/tiny-aya-global-GGUF
     if target_lang not in TINYAYA_SUPPORTED_LANGUAGES:
         raise ValueError(f"Target language {target_lang} not supported")
 
-    response = get_tinyaya_model().create_chat_completion(
+    response = get_tinyaya_model(use_gpu=use_gpu).create_chat_completion(
         messages=[
             {
                 "role": "user",
@@ -53,10 +50,6 @@ def tts(text: str, target_lang: str = "English", voice: str = "A young woman, ge
     if voice:
         text = f"({voice}){text}"
 
-    for chunk in VOXCPM2_MODEL.generate_streaming(text=text):
-        yield TTS_SAMPLE_RATE, chunk.astype(np.float32)
-
-if __name__ == "__main__":
-    print(translate("Hello, how are you?", target_lang="Korean"))
-    for chunk in tts("Hello, how are you?", target_lang="Korean"):
-        print(chunk)
+    model, sample_rate = get_voxcpm2_model()
+    for chunk in model.generate_streaming(text=text):
+        yield sample_rate, chunk.astype(np.float32)
