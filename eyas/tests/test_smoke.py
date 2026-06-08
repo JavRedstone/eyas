@@ -92,8 +92,11 @@ def test_recent_interaction_then_new_held_object_confirms_pickup():
     structurer.update([track], 0.0, frame)
     events = structurer.update([track], 1.0, frame)
 
-    assert events[0].pickup_confirmed is True
-    assert events[0].picked_up_items == [{"name": "small object", "count": 1}]
+    assert events[0].pickup_confirmed is False
+    assert structurer.events[0].timestamp == 0.0
+    assert structurer.events[0].confirmation_timestamp == 1.0
+    assert structurer.events[0].pickup_confirmed is True
+    assert structurer.events[0].picked_up_items == [{"name": "small object", "count": 1}]
 
 
 def test_tiny_track_cannot_infer_pickup():
@@ -123,3 +126,81 @@ def test_tiny_track_cannot_infer_pickup():
     events = structurer.update([tiny_track], 1.0, frame)
 
     assert events[0].pickup_confirmed is False
+
+
+def test_ambiguous_picking_language_is_flagged_as_suspected():
+    class SuspectedVLM:
+        backend = "test"
+
+        def observe_person(self, frames, track_id=None):
+            return parse_person_observation(
+                '{"activity":"appears to be picking up or inspecting a container",'
+                '"held_objects":[],"pickup_confirmed":false}'
+            )
+
+    structurer = EventStructurer(
+        [Zone("all", (0, 0, 200, 200))],
+        vlm=SuspectedVLM(),
+        semantic_interval_s=0,
+    )
+    frame = np.zeros((200, 200, 3), dtype=np.uint8)
+    events = structurer.update(
+        [Track(1, "person", 0.9, (40, 40, 120, 180))],
+        0.0,
+        frame,
+    )
+
+    assert events[0].pickup_suspected is True
+    assert events[0].pickup_confirmed is False
+
+
+def test_similar_returning_track_reuses_canonical_person_id():
+    class ReIdVLM:
+        backend = "test"
+
+        def observe_person(self, frames, track_id=None):
+            return parse_person_observation(
+                '{"description":"a person in a dark jacket and pants holding a yellow package",'
+                '"activity":"walking"}'
+            )
+
+    structurer = EventStructurer(
+        [Zone("all", (0, 0, 200, 200))],
+        vlm=ReIdVLM(),
+        semantic_interval_s=0,
+    )
+    frame = np.zeros((200, 200, 3), dtype=np.uint8)
+    structurer.update([Track(2, "person", 0.9, (20, 20, 100, 180))], 0.0, frame)
+    events = structurer.update([Track(7, "person", 0.9, (30, 20, 110, 180))], 3.0, frame)
+
+    assert events[0].track_id == 2
+    assert list(structurer.statuses) == [2]
+    assert structurer.statuses[2].source_track_ids == [2, 7]
+    assert structurer.display_statuses()[7].track_id == 2
+
+
+def test_simultaneous_similar_tracks_remain_distinct():
+    class ReIdVLM:
+        backend = "test"
+
+        def observe_person(self, frames, track_id=None):
+            return parse_person_observation(
+                '{"description":"a person in a dark jacket and pants","activity":"walking"}'
+            )
+
+    structurer = EventStructurer(
+        [Zone("all", (0, 0, 200, 200))],
+        vlm=ReIdVLM(),
+        semantic_interval_s=0,
+    )
+    frame = np.zeros((200, 200, 3), dtype=np.uint8)
+    structurer.update(
+        [
+            Track(2, "person", 0.9, (20, 20, 80, 180)),
+            Track(7, "person", 0.9, (100, 20, 170, 180)),
+        ],
+        0.0,
+        frame,
+    )
+
+    assert sorted(structurer.statuses) == [2, 7]
