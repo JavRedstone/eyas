@@ -745,8 +745,12 @@ def build_app(
             output_dir = tempfile.mkdtemp(prefix="eyas_out_")
             _q: _queue.Queue = _queue.Queue()
 
+            _last_progress_t = [0.0]
             def _on_progress(done: int, total: int, track_count: int, vlm_fired: bool) -> None:
-                _q.put(("progress", done, total, track_count, vlm_fired))
+                now = _time.time()
+                if vlm_fired or now - _last_progress_t[0] >= 0.2:
+                    _q.put(("progress", done, total, track_count, vlm_fired))
+                    _last_progress_t[0] = now
 
             def _run() -> None:
                 try:
