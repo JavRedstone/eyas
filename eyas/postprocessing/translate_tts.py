@@ -3,6 +3,9 @@
 Wrap translation APIs or local models and a TTS backend.
 """
 
+# TODO: smaller max_tokens once we see the output length 
+# TODO: warm up models once at startup during app initialization
+
 from collections.abc import Iterator
 import sys
 from pathlib import Path
@@ -17,8 +20,6 @@ from eyas.postprocessing import (
     get_tinyaya_model,
     get_voxcpm2_model,
 )
-
-# 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
 def translate(text: str, target_lang: str = "English", use_gpu: bool = True) -> str:
     # https://huggingface.co/CohereLabs/tiny-aya-global-GGUF
     if target_lang not in TINYAYA_SUPPORTED_LANGUAGES:
@@ -31,8 +32,8 @@ def translate(text: str, target_lang: str = "English", use_gpu: bool = True) -> 
                 "content": f"Translate the following text to {target_lang}: {text}",
             }
         ],
-        max_tokens=4096,
-        temperature=0.1,
+        max_tokens=4096, # max number of tokens in the output
+        temperature=0, # take the most likely output
         top_p=0.95,
     )
     return response["choices"][0]["message"]["content"].strip()
