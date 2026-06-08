@@ -192,7 +192,7 @@ def run_visual_pipeline(
     reid_similarity_threshold: float = 0.40,
     max_frames: Optional[int] = None,
     write_annotated_video: bool = True,
-    progress: Optional[Callable[[int, int], None]] = None,
+    progress: Optional[Callable[[int, int, int, bool], None]] = None,
 ) -> VisualPipelineResult:
     """Run the complete visual processing track on one video."""
     source = Path(video_path).expanduser().resolve()
@@ -249,14 +249,14 @@ def run_visual_pipeline(
             t = frame_index / fps
             tracks = tracker.track(frame)
             seen_tracks.update(track.track_id for track in tracks)
-            structurer.update(tracks, t, latest_frame=frame)
+            fired = structurer.update(tracks, t, latest_frame=frame)
+            frame_index += 1
+            if progress:
+                progress(frame_index, total_frames, len(tracks), len(fired) > 0)
             if writer is not None:
                 writer.write(
                     draw_tracks(frame, tracks, resolved_zones, structurer.display_statuses())
                 )
-            frame_index += 1
-            if progress and (frame_index == 1 or frame_index % 30 == 0):
-                progress(frame_index, total_frames)
     finally:
         cap.release()
         if writer is not None:

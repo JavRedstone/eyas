@@ -217,6 +217,25 @@ body.has-feed .eyas-rec { display: inline; }
 }
 .tab-nav button.selected { color: var(--_accent) !important; border-bottom-color: var(--_accent) !important; }
 
+/* Pipeline steps */
+.pipeline-steps { display: flex; flex-direction: column; gap: 6px; padding: 2px 0; }
+.pipeline-step {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 14px; border-radius: 6px;
+    border: 1px solid var(--_border); background: var(--_panel);
+    font-size: 0.82rem; transition: border-color .2s, opacity .2s;
+}
+.pipeline-step.pending  { opacity: .45; }
+.pipeline-step.running  { border-color: var(--_accent); }
+.pipeline-step.done     { border-color: var(--_border); }
+.pipeline-step.error    { border-color: var(--_danger); }
+.ps-icon   { font-size: 1rem; width: 20px; text-align: center; flex-shrink: 0; }
+.pipeline-step.running  .ps-icon { color: var(--_accent); animation: blink .9s step-start infinite; }
+.pipeline-step.done     .ps-icon { color: var(--_accent); }
+.pipeline-step.error    .ps-icon { color: var(--_danger); }
+.ps-name   { flex: 1; color: var(--_text); font-weight: 500; }
+.ps-detail { color: var(--_muted); font-size: 0.75rem; }
+
 /* DataFrame */
 table { background-color: var(--_panel) !important; }
 thead, thead tr { background-color: var(--_surface) !important; }
@@ -408,6 +427,65 @@ def _clip_video(label: str) -> gr.Video:
     return gr.Video(label=label, interactive=False)
 
 # ---------------------------------------------------------------------------
+# Sample clips — videos shipped in eyas/input/
+# ---------------------------------------------------------------------------
+
+_SAMPLES_DIR = Path(__file__).parent.parent / "input"
+_SAMPLE_PATHS: Dict[str, str] = {
+    p.stem: str(p) for p in sorted(_SAMPLES_DIR.glob("*.mp4"))
+}
+
+
+_STEP_ICONS = {"pending": "○", "running": "●", "done": "✓", "error": "✗"}
+
+_PIPELINE_STEPS_DEFAULT = [
+    ("Load video",                  "pending", ""),
+    ("Object detection (YOLO)",     "pending", ""),
+    ("Semantic analysis (VLM)",     "pending", ""),
+    ("LLM summarization",           "pending", ""),
+]
+
+
+def _steps_html(steps: list) -> str:
+    rows = []
+    for name, state, detail in steps:
+        icon = _STEP_ICONS.get(state, "○")
+        detail_span = f'<span class="ps-detail">{detail}</span>' if detail else ""
+        rows.append(
+            f'<div class="pipeline-step {state}">'
+            f'<span class="ps-icon">{icon}</span>'
+            f'<span class="ps-name">{name}</span>'
+            f'{detail_span}'
+            f'</div>'
+        )
+    return '<div class="pipeline-steps">' + "".join(rows) + "</div>"
+
+
+def _fmt_time(seconds) -> str:
+    if seconds is None:
+        return ""
+    t = float(seconds)
+    m, s = divmod(int(t), 60)
+    h, m = divmod(m, 60)
+    return f"{h:02d}:{m:02d}:{s:02d}" if h else f"{m:02d}:{s:02d}"
+
+
+def _annotate_elapsed(steps: list, start_times: dict) -> list:
+    """Append a live elapsed timer to the detail of every running step."""
+    import time
+    now = time.time()
+    result = []
+    for i, (name, state, detail) in enumerate(steps):
+        if state == "running" and i in start_times:
+            secs = int(now - start_times[i])
+            m, s = divmod(secs, 60)
+            elapsed = f"{m}:{s:02d}"
+            detail = f"{detail} · {elapsed}" if detail else elapsed
+        result.append((name, state, detail))
+    return result
+
+
+# ---------------------------------------------------------------------------
 # App
 # ---------------------------------------------------------------------------
 
@@ -424,7 +502,7 @@ def build_app(
     )
     _theme = EyasTheme(color=color, dark=dark, advanced=advanced)
 
-    with gr.Blocks(title="AI Security Camera Agent", theme=_theme, css=_theme.custom_css) as demo:
+    with gr.Blocks(title="AI Security Camera Agent") as demo:
 
         # ── Header ──────────────────────────────────────────────────────────
         with gr.Row():
@@ -438,6 +516,14 @@ def build_app(
         # ── Input row ───────────────────────────────────────────────────────
         with gr.Row():
             with gr.Column(scale=3):
+                with gr.Row():
+                    sample_dd = gr.Dropdown(
+                        choices=list(_SAMPLE_PATHS.keys()),
+                        label="Sample clips",
+                        interactive=True,
+                        scale=4,
+                    )
+                    load_sample_btn = gr.Button("Load", variant="secondary", scale=1, size="sm")
                 video_input = gr.Video(label="Upload CCTV clip (.mp4)", sources=["upload"])
             with gr.Column(scale=1):
                 analyze_btn  = gr.Button("Analyze", variant="primary", size="lg")
@@ -445,6 +531,9 @@ def build_app(
                 upload_status = gr.Textbox(label="Storage", interactive=False, lines=1, visible=True)
 
         video_input.change(fn=None, inputs=[video_input], js=_REC_JS)
+
+        # ── Pipeline progress ────────────────────────────────────────────────
+        pipeline_html = gr.HTML(_steps_html(_PIPELINE_STEPS_DEFAULT))
 
         # ── Tabs ────────────────────────────────────────────────────────────
         with gr.Tabs():
@@ -502,8 +591,8 @@ def build_app(
             with gr.TabItem("Audio Report"):
                 _section_title("Spoken Security Report")
                 gr.Markdown(
-                    "Generates a TTS audio playback of the AI summary "
-                    "*(requires translation/TTS stage to be wired in)*."
+                    "Generates a spoken playback of the AI security summary using VoxCPM2 TTS. "
+                    "Run **Analyze** first, then click the button below."
                 )
                 audio_output      = gr.Audio(label="TTS Report", interactive=False)
                 generate_audio_btn = gr.Button("Generate Audio Report", variant="secondary")
@@ -587,13 +676,17 @@ def build_app(
 
         _CLIPS_DIR = str(Path(__file__).parent.parent / "data" / "clips")
 
-        # Upload → auto-store (skip if already in the clip store)
+        _INPUTS_DIR = str(Path(__file__).parent.parent / "input")
+
+        # Upload → auto-store (skip clips-dir and built-in sample files)
         def on_upload(video_path):
             if video_path is None:
                 return ""
             norm = video_path.replace("\\", "/")
             if _CLIPS_DIR.replace("\\", "/") in norm:
                 return "Clip from library — already stored."
+            if _INPUTS_DIR.replace("\\", "/") in norm:
+                return "Sample clip — not stored."
             try:
                 entry = storage.store(video_path, source="upload")
                 return f"Stored: {entry['filename']}  ({entry['size_mb']} MB)"
@@ -602,31 +695,161 @@ def build_app(
 
         video_input.change(on_upload, inputs=[video_input], outputs=[upload_status])
 
+        def load_sample(name: str):
+            return _SAMPLE_PATHS.get(name)
+
+        load_sample_btn.click(load_sample, inputs=[sample_dd], outputs=[video_input])
+
         def run_pipeline(video_path):
+            import tempfile
+            import time as _time
+            from visual_pipeline import run_visual_pipeline
+            from llm.reasoner import summarize_events as _summarize
+
+            steps = list(_PIPELINE_STEPS_DEFAULT)  # mutable copy
+            step_start: dict = {}
+
+            def _blank():
+                return ([], [], gr.update(choices=[]), "", {"none": 1.0},
+                        [], gr.update(choices=[]), {}, 0, 0, 0, 0)
+
+            def emit(status):
+                return (_steps_html(_annotate_elapsed(steps, step_start)), status) + _blank()
+
+            def _start_step(idx: int, name: str, detail: str = "") -> None:
+                step_start[idx] = _time.time()
+                steps[idx] = (name, "running", detail)
+
+            def _finish_step(idx: int, name: str, detail: str = "") -> None:
+                step_start.pop(idx, None)
+                steps[idx] = (name, "done", detail)
+
             if video_path is None:
-                return (
-                    "No video uploaded.", [], [], gr.Dropdown(choices=[]),
-                    "", {}, [], gr.Dropdown(choices=[]), {}, 0, 0, 0, 0,
-                )
-            # TODO: wire real pipeline stages
-            events: List[Dict] = []
-            result = {
-                "summary": "(prototype) pipeline not yet connected.",
-                "flags": [], "suspicious_clips": [], "risk_level": "none",
-            }
-            rows = [
-                [i, ev.get("type"), ev.get("start_time"), ev.get("end_time"),
-                 ev.get("zone"), round(ev.get("metadata", {}).get("confidence", 0), 2),
-                 ev.get("metadata", {}).get("clip_pointer", "")]
-                for i, ev in enumerate(events)
-            ]
-            clips      = list({ev.get("metadata", {}).get("clip_pointer", "") for ev in events} - {""})
+                steps[0] = ("Load video", "error", "No video selected")
+                yield emit("No video uploaded.")
+                return
+
+            # ── Step 1: load ────────────────────────────────────────────────
+            _start_step(0, "Load video")
+            yield emit("Loading video…")
+
+            _finish_step(0, "Load video", Path(video_path).name)
+            _start_step(1, "Object detection (YOLO)", "starting…")
+            steps[2] = ("Semantic analysis (VLM)", "pending", "")
+            yield emit("Running YOLO + event structuring…")
+
+            # ── Step 2: visual pipeline (threaded so progress yields work) ───
+            import queue as _queue
+            import threading as _threading
+
+            output_dir = tempfile.mkdtemp(prefix="eyas_out_")
+            _q: _queue.Queue = _queue.Queue()
+
+            def _on_progress(done: int, total: int, track_count: int, vlm_fired: bool) -> None:
+                _q.put(("progress", done, total, track_count, vlm_fired))
+
+            def _run() -> None:
+                try:
+                    result = run_visual_pipeline(
+                        video_path=video_path,
+                        output_dir=output_dir,
+                        write_annotated_video=False,
+                        progress=_on_progress,
+                    )
+                    _q.put(("done", result))
+                except Exception as exc:
+                    _q.put(("error", exc))
+
+            _threading.Thread(target=_run, daemon=True).start()
+
+            vp = None
+            _model_loaded = False
+            while True:
+                try:
+                    msg = _q.get(timeout=1.0)
+                except _queue.Empty:
+                    # Still in model-load phase — pulse the detail so the user knows
+                    if not _model_loaded:
+                        steps[1] = ("Object detection (YOLO)", "running", "loading model weights…")
+                        steps[2] = ("Semantic analysis (VLM)", "running", "loading model weights…")
+                        yield emit("Loading YOLO + VLM weights…")
+                    else:
+                        # Already processing — re-yield to refresh elapsed timers
+                        yield emit(f"Processing…")
+                    continue
+
+                kind = msg[0]
+                if kind == "progress":
+                    if not _model_loaded:
+                        _model_loaded = True
+                        step_start[1] = _time.time()
+                    _, done, total, track_count, vlm_fired = msg
+                    pct = f"{done}/{total}" if total else str(done)
+                    person_s = f"{track_count} person{'s' if track_count != 1 else ''}"
+                    steps[1] = ("Object detection (YOLO)", "running", f"frame {pct} · {person_s}")
+                    if vlm_fired:
+                        if 2 not in step_start:
+                            step_start[2] = _time.time()
+                        steps[2] = ("Semantic analysis (VLM)", "running", f"frame {pct}")
+                    yield emit(f"Processing frame {pct}…")
+                elif kind == "done":
+                    vp = msg[1]
+                    break
+                else:
+                    steps[1] = ("Object detection (YOLO)", "error", str(msg[1])[:80])
+                    steps[2] = ("Semantic analysis (VLM)", "error", "")
+                    yield emit(f"Pipeline error: {msg[1]}")
+                    return
+
+            events: List[Dict] = vp.events
+            _finish_step(1, "Object detection (YOLO)",
+                         f"{vp.frames_processed} frames · {vp.unique_tracks} tracks")
+            _finish_step(2, "Semantic analysis (VLM)", f"{len(events)} events")
+            _start_step(3, "LLM summarization")
+
+            rows = []
+            for i, ev in enumerate(events):
+                activity = "pickup" if ev.get("pickup_confirmed") else ev.get("activity", "")
+                rows.append([
+                    i, activity,
+                    _fmt_time(ev.get("timestamp")),
+                    _fmt_time(ev.get("confirmation_timestamp")),
+                    ev.get("zone", ""),
+                    round(float(ev.get("confidence", 0)), 2),
+                    "",
+                ])
             zone_counts = {"entrance": 0, "counter": 0, "back_door": 0, "aisles": 0}
-            return (
-                f"Done. {len(events)} event(s) detected.",
-                events, rows, gr.Dropdown(choices=clips),
-                result["summary"], {result["risk_level"]: 1.0},
-                result["flags"], gr.Dropdown(choices=result["suspicious_clips"]),
+            for ev in events:
+                z = ev.get("zone", "").lower().replace(" ", "_")
+                if z in zone_counts:
+                    zone_counts[z] += 1
+
+            yield (
+                _steps_html(_annotate_elapsed(steps, step_start)), "Running LLM summarization…",
+                events, rows, gr.update(choices=[]),
+                "", {"none": 1.0}, [], gr.update(choices=[]),
+                zone_counts,
+                zone_counts["entrance"], zone_counts["counter"],
+                zone_counts["back_door"], zone_counts["aisles"],
+            )
+
+            # ── Step 3: LLM ─────────────────────────────────────────────────
+            try:
+                llm = _summarize(events)
+            except Exception:
+                llm = {"summary": "LLM unavailable — no model loaded.",
+                       "flags": [], "suspicious_clips": [], "risk_level": "none"}
+
+            _finish_step(3, "LLM summarization", f"risk: {llm['risk_level']}")
+            status = (
+                f"Done. {vp.frames_processed} frames · "
+                f"{vp.unique_tracks} tracks · {len(events)} events."
+            )
+            yield (
+                _steps_html(_annotate_elapsed(steps, step_start)), status,
+                events, rows, gr.update(choices=[]),
+                llm["summary"], {llm["risk_level"]: 1.0},
+                llm["flags"], gr.update(choices=llm["suspicious_clips"]),
                 zone_counts,
                 zone_counts["entrance"], zone_counts["counter"],
                 zone_counts["back_door"], zone_counts["aisles"],
@@ -636,7 +859,8 @@ def build_app(
             run_pipeline,
             inputs=[video_input],
             outputs=[
-                status_box, event_log_state, event_table, clip_selector,
+                pipeline_html, status_box,
+                event_log_state, event_table, clip_selector,
                 summary_box, risk_badge, flags_box, suspicious_clips_dd,
                 metrics_json, count_entrance, count_counter, count_back_door, count_aisles,
             ],
@@ -648,11 +872,14 @@ def build_app(
             if not events:
                 reply = "No events loaded yet — please upload and analyze a video first."
             else:
-                # TODO: result = answer_query(events, message)
-                result = {"answer": "(prototype) LLM not yet connected.", "relevant_event_indices": [], "clips": []}
-                reply  = result["answer"]
-                if result["clips"]:
-                    reply += "\n\nRelated clips: " + ", ".join(result["clips"])
+                from llm.reasoner import answer_query as _answer
+                try:
+                    result = _answer(events, message)
+                    reply  = result["answer"]
+                    if result.get("clips"):
+                        reply += "\n\nRelated clips: " + ", ".join(result["clips"])
+                except Exception as exc:
+                    reply = f"LLM error: {exc}"
             return history + [(message, reply)], ""
 
         ask_btn.click(ask_footage, inputs=[query_input, chatbot, event_log_state], outputs=[chatbot, query_input])
@@ -662,8 +889,22 @@ def build_app(
         def generate_audio(events: List[Dict]):
             if not events:
                 return None
-            # TODO: from eyas.postprocessing.translate_tts import translate_and_speak
-            return None
+            try:
+                from llm.reasoner import summarize_events as _summarize
+                llm = _summarize(events)
+                text = llm.get("summary", "").strip()
+                if not text:
+                    return None
+                from postprocessing.translate_tts import tts
+                import numpy as np
+                chunks = list(tts(text, target_lang="English"))
+                if not chunks:
+                    return None
+                sample_rate = chunks[0][0]
+                audio = np.concatenate([c[1] for c in chunks])
+                return sample_rate, audio
+            except Exception:
+                return None
 
         generate_audio_btn.click(generate_audio, inputs=[event_log_state], outputs=[audio_output])
 
@@ -712,7 +953,7 @@ def build_app(
         # ── Clip Library callbacks ───────────────────────────────────────────
 
         def refresh_library():
-            return gr.Dropdown(choices=storage.choices())
+            return gr.update(choices=storage.choices())
 
         def preview_clip(choice: str):
             path = storage.path_from_choice(choice) if choice else None
@@ -726,11 +967,11 @@ def build_app(
 
         def delete_clip(choice: str):
             if not choice:
-                return "Nothing selected.", gr.Dropdown(choices=storage.choices())
+                return "Nothing selected.", gr.update(choices=storage.choices())
             filename = choice.split(" — ", 1)[1].split("  ")[0].strip() if " — " in choice else ""
             ok = storage.delete(filename) if filename else False
             msg = f"Deleted {filename}." if ok else "Delete failed."
-            return msg, gr.Dropdown(choices=storage.choices())
+            return msg, gr.update(choices=storage.choices())
 
         refresh_lib_btn.click(refresh_library, outputs=[lib_dd])
         lib_dd.change(preview_clip, inputs=[lib_dd], outputs=[lib_preview])
@@ -764,4 +1005,4 @@ def build_app(
 
         save_adv_btn.click(save_advanced_theme, inputs=[advanced_dd], outputs=[adv_theme_status])
 
-    return demo
+    return demo, _theme
