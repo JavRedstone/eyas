@@ -6,7 +6,7 @@ import json
 import os
 from typing import Dict, List, Optional
 
-from eyas.llm.prompts import (
+from .prompts import (
     ALERT_GRAMMAR,
     ALERT_PROMPT,
     QA_GRAMMAR,
