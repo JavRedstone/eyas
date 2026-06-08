@@ -8,7 +8,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-_DEFAULT_WEIGHTS = str(Path(__file__).resolve().parents[1] / "models" / "yolo11n.pt")
+from utils.paths import models_dir  # noqa: E402
+
+_DEFAULT_WEIGHTS = str(models_dir() / "yolo11n.pt")
 
 from event_structuring.structurer import Zone  # noqa: E402
 from visual_pipeline import run_visual_pipeline  # noqa: E402
