@@ -13,6 +13,8 @@ from event_structuring.structurer import EventStructurer, PersonStatus, Zone
 from object_detection.detector import PersonTracker, Track
 from video_processing.process import MiniCPMVLM
 
+_DEFAULT_YOLO_WEIGHTS = str(Path(__file__).parent / "models" / "yolo11n.pt")
+
 
 @dataclass
 class VisualPipelineResult:
@@ -137,7 +139,7 @@ def run_visual_pipeline(
     output_dir: str,
     zones: Optional[List[Zone]] = None,
     device: Optional[str] = None,
-    yolo_weights: str = "yolo11n.pt",
+    yolo_weights: str = _DEFAULT_YOLO_WEIGHTS,
     tracker_config: str = "botsort.yaml",
     confidence: float = 0.6,
     semantic_interval_seconds: float = 1.0,

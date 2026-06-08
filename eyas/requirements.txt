@@ -7,4 +7,5 @@ torch
 torchaudio
 transformers
 voxcpm
+llama-cpp-python
 pytest
