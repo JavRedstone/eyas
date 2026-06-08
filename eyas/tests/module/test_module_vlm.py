@@ -1,7 +1,8 @@
-"""REAL smoke test: load MiniCPM-V 4.6 (1.3B) and caption person crops.
+"""Module test: YOLO + real MiniCPM-V — validates the full VLM observation path.
 
-Validates the actual transformers API path (apply_chat_template -> generate),
-not the mock. Small enough to run on Apple Silicon (MPS) / CPU.
+Run:
+    python tests/test_module_vlm.py
+    pytest tests/test_module_vlm.py -v -s
 """
 
 import sys
@@ -10,15 +11,18 @@ from pathlib import Path
 
 import cv2
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from object_detection.detector import PersonTracker, crop  # noqa: E402
 from video_processing.buffer import sample_frames  # noqa: E402
 from video_processing.process import MiniCPMVLM  # noqa: E402
+from utils.device import get_device  # noqa: E402
 
 
-def collect_person_crops(video, device, max_frames=120, k=6):
-    """Grab a few frames where a person is tracked, cropped to that person."""
+_SAMPLE = Path(__file__).parent.parent / "samples" / "sample.mp4"
+
+
+def collect_person_crops(video: str, device: str, max_frames: int = 120, k: int = 6):
     tracker = PersonTracker(conf=0.3, device=device)
     cap = cv2.VideoCapture(video)
     crops = []
@@ -37,12 +41,8 @@ def collect_person_crops(video, device, max_frames=120, k=6):
     return sample_frames(crops, k=k)
 
 
-def main(video="input/sample.mp4"):
-    try:
-        import torch
-        device = "mps" if torch.backends.mps.is_available() else "cpu"
-    except Exception:
-        device = "cpu"
+def main(video: str = str(_SAMPLE)):
+    device = get_device()
     print(f"device={device}")
 
     crops = collect_person_crops(video, device)
@@ -51,7 +51,6 @@ def main(video="input/sample.mp4"):
 
     print("loading MiniCPM-V 4.6 (1.3B)... (first run downloads ~3GB)")
     t0 = time.time()
-    # Force real backend; explicit device for Mac MPS.
     vlm = MiniCPMVLM(device=device, dtype="float16", attn="sdpa")
     ann = vlm.caption_frames(crops, max_new_tokens=128)
     observation = vlm.observe_person(crops[-2:], max_new_tokens=160)
@@ -62,18 +61,19 @@ def main(video="input/sample.mp4"):
     print(f"caption  :\n{ann.caption}")
     print(f"items    : {ann.items}")
     print(f"summary  : {ann.summary()}")
-    print(f"description: {observation.description}")
-    print(f"activity   : {observation.activity}")
-    print(f"held objects    : {observation.held_objects}")
-    print(f"pickup confirmed: {observation.pickup_confirmed}")
-    print(f"picked up items : {observation.picked_up_items}")
+    print(f"description : {observation.description}")
+    print(f"activity    : {observation.activity}")
+    print(f"held objects     : {observation.held_objects}")
+    print(f"pickup confirmed : {observation.pickup_confirmed}")
+    print(f"picked up items  : {observation.picked_up_items}")
 
     assert ann.backend == "minicpmv", "did not use the real model"
     assert isinstance(ann.caption, str) and len(ann.caption) > 0
     assert observation.backend == "minicpmv"
     assert observation.description or observation.activity
-    print("\nREAL MiniCPM-V SMOKE TEST PASSED ✅")
+    print("\nVLM MODULE TEST PASSED ✅")
 
 
 if __name__ == "__main__":
-    main(sys.argv[1] if len(sys.argv) > 1 else "input/sample.mp4")
+    vid = sys.argv[1] if len(sys.argv) > 1 else str(_SAMPLE)
+    main(vid)

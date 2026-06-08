@@ -1,4 +1,4 @@
-"""Integration test: run the LLM reasoner against input/events.json.
+"""Integration test: run the LLM reasoner against tests/samples/events.json.
 
 Format / adapter tests always run (no model needed) and print the
 formatted event log so you can see exactly what the LLM receives.
@@ -25,7 +25,7 @@ import textwrap
 from pathlib import Path
 
 # Allow `python tests/test_reasoning_integration.py` without conftest.py
-_REPO_ROOT = Path(__file__).parent.parent.parent
+_REPO_ROOT = Path(__file__).parent.parent.parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
@@ -33,7 +33,7 @@ import pytest
 
 from eyas.llm.reasoner import Reasoner
 
-_INPUT = Path(__file__).parent.parent / "input" / "events.json"
+_INPUT = Path(__file__).parent.parent / "samples" / "events.json"
 _MODEL = Path(os.getenv("EYAS_MODEL_PATH", "models/nemotron-nano-4b.gguf"))
 _model_available = _MODEL.exists()
 
@@ -69,7 +69,7 @@ def reasoner() -> Reasoner:
 
 class TestEventsJson:
     def test_file_exists(self):
-        assert _INPUT.exists(), f"input/events.json not found at {_INPUT}"
+        assert _INPUT.exists(), f"tests/samples/events.json not found at {_INPUT}"
 
     def test_is_nonempty_list(self, events):
         assert isinstance(events, list) and len(events) > 0

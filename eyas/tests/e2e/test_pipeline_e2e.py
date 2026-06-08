@@ -1,4 +1,4 @@
-    """End-to-end pipeline test: every real component, no stubs.
+"""End-to-end pipeline test: every real component, no stubs.
 
 Flow:
     sample.mp4
@@ -28,16 +28,18 @@ from pathlib import Path
 import cv2
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from object_detection.detector import PersonTracker  # noqa: E402
 from video_processing.process import MiniCPMVLM  # noqa: E402
 from event_structuring.structurer import EventStructurer, Zone  # noqa: E402
 from llm.reasoner import Reasoner  # noqa: E402
-from conftest import get_device  # noqa: E402
+from utils.device import get_device  # noqa: E402
+from utils.video import get_video_info  # noqa: E402
 
-_SAMPLE = Path(__file__).parent / "samples" / "sample.mp4"
-_EVENTS_OUT = Path(__file__).parent / "samples" / "events.json"
+
+_SAMPLE = Path(__file__).parent.parent / "samples" / "sample.mp4"
+_EVENTS_OUT = Path(__file__).parent.parent / "samples" / "events.json"
 _MODEL = Path(os.getenv("EYAS_MODEL_PATH", "models/nemotron-nano-4b.gguf"))
 
 _transformers_available = bool(
@@ -60,9 +62,7 @@ def run_pipeline(video: str = str(_SAMPLE), max_frames: int = 400) -> dict:
     device = get_device()
 
     cap = cv2.VideoCapture(video)
-    fps = cap.get(cv2.CAP_PROP_FPS) or 12.0
-    w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fps, w, h = get_video_info(cap)
     print(f"video {w}x{h} @ {fps:.1f}fps  device={device}")
 
     tracker = PersonTracker(conf=0.3, device=device)
