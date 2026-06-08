@@ -192,7 +192,7 @@ def run_visual_pipeline(
     reid_similarity_threshold: float = 0.40,
     max_frames: Optional[int] = None,
     write_annotated_video: bool = True,
-    progress: Optional[Callable[[int, int], None]] = None,
+    progress: Optional[Callable[[int, int, int, bool], None]] = None,
 ) -> VisualPipelineResult:
     """Run the complete visual processing track on one video."""
     source = Path(video_path).expanduser().resolve()
@@ -233,6 +233,13 @@ def run_visual_pipeline(
         reid_similarity_threshold=reid_similarity_threshold,
     )
 
+    # Mutable cell so the VLM-start hook always reads the current frame state.
+    _frame_info: List[int] = [0, total_frames or 0, 0]  # [frame_index, total, track_count]
+    if progress:
+        def _on_vlm_start() -> None:
+            progress(_frame_info[0], _frame_info[1], _frame_info[2], True)
+        structurer.on_vlm_start = _on_vlm_start
+
     annotated_path = out_dir / f"{source.stem}_annotated.mp4"
     writer = None
     if write_annotated_video:
@@ -249,14 +256,15 @@ def run_visual_pipeline(
             t = frame_index / fps
             tracks = tracker.track(frame)
             seen_tracks.update(track.track_id for track in tracks)
+            frame_index += 1
+            _frame_info[:] = [frame_index, total_frames or 0, len(tracks)]
+            if progress:
+                progress(frame_index, total_frames, len(tracks), False)
             structurer.update(tracks, t, latest_frame=frame)
             if writer is not None:
                 writer.write(
                     draw_tracks(frame, tracks, resolved_zones, structurer.display_statuses())
                 )
-            frame_index += 1
-            if progress and (frame_index == 1 or frame_index % 30 == 0):
-                progress(frame_index, total_frames)
     finally:
         cap.release()
         if writer is not None:
