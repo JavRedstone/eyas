@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
 from typing import Dict, List, Optional
 
 from .prompts import (
@@ -28,6 +29,10 @@ _SUMMARIZE_FALLBACK: Dict = {
 _QA_FALLBACK: Dict = {"answer": "", "relevant_event_indices": [], "clips": []}
 _ALERT_FALLBACK: Dict = {"alert": "", "severity": "low", "clip": ""}
 
+_NEMOTRON_REPO_ID = "nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF"
+_NEMOTRON_GGUF_FILENAME = "NVIDIA-Nemotron3-Nano-4B-Q4_K_M.gguf"
+_DEFAULT_LOCAL_MODEL = "nemotron-nano-4b.gguf"
+
 
 class Reasoner:
     """Local LLM reasoning engine backed by llama-cpp-python."""
@@ -50,12 +55,29 @@ class Reasoner:
     def _load_model(self) -> None:
         if self._model is not None:
             return
-        if not os.path.isfile(self._model_path):
+        local_path = Path(self._model_path).expanduser()
+        if local_path.is_file():
+            try:
+                from llama_cpp import Llama  # type: ignore
+            except ImportError as exc:
+                raise RuntimeError(
+                    "llama-cpp-python is not installed. Run: pip install llama-cpp-python"
+                ) from exc
+            self._model = Llama(
+                model_path=str(local_path),
+                n_ctx=self._n_ctx,
+                n_gpu_layers=self._n_gpu_layers,
+                verbose=False,
+            )
+            return
+
+        if local_path.name not in {_DEFAULT_LOCAL_MODEL, _NEMOTRON_GGUF_FILENAME}:
             raise RuntimeError(
                 f"Model file not found: {self._model_path!r}. "
-                "Download a Nemotron GGUF and set EYAS_MODEL_PATH or place it at "
-                "the default path."
+                "Set EYAS_MODEL_PATH to an existing GGUF file or use the default "
+                "Nemotron path to download from Hugging Face."
             )
+
         try:
             from llama_cpp import Llama  # type: ignore
         except ImportError as exc:
@@ -63,8 +85,9 @@ class Reasoner:
                 "llama-cpp-python is not installed. Run: pip install llama-cpp-python"
             ) from exc
 
-        self._model = Llama(
-            model_path=self._model_path,
+        self._model = Llama.from_pretrained(
+            repo_id=_NEMOTRON_REPO_ID,
+            filename=_NEMOTRON_GGUF_FILENAME,
             n_ctx=self._n_ctx,
             n_gpu_layers=self._n_gpu_layers,
             verbose=False,
@@ -132,26 +155,21 @@ class Reasoner:
     def _run_inference(
         self,
         prompt: str,
-        grammar_str: str,
+        grammar_str: str,  # kept for API compat, no longer used
         max_tokens: int = 512,
         temperature: float = 0.2,
     ) -> str:
         self._load_model()
-        try:
-            from llama_cpp import LlamaGrammar  # type: ignore
-            grammar = LlamaGrammar.from_string(grammar_str, verbose=False)
-        except Exception:
-            grammar = None
-
-        full_prompt = f"System: {SYSTEM_PROMPT}\n\nUser: {prompt}\nAssistant:"
-        result = self._model(
-            full_prompt,
+        result = self._model.create_chat_completion(
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": prompt},
+            ],
             max_tokens=max_tokens,
             temperature=temperature,
-            stop=["```", "User:", "Question:"],
-            grammar=grammar,
+            response_format={"type": "json_object"},
         )
-        return result["choices"][0]["text"].strip()
+        return result["choices"][0]["message"]["content"].strip()
 
     def _parse_json(self, raw: str, fallback: Dict) -> Dict:
         try:
