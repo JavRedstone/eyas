@@ -33,6 +33,8 @@ python app.py
 gradio app.py
 ```
 
+The Nemotron GGUF for the LLM reasoner downloads automatically from Hugging Face on first use. Set `EYAS_MODEL_PATH` only if you want to point the app at a local GGUF file.
+
 Notes
 - The repository currently contains design docs and plans; code and models may be added in later commits.
 - See `docs/` for design, model choices, and deployment notes.
