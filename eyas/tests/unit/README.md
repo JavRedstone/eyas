@@ -14,7 +14,7 @@ Fast, dependency-free unit tests. No video files, no model weights, no GPU neede
 | `test_streaming.py` | `StreamCapture` lifecycle with mocked `cv2` |
 | `test_storage.py` | Clip storage manager with `tmp_path` isolation |
 | `test_video_processing.py` | `process_clip()` return-type contract |
-| `test_translate_tts.py` | `translate()` / `tts()` — skipped without CUDA / `voxcpm` |
+| `test_translate_tts.py` | `translate()` / `tts()` — mocked validation, prompt/format, voice wiring (no GPU) |
 
 ## Run
 
