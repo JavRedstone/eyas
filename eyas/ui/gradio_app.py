@@ -14,6 +14,9 @@ from gradio.themes.utils import colors, fonts, sizes
 
 from storage import manager as storage
 from streaming.capture import default_capture as _stream
+import model_registry as _mreg
+
+_mreg.start()
 
 # ---------------------------------------------------------------------------
 # Palette definitions
@@ -208,25 +211,254 @@ footer { display: none !important; }
 body.has-feed .eyas-rec { display: inline; }
 @keyframes blink { 50% { opacity: 0; } }
 
-/* Tabs */
-.tab-nav { border-bottom: 1px solid var(--_border) !important; }
-.tab-nav button {
-    background: transparent !important; color: var(--_muted) !important;
-    border-bottom: 2px solid transparent !important; text-transform: uppercase !important;
-    font-size: .72rem !important; letter-spacing: .07em !important; padding: 8px 14px !important;
+/* ── Card panels ─────────────────────────────────────────────────────── */
+#eyas-sidebar {
+    background: var(--_panel) !important;
+    border: 1px solid var(--_border) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,.35) !important;
+    overflow: hidden !important;
+    padding: 0 !important;
 }
-.tab-nav button.selected { color: var(--_accent) !important; border-bottom-color: var(--_accent) !important; }
+#eyas-sidebar .block, #eyas-sidebar .form,
+#eyas-sidebar .block-container, #eyas-sidebar > div > div {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+}
 
-/* Pipeline steps */
-.pipeline-steps { display: flex; flex-direction: column; gap: 6px; padding: 2px 0; }
+#eyas-main {
+    background: var(--_surface) !important;
+    border: 1px solid var(--_border) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,.35) !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+}
+#eyas-main .block, #eyas-main .form,
+#eyas-main .block-container, #eyas-main > div > div {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+}
+
+/* Re-style inputs/selects/textareas inside the cards so they still look distinct */
+#eyas-sidebar input, #eyas-sidebar textarea, #eyas-sidebar select,
+#eyas-main    input, #eyas-main    textarea, #eyas-main    select {
+    background: var(--_surface) !important;
+    border: 1px solid var(--_border) !important;
+    border-radius: 6px !important;
+}
+#eyas-sidebar input:focus, #eyas-sidebar textarea:focus,
+#eyas-main    input:focus, #eyas-main    textarea:focus {
+    border-color: var(--_accent) !important;
+    outline: none !important;
+}
+
+/* Panel header strip */
+.eyas-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--_muted);
+    background: var(--_surface);
+    border-bottom: 1px solid var(--_border);
+    padding: 10px 16px;
+}
+.eyas-panel-header .ph-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--_accent);
+    flex-shrink: 0;
+    box-shadow: 0 0 5px var(--_accent);
+}
+.eyas-panel-header .ph-label { color: var(--_text); }
+
+/* ── Material Design 3 buttons ───────────────────────────────────────── */
+/* All primary buttons: filled pill */
+button.primary, button[data-testid="primary"] {
+    border-radius: 20px !important;
+}
+/* All secondary buttons: outlined pill */
+button.secondary, button[data-testid="secondary"] {
+    border-radius: 20px !important;
+}
+
+/* Analyze button: full-width pill, Material icon, physical press */
+div:has(> #analyze-btn) {
+    padding: 0 16px !important;
+    box-sizing: border-box !important;
+}
+#analyze-btn {
+    font-family: var(--font-mono) !important;
+    font-size: 0.88rem !important;
+    letter-spacing: 0.1em !important;
+    text-transform: uppercase !important;
+    border-radius: 20px !important;
+    width: 100% !important;
+    margin: 0 !important;
+    transition: transform 0.08s ease, box-shadow 0.08s ease !important;
+    box-shadow: 0 4px 0 rgba(0,0,0,.5), 0 1px 3px rgba(0,0,0,.3) !important;
+    transform: translateY(0) !important;
+    text-decoration: none !important;
+}
+#analyze-btn::before {
+    content: "play_arrow";
+    font-family: 'Material Symbols Outlined' !important;
+    font-style: normal !important;
+    font-size: 19px !important;
+    line-height: 1 !important;
+    margin-right: 8px !important;
+    vertical-align: middle !important;
+    font-weight: 400 !important;
+}
+#analyze-btn:hover {
+    transform: translateY(-3px) !important;
+    box-shadow: 0 7px 0 rgba(0,0,0,.5), 0 2px 8px rgba(0,0,0,.3) !important;
+}
+#analyze-btn:active {
+    transform: translateY(2px) !important;
+    box-shadow: 0 1px 0 rgba(0,0,0,.5) !important;
+}
+
+/* ── Sidebar navigation tabs ─────────────────────────────────────────── */
+
+/* Outer container: horizontal flex — nav left, content right */
+.tabs {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: stretch !important;
+    gap: 0 !important;
+    background: var(--_panel) !important;
+    border: 1px solid var(--_border) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,.3) !important;
+    overflow: hidden !important;
+}
+
+/* Left sidebar strip that wraps .tab-container */
+.tab-wrapper {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 200px !important;
+    min-width: 200px !important;
+    flex-shrink: 0 !important;
+    border-right: 1px solid var(--_border) !important;
+    background: transparent !important;
+    align-self: stretch !important;
+    padding: 8px 0 !important;
+}
+
+/* Hide Gradio's horizontal-scroll duplicate + overflow "…" button */
+.tab-container.visually-hidden { display: none !important; }
+.overflow-menu { display: none !important; }
+
+/* The actual list of nav buttons */
+.tab-container {
+    display: flex !important;
+    flex-direction: column !important;
+    height: auto !important;
+    overflow: visible !important;
+    gap: 1px !important;
+    border: none !important;
+    width: 100% !important;
+}
+
+/* Nav buttons — MD3 navigation rail/drawer style */
+.tab-container button {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 10px 14px 10px 12px !important;
+    margin: 1px 6px !important;
+    width: calc(100% - 12px) !important;
+    text-align: left !important;
+    justify-content: flex-start !important;
+    font-size: 0.83rem !important;
+    font-weight: 500 !important;
+    letter-spacing: 0.01em !important;
+    text-transform: none !important;
+    text-decoration: none !important;
+    color: var(--_muted) !important;
+    background: transparent !important;
+    border: none !important;
+    border-bottom: none !important;
+    outline: none !important;
+    border-radius: 28px !important;
+    box-shadow: none !important;
+    transition: background 0.13s, color 0.13s !important;
+    cursor: pointer !important;
+}
+.tab-container button:hover {
+    background: var(--_accent-a08) !important;
+    color: var(--_text) !important;
+}
+.tab-container button.selected,
+.tab-container button[aria-selected="true"] {
+    color: var(--_accent) !important;
+    background: var(--_accent-a12) !important;
+    font-weight: 600 !important;
+    text-decoration: none !important;
+    border: none !important;
+    border-bottom: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+.tab-container button::after,
+.tab-container button.selected::after,
+.tab-container button[aria-selected="true"]::after {
+    display: none !important;
+    content: none !important;
+}
+.tab-container button:focus, .tab-container button:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+/* Material Symbol icons via ::before */
+.tab-container button::before {
+    font-family: 'Material Symbols Outlined' !important;
+    font-style: normal !important;
+    font-size: 18px !important;
+    line-height: 1 !important;
+    display: inline-block !important;
+    flex-shrink: 0 !important;
+    color: inherit !important;
+    opacity: 0.75;
+}
+.tab-container button:nth-child(1)::before { content: "timeline"; }
+.tab-container button:nth-child(2)::before { content: "notifications_active"; }
+.tab-container button:nth-child(3)::before { content: "forum"; }
+.tab-container button:nth-child(4)::before { content: "monitoring"; }
+.tab-container button:nth-child(5)::before { content: "volume_up"; }
+.tab-container button:nth-child(6)::before { content: "videocam"; }
+.tab-container button:nth-child(7)::before { content: "video_library"; }
+.tab-container button:nth-child(8)::before { content: "tune"; }
+
+/* Tab content panel fills remaining width */
+.tabitem {
+    flex: 1 !important;
+    min-width: 0 !important;
+    padding: 20px 24px !important;
+}
+
+/* ── Pipeline steps ───────────────────────────────────────────────────── */
+.pipeline-steps { display: flex; flex-direction: column; gap: 5px; padding: 2px 0; }
 .pipeline-step {
     display: flex; align-items: center; gap: 10px;
-    padding: 8px 14px; border-radius: 6px;
+    padding: 9px 14px; border-radius: 7px;
     border: 1px solid var(--_border); background: var(--_panel);
-    font-size: 0.82rem; transition: border-color .2s, opacity .2s;
+    font-size: 0.82rem; transition: border-color .2s, opacity .2s, background .2s;
 }
-.pipeline-step.pending  { opacity: .45; }
-.pipeline-step.running  { border-color: var(--_accent); }
+.pipeline-step.pending  { opacity: .4; }
+.pipeline-step.running  { border-color: var(--_accent); background: var(--_panel); }
 .pipeline-step.done     { border-color: var(--_border); }
 .pipeline-step.error    { border-color: var(--_danger); }
 .ps-icon   { font-size: 1rem; width: 20px; text-align: center; flex-shrink: 0; }
@@ -236,12 +468,35 @@ body.has-feed .eyas-rec { display: inline; }
 .ps-name   { flex: 1; color: var(--_text); font-weight: 500; }
 .ps-detail { color: var(--_muted); font-size: 0.75rem; }
 
-/* DataFrame */
-table { background-color: var(--_panel) !important; }
-thead, thead tr { background-color: var(--_surface) !important; }
-th { color: var(--_accent) !important; font-size: .68rem !important; text-transform: uppercase !important; letter-spacing: .1em !important; border-color: var(--_border) !important; }
-td { color: var(--_text) !important; border-color: var(--_border) !important; }
-tr:hover td { background-color: var(--_surface) !important; }
+/* ── DataFrame / Event Table ─────────────────────────────────────────── */
+table { background: var(--_panel) !important; border-collapse: collapse !important; }
+thead tr { background: var(--_surface) !important; border-bottom: 1px solid var(--_border) !important; }
+th {
+    background: var(--_surface) !important;
+    color: var(--_accent) !important;
+    font-size: 0.64rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.12em !important;
+    padding: 11px 16px !important;
+    border: none !important;
+    white-space: nowrap !important;
+}
+td {
+    color: var(--_text) !important;
+    font-size: 0.8rem !important;
+    padding: 10px 16px !important;
+    border: none !important;
+    border-bottom: 1px solid var(--_border) !important;
+}
+tbody tr:last-child td { border-bottom: none !important; }
+tbody tr:nth-child(even) td { background: rgba(255,255,255,.018) !important; }
+tr:hover td { background: var(--_surface) !important; cursor: pointer !important; }
+/* index + time columns: monospace muted */
+td:nth-child(1) { font-family: var(--font-mono) !important; font-size: 0.72rem !important; color: var(--_muted) !important; }
+td:nth-child(3), td:nth-child(4) { font-family: var(--font-mono) !important; font-size: 0.75rem !important; color: var(--_muted) !important; }
+td:nth-child(2) { font-weight: 500 !important; }
+td:nth-child(6) { font-family: var(--font-mono) !important; font-size: 0.75rem !important; color: var(--_accent) !important; font-weight: 600 !important; }
 
 /* Zone count numbers */
 #count-entrance input, #count-counter input,
@@ -251,7 +506,7 @@ tr:hover td { background-color: var(--_surface) !important; }
 }
 
 /* Status output */
-#status-box textarea { color: var(--_accent) !important; }
+#status-box textarea { color: var(--_accent) !important; font-family: var(--font-mono) !important; font-size: 0.78rem !important; }
 
 /* Section headings */
 .block h3 {
@@ -265,7 +520,7 @@ tr:hover td { background-color: var(--_surface) !important; }
 .message.user .bubble-wrap { background: var(--_panel)   !important; border-radius: 8px 8px 2px 8px !important; }
 .message.bot  .bubble-wrap { background: var(--_surface) !important; border-radius: 8px 8px 8px 2px !important; }
 
-/* Code blocks — always use theme surface/text, never the browser default black */
+/* Code blocks */
 code, pre,
 .prose code, .prose pre,
 .message code, .message pre {
@@ -283,44 +538,240 @@ pre code { background-color: transparent !important; border: none !important; pa
 ::-webkit-scrollbar-track { background: var(--_panel); }
 ::-webkit-scrollbar-thumb { background: var(--_border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--_muted); }
+
+/* ── Startup splash screen ───────────────────────────────────────────── */
+#eyas-splash {
+    position: fixed; inset: 0; z-index: 10000;
+    background: var(--_bg, #0a0e17);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 28px;
+}
+#eyas-splash.splash-fading {
+    animation: splash-fade-out 0.65s ease forwards;
+    pointer-events: none;
+}
+@keyframes splash-fade-out { to { opacity: 0; } }
+
+.splash-logo-row {
+    display: flex; align-items: center; gap: 12px;
+}
+.splash-logo-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--_accent); box-shadow: 0 0 12px var(--_accent);
+    animation: splash-pulse 1.8s ease-in-out infinite;
+}
+@keyframes splash-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+}
+.splash-wordmark {
+    font-family: var(--font-mono); font-size: 2.4rem; font-weight: 700;
+    letter-spacing: 0.18em; color: var(--_accent);
+}
+.splash-subtitle {
+    font-size: 0.78rem; color: var(--_muted); letter-spacing: 0.1em;
+    text-transform: uppercase; margin-top: -20px;
+}
+.splash-card {
+    background: var(--_panel);
+    border: 1px solid var(--_border);
+    border-radius: 16px;
+    padding: 0;
+    min-width: 320px;
+    overflow: hidden;
+}
+.splash-card-header {
+    font-family: var(--font-mono); font-size: 0.58rem; font-weight: 700;
+    letter-spacing: 0.2em; text-transform: uppercase; color: var(--_muted);
+    background: var(--_surface); border-bottom: 1px solid var(--_border);
+    padding: 9px 18px;
+}
+.splash-item {
+    display: flex; align-items: center; gap: 14px;
+    padding: 13px 18px;
+    border-bottom: 1px solid var(--_border);
+}
+.splash-item:last-child { border-bottom: none; }
+.splash-item-icon {
+    font-family: 'Material Symbols Outlined'; font-style: normal;
+    font-size: 20px; line-height: 1; flex-shrink: 0;
+    color: var(--_muted);
+}
+.splash-item-icon.si-loading {
+    color: var(--_accent);
+    animation: splash-spin 1.2s linear infinite;
+}
+.splash-item-icon.si-ready   { color: #10b981; }
+.splash-item-icon.si-error   { color: var(--_danger); }
+.splash-item-icon.si-skipped { color: #f59e0b; }
+@keyframes splash-spin { to { transform: rotate(360deg); } }
+.splash-item-body { display: flex; flex-direction: column; gap: 2px; }
+.splash-item-label { font-size: 0.85rem; font-weight: 500; color: var(--_text); }
+.splash-item-detail { font-size: 0.72rem; color: var(--_muted); font-family: var(--font-mono); }
+.splash-progress-wrap {
+    height: 3px; background: var(--_border); margin: 0;
+    border-radius: 0 0 16px 16px; overflow: hidden;
+}
+.splash-progress-bar {
+    height: 100%; background: var(--_accent);
+    transition: width 0.5s ease;
+    box-shadow: 0 0 6px var(--_accent);
+}
 """
 
 
-def _build_css(p: dict) -> str:
+# Per-theme personality overrides — appended after _STRUCTURAL_CSS at build time.
+# Only the active theme's block is included; no runtime selectors needed.
+_PER_THEME_CSS: Dict[str, str] = {
+    "night": """
+/* Night Vision: terminal green glow */
+thead tr { border-bottom-color: var(--_accent) !important; }
+th { text-shadow: 0 0 10px rgba(16,185,129,.35) !important; }
+.tab-container button.selected { background: rgba(16,185,129,.07) !important; }
+.eyas-panel-header .ph-label { letter-spacing: 0.22em !important; }
+""",
+    "amber": """
+/* Amber CRT: warm retro terminal */
+table { font-family: var(--font-mono) !important; }
+th { letter-spacing: 0.18em !important; }
+.tabs, #eyas-sidebar, #eyas-main { border-radius: 6px !important; }
+tbody tr:nth-child(even) td { background: rgba(245,158,11,.05) !important; }
+.eyas-panel-header { letter-spacing: 0.25em !important; }
+""",
+    "cyber": """
+/* Cyberpunk: neon glow */
+th { text-shadow: 0 0 14px var(--_accent) !important; }
+thead tr { border-bottom-color: var(--_accent) !important; box-shadow: 0 2px 14px rgba(168,85,247,.25) !important; }
+.tab-container button.selected { text-shadow: 0 0 8px var(--_accent) !important; }
+.tabs, #eyas-sidebar, #eyas-main { border-radius: 4px !important; }
+.pipeline-step.running { box-shadow: 0 0 12px rgba(168,85,247,.4) !important; }
+tbody tr:nth-child(even) td { background: rgba(168,85,247,.04) !important; }
+""",
+    "sentinel": """
+/* Sentinel: clean enterprise blue */
+thead tr { border-bottom: 2px solid var(--_accent) !important; }
+.tab-container button.selected { font-weight: 600 !important; }
+#analyze-btn { border-radius: 4px !important; }
+tbody tr:nth-child(even) td { background: rgba(59,130,246,.04) !important; }
+""",
+    "voltagent": """
+/* VoltAgent: minimal green terminal */
+th { text-shadow: 0 0 8px rgba(0,217,146,.25) !important; }
+thead tr { border-bottom-color: var(--_accent) !important; }
+.tab-container button.selected { background: rgba(0,217,146,.05) !important; }
+""",
+    "xai": """
+/* xAI: bold orange-tech */
+thead tr { border-bottom: 2px solid var(--_accent) !important; }
+th { font-weight: 800 !important; font-size: 0.68rem !important; }
+.tabs, #eyas-sidebar, #eyas-main { border-radius: 6px !important; }
+""",
+    "warp": """
+/* Warp: warm rounded terminal */
+.tabs, #eyas-sidebar, #eyas-main { border-radius: 10px !important; }
+th { letter-spacing: 0.08em !important; font-weight: 600 !important; color: var(--_text) !important; text-transform: none !important; }
+thead tr { background: rgba(247,245,240,.05) !important; }
+tbody tr:nth-child(even) td { background: rgba(247,245,240,.025) !important; }
+""",
+    "linear": """
+/* Linear: ultra minimal */
+.tabs, #eyas-sidebar, #eyas-main { box-shadow: none !important; }
+th { font-weight: 500 !important; color: var(--_muted) !important; letter-spacing: 0.06em !important; }
+thead tr { background: transparent !important; }
+.tab-container button { font-size: 0.8rem !important; }
+""",
+    "sentry": """
+/* Sentry: lime-on-purple drama */
+th { text-shadow: 0 0 10px rgba(194,239,78,.3) !important; }
+thead tr { border-bottom-color: var(--_accent) !important; }
+.tab-container button.selected { background: rgba(194,239,78,.07) !important; }
+tbody tr:nth-child(even) td { background: rgba(194,239,78,.03) !important; }
+""",
+    "stripe": """
+/* Stripe: gradient-header indigo */
+thead tr { background: linear-gradient(135deg, var(--_surface) 0%, rgba(83,58,253,.18) 100%) !important; border-bottom: 1px solid var(--_accent) !important; }
+th { font-weight: 700 !important; }
+.tabs, #eyas-sidebar, #eyas-main { border-radius: 8px !important; }
+""",
+    "supabase": """
+/* Supabase: clean dark green */
+thead tr { border-bottom: 1px solid var(--_accent) !important; }
+th { font-size: 0.64rem !important; letter-spacing: 0.13em !important; }
+tbody tr:nth-child(even) td { background: rgba(62,207,142,.03) !important; }
+""",
+    "vercel": """
+/* Vercel: pure minimal black */
+.tabs, #eyas-sidebar, #eyas-main { border-radius: 0 !important; border-color: #333 !important; }
+th { color: var(--_accent) !important; font-weight: 600 !important; font-size: 0.65rem !important; letter-spacing: 0.06em !important; }
+thead tr { border-bottom: 1px solid #333 !important; }
+.tab-container button.selected { background: rgba(0,112,243,.06) !important; }
+tbody tr:nth-child(even) td { background: rgba(255,255,255,.03) !important; }
+""",
+    "cursor": """
+/* Cursor: mac-like warm light */
+.tabs, #eyas-sidebar, #eyas-main { border-radius: 10px !important; box-shadow: 0 2px 8px rgba(0,0,0,.07) !important; }
+th { color: var(--_muted) !important; font-weight: 600 !important; font-size: 0.64rem !important; }
+thead tr { border-bottom: 1px solid var(--_border) !important; }
+tbody tr:nth-child(even) td { background: rgba(0,0,0,.02) !important; }
+""",
+    "runway": """
+/* Runway: typographic serif elegance */
+th { font-family: var(--font) !important; font-style: italic !important; color: var(--_muted) !important; font-size: 0.76rem !important; letter-spacing: 0.02em !important; text-transform: none !important; }
+.tabs, #eyas-sidebar, #eyas-main { border-radius: 2px !important; box-shadow: none !important; }
+.tab-container button { letter-spacing: 0.02em !important; }
+""",
+}
+
+
+def _build_css(p: dict, theme_key: str = "night") -> str:
+    imports = (
+        "@import url('https://fonts.googleapis.com/css2?"
+        "family=Google+Sans:ital,wght@0,400;0,500;0,700;1,400"
+        "&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400"
+        "&display=swap');\n"
+        "@import url('https://fonts.googleapis.com/css2?"
+        "family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0');\n"
+    )
+    r, g, b = int(p["accent"][1:3], 16), int(p["accent"][3:5], 16), int(p["accent"][5:7], 16)
     root = (
         ":root {\n"
-        f"    --_accent:  {p['accent']};\n"
-        f"    --_panel:   {p['panel']};\n"
-        f"    --_surface: {p['surface']};\n"
-        f"    --_border:  {p['border']};\n"
-        f"    --_text:    {p['text']};\n"
-        f"    --_muted:   {p['muted']};\n"
-        f"    --_danger:  {p['danger']};\n"
+        f"    --_accent:     {p['accent']};\n"
+        f"    --_accent-a12: rgba({r},{g},{b},0.12);\n"
+        f"    --_accent-a08: rgba({r},{g},{b},0.08);\n"
+        f"    --_panel:      {p['panel']};\n"
+        f"    --_surface:    {p['surface']};\n"
+        f"    --_bg:         {p['bg']};\n"
+        f"    --_border:     {p['border']};\n"
+        f"    --_text:       {p['text']};\n"
+        f"    --_muted:      {p['muted']};\n"
+        f"    --_danger:     {p['danger']};\n"
         "}\n"
     )
-    return root + _STRUCTURAL_CSS
+    return imports + root + _STRUCTURAL_CSS + _PER_THEME_CSS.get(theme_key, "")
 
 
 # ---------------------------------------------------------------------------
 # Per-theme font stacks
 # ---------------------------------------------------------------------------
 
+_GS = [fonts.GoogleFont("Google Sans"), fonts.GoogleFont("DM Sans"), fonts.Font("system-ui"), fonts.Font("sans-serif")]
+
 _FONTS: Dict[str, list] = {
-    # Simple themes — clean sans-serif
-    "night":    [fonts.GoogleFont("Inter"), fonts.Font("system-ui"), fonts.Font("sans-serif")],
-    "amber":    [fonts.GoogleFont("Inter"), fonts.Font("system-ui"), fonts.Font("sans-serif")],
-    "cyber":    [fonts.GoogleFont("Inter"), fonts.Font("system-ui"), fonts.Font("sans-serif")],
-    "sentinel": [fonts.GoogleFont("Inter"), fonts.Font("system-ui"), fonts.Font("sans-serif")],
+    # Simple themes
+    "night":    _GS,
+    "amber":    _GS,
+    "cyber":    _GS,
+    "sentinel": _GS,
     # Advanced themes
-    "voltagent": [fonts.GoogleFont("Inter"), fonts.Font("system-ui"), fonts.Font("sans-serif")],
-    "xai":       [fonts.GoogleFont("Inter"), fonts.Font("system-ui"), fonts.Font("sans-serif")],
-    "warp":      [fonts.GoogleFont("Inter"), fonts.Font("system-ui"), fonts.Font("sans-serif")],
-    "linear":    [fonts.GoogleFont("Inter"), fonts.Font("system-ui"), fonts.Font("sans-serif")],
-    "sentry":    [fonts.GoogleFont("Rubik"), fonts.Font("system-ui"), fonts.Font("sans-serif")],
-    "stripe":    [fonts.GoogleFont("Inter"), fonts.Font("system-ui"), fonts.Font("sans-serif")],
-    "supabase":  [fonts.GoogleFont("Inter"), fonts.Font("system-ui"), fonts.Font("sans-serif")],
-    "vercel":    [fonts.GoogleFont("Geist"), fonts.GoogleFont("Inter"), fonts.Font("system-ui"), fonts.Font("sans-serif")],
-    "cursor":    [fonts.Font("system-ui"), fonts.Font("Helvetica Neue"), fonts.Font("Arial"), fonts.Font("sans-serif")],
+    "voltagent": _GS,
+    "xai":       _GS,
+    "warp":      _GS,
+    "linear":    _GS,
+    "sentry":    [fonts.GoogleFont("Google Sans"), fonts.GoogleFont("Rubik"), fonts.Font("system-ui"), fonts.Font("sans-serif")],
+    "stripe":    _GS,
+    "supabase":  _GS,
+    "vercel":    [fonts.GoogleFont("Google Sans"), fonts.GoogleFont("Geist"), fonts.Font("system-ui"), fonts.Font("sans-serif")],
+    "cursor":    [fonts.GoogleFont("Google Sans"), fonts.Font("system-ui"), fonts.Font("Helvetica Neue"), fonts.Font("sans-serif")],
     "runway":    [fonts.GoogleFont("Instrument Serif"), fonts.Font("Georgia"), fonts.Font("serif")],
 }
 
@@ -387,7 +838,7 @@ class EyasTheme(Base):
             color_accent_soft=f"rgba({int(p['accent'][1:3],16)},{int(p['accent'][3:5],16)},{int(p['accent'][5:7],16)},.18)",
         )
         self.name = f"eyas-{advanced or color}-{'adv' if advanced else ('dark' if dark else 'light')}"
-        self.custom_css = _build_css(p)
+        self.custom_css = _build_css(p, _fkey)
 
 
 # ---------------------------------------------------------------------------
@@ -486,6 +937,65 @@ def _annotate_elapsed(steps: list, start_times: dict) -> list:
 
 
 # ---------------------------------------------------------------------------
+# Splash screen
+# ---------------------------------------------------------------------------
+
+def _splash_html(states: list | None = None, fading: bool = False) -> str:
+    _icon_class = {
+        "waiting": ("hourglass_empty", ""),
+        "loading": ("sync",            "si-loading"),
+        "ready":   ("check_circle",    "si-ready"),
+        "error":   ("error",           "si-error"),
+        "skipped": ("warning",         "si-skipped"),
+    }
+    _detail_text = {
+        "waiting": "Waiting…",
+        "loading": "Loading weights…",
+        "ready":   "Ready",
+        "error":   "Failed",
+        "skipped": "Not available",
+    }
+    if states is None:
+        from model_registry import get_states
+        states = get_states()
+
+    total = len(states)
+    done_count = sum(1 for s in states if s.status in {"ready", "error", "skipped"})
+    progress_pct = int(done_count / total * 100) if total else 0
+
+    items_html = ""
+    for s in states:
+        icon, cls = _icon_class.get(s.status, ("hourglass_empty", ""))
+        detail = s.detail if s.detail else _detail_text.get(s.status, "")
+        items_html += (
+            f'<div class="splash-item">'
+            f'<span class="splash-item-icon material-symbols-outlined {cls}">{icon}</span>'
+            f'<div class="splash-item-body">'
+            f'<span class="splash-item-label">{s.label}</span>'
+            f'<span class="splash-item-detail">{detail}</span>'
+            f'</div></div>'
+        )
+
+    fading_class = " splash-fading" if fading else ""
+    return (
+        f'<div id="eyas-splash" class="eyas-splash{fading_class}">'
+        f'<div class="splash-logo-row">'
+        f'<span class="splash-logo-dot"></span>'
+        f'<span class="splash-wordmark">Eyas</span>'
+        f'</div>'
+        f'<div class="splash-subtitle">AI Security Camera Agent</div>'
+        f'<div class="splash-card">'
+        f'<div class="splash-card-header">Initializing Models</div>'
+        f'{items_html}'
+        f'<div class="splash-progress-wrap">'
+        f'<div class="splash-progress-bar" style="width:{progress_pct}%"></div>'
+        f'</div>'
+        f'</div>'
+        f'</div>'
+    )
+
+
+# ---------------------------------------------------------------------------
 # App
 # ---------------------------------------------------------------------------
 
@@ -504,6 +1014,10 @@ def build_app(
 
     with gr.Blocks(title="AI Security Camera Agent") as demo:
 
+        # ── Startup splash (ComfyUI-style model loading screen) ──────────────
+        splash_html  = gr.HTML(value=_splash_html(), elem_id="splash-wrapper")
+        splash_timer = gr.Timer(value=0.9, active=True)
+
         # ── Header ──────────────────────────────────────────────────────────
         with gr.Row():
             with gr.Column(scale=5, elem_id="eyas-header"):
@@ -513,27 +1027,46 @@ def build_app(
 
         event_log_state: gr.State = gr.State([])
 
-        # ── Input row ───────────────────────────────────────────────────────
+        # ── Main layout: sidebar + analysis panel ────────────────────────────
         with gr.Row():
-            with gr.Column(scale=3):
-                with gr.Row():
-                    sample_dd = gr.Dropdown(
-                        choices=list(_SAMPLE_PATHS.keys()),
-                        label="Sample clips",
-                        interactive=True,
-                        scale=4,
-                    )
-                    load_sample_btn = gr.Button("Load", variant="secondary", scale=1, size="sm")
-                video_input = gr.Video(label="Upload CCTV clip (.mp4)", sources=["upload"])
-            with gr.Column(scale=1):
-                analyze_btn  = gr.Button("Analyze", variant="primary", size="lg")
-                status_box   = gr.Textbox(label="Status", interactive=False, lines=3, elem_id="status-box")
-                upload_status = gr.Textbox(label="Storage", interactive=False, lines=1, visible=True)
+
+            # — Left sidebar: input ──────────────────────────────────────────
+            with gr.Column(scale=1, min_width=260, elem_id="eyas-sidebar"):
+                gr.HTML(
+                    '<div class="eyas-panel-header">'
+                    '<span class="ph-dot"></span>'
+                    '<span class="ph-label">Footage</span>'
+                    '</div>'
+                )
+                sample_dd = gr.Dropdown(
+                    choices=list(_SAMPLE_PATHS.keys()),
+                    label="Sample clips",
+                    interactive=True,
+                )
+                load_sample_btn = gr.Button("Load Sample", variant="secondary", size="sm")
+                video_input = gr.Video(label="Original Video", sources=["upload"])
+                upload_status = gr.Textbox(label="Storage", interactive=False, lines=1)
+
+            # — Right panel: analysis + output ───────────────────────────────
+            with gr.Column(scale=2, elem_id="eyas-main"):
+                gr.HTML(
+                    '<div class="eyas-panel-header">'
+                    '<span class="ph-dot"></span>'
+                    '<span class="ph-label">Analysis</span>'
+                    '</div>'
+                )
+                analyze_btn = gr.Button(
+                    "Analyze", variant="primary", size="lg", elem_id="analyze-btn",
+                )
+                status_box = gr.Textbox(
+                    label="Status", interactive=False, lines=1,
+                    elem_id="status-box",
+                )
+                pipeline_html = gr.HTML(_steps_html(_PIPELINE_STEPS_DEFAULT))
+                annotated_img = gr.Image(label="Annotated (Live)", interactive=False)
+                annotated_vid = gr.Video(label="Annotated Video", interactive=False, visible=False)
 
         video_input.change(fn=None, inputs=[video_input], js=_REC_JS)
-
-        # ── Pipeline progress ────────────────────────────────────────────────
-        pipeline_html = gr.HTML(_steps_html(_PIPELINE_STEPS_DEFAULT))
 
         # ── Tabs ────────────────────────────────────────────────────────────
         with gr.Tabs():
@@ -700,21 +1233,45 @@ def build_app(
 
         load_sample_btn.click(load_sample, inputs=[sample_dd], outputs=[video_input])
 
+        # ── Splash timer — polls model registry, fades splash when ready ──────
+        def _poll_splash():
+            done = _mreg.all_done()
+            return _splash_html(fading=done), gr.update(active=not done)
+
+        splash_timer.tick(_poll_splash, outputs=[splash_html, splash_timer])
+
         def run_pipeline(video_path):
             import tempfile
             import time as _time
+            import cv2 as _cv2
             from visual_pipeline import run_visual_pipeline
-            from llm.reasoner import summarize_events as _summarize
+
+            _preloaded_reasoner = _mreg.get("llm")
+            def _summarize(events):
+                if _preloaded_reasoner is not None:
+                    return _preloaded_reasoner.summarize_events(events)
+                from llm.reasoner import summarize_events as _fallback
+                return _fallback(events)
 
             steps = list(_PIPELINE_STEPS_DEFAULT)  # mutable copy
             step_start: dict = {}
+            _last_frame: list = [None]  # latest annotated frame (RGB numpy array)
 
             def _blank():
                 return ([], [], gr.update(choices=[]), "", {"none": 1.0},
-                        [], gr.update(choices=[]), {}, 0, 0, 0, 0)
+                        [], gr.update(choices=[]), {}, 0, 0, 0, 0,
+                        gr.update(visible=False), gr.update(visible=False))
 
             def emit(status):
-                return (_steps_html(_annotate_elapsed(steps, step_start)), status) + _blank()
+                f = _last_frame[0]
+                ann = gr.update(value=f, visible=f is not None) if f is not None else gr.update(visible=False)
+                return (
+                    _steps_html(_annotate_elapsed(steps, step_start)), status,
+                    [], [], gr.update(choices=[]), "", {"none": 1.0},
+                    [], gr.update(choices=[]), {}, 0, 0, 0, 0,
+                    ann,
+                    gr.update(visible=False),
+                )
 
             def _start_step(idx: int, name: str, detail: str = "") -> None:
                 step_start[idx] = _time.time()
@@ -746,10 +1303,18 @@ def build_app(
             _q: _queue.Queue = _queue.Queue()
 
             _last_progress_t = [0.0]
-            def _on_progress(done: int, total: int, track_count: int, vlm_fired: bool) -> None:
+            def _on_progress(done: int, total: int, track_count: int, vlm_fired: bool, annotated_frame=None) -> None:
                 now = _time.time()
                 if vlm_fired or now - _last_progress_t[0] >= 0.2:
-                    _q.put(("progress", done, total, track_count, vlm_fired))
+                    display_frame = None
+                    if annotated_frame is not None:
+                        h, w = annotated_frame.shape[:2]
+                        if w > 640:
+                            display_frame = _cv2.resize(annotated_frame, (640, int(h * 640 / w)))
+                        else:
+                            display_frame = annotated_frame.copy()
+                        display_frame = _cv2.cvtColor(display_frame, _cv2.COLOR_BGR2RGB)
+                    _q.put(("progress", done, total, track_count, vlm_fired, display_frame))
                     _last_progress_t[0] = now
 
             def _run() -> None:
@@ -757,8 +1322,10 @@ def build_app(
                     result = run_visual_pipeline(
                         video_path=video_path,
                         output_dir=output_dir,
-                        write_annotated_video=False,
+                        write_annotated_video=True,
                         progress=_on_progress,
+                        preloaded_tracker=_mreg.get("yolo"),
+                        preloaded_vlm=_mreg.get("vlm"),
                     )
                     _q.put(("done", result))
                 except Exception as exc:
@@ -787,7 +1354,9 @@ def build_app(
                     if not _model_loaded:
                         _model_loaded = True
                         step_start[1] = _time.time()
-                    _, done, total, track_count, vlm_fired = msg
+                    _, done, total, track_count, vlm_fired, display_frame = msg
+                    if display_frame is not None:
+                        _last_frame[0] = display_frame
                     pct = f"{done}/{total}" if total else str(done)
                     person_s = f"{track_count} person{'s' if track_count != 1 else ''}"
                     steps[1] = ("Object detection (YOLO)", "running", f"frame {pct} · {person_s}")
@@ -828,6 +1397,7 @@ def build_app(
                 if z in zone_counts:
                     zone_counts[z] += 1
 
+            f = _last_frame[0]
             yield (
                 _steps_html(_annotate_elapsed(steps, step_start)), "Running LLM summarization…",
                 events, rows, gr.update(choices=[]),
@@ -835,6 +1405,8 @@ def build_app(
                 zone_counts,
                 zone_counts["entrance"], zone_counts["counter"],
                 zone_counts["back_door"], zone_counts["aisles"],
+                gr.update(value=f, visible=f is not None) if f is not None else gr.update(visible=False),
+                gr.update(visible=False),
             )
 
             # ── Step 3: LLM ─────────────────────────────────────────────────
@@ -849,6 +1421,7 @@ def build_app(
                 f"Done. {vp.frames_processed} frames · "
                 f"{vp.unique_tracks} tracks · {len(events)} events."
             )
+            ann_vid_path = vp.annotated_video_path
             yield (
                 _steps_html(_annotate_elapsed(steps, step_start)), status,
                 events, rows, gr.update(choices=[]),
@@ -857,6 +1430,8 @@ def build_app(
                 zone_counts,
                 zone_counts["entrance"], zone_counts["counter"],
                 zone_counts["back_door"], zone_counts["aisles"],
+                gr.update(visible=False),
+                gr.update(value=ann_vid_path, visible=ann_vid_path is not None),
             )
 
         analyze_btn.click(
@@ -867,6 +1442,7 @@ def build_app(
                 event_log_state, event_table, clip_selector,
                 summary_box, risk_badge, flags_box, suspicious_clips_dd,
                 metrics_json, count_entrance, count_counter, count_back_door, count_aisles,
+                annotated_img, annotated_vid,
             ],
         )
 
@@ -876,9 +1452,13 @@ def build_app(
             if not events:
                 reply = "No events loaded yet — please upload and analyze a video first."
             else:
-                from llm.reasoner import answer_query as _answer
                 try:
-                    result = _answer(events, message)
+                    _r = _mreg.get("llm")
+                    if _r is not None:
+                        result = _r.answer_query(events, message)
+                    else:
+                        from llm.reasoner import answer_query as _answer
+                        result = _answer(events, message)
                     reply  = result["answer"]
                     if result.get("clips"):
                         reply += "\n\nRelated clips: " + ", ".join(result["clips"])
@@ -894,8 +1474,12 @@ def build_app(
             if not events:
                 return None
             try:
-                from llm.reasoner import summarize_events as _summarize
-                llm = _summarize(events)
+                _r = _mreg.get("llm")
+                if _r is not None:
+                    llm = _r.summarize_events(events)
+                else:
+                    from llm.reasoner import summarize_events as _summarize
+                    llm = _summarize(events)
                 text = llm.get("summary", "").strip()
                 if not text:
                     return None

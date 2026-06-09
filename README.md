@@ -14,9 +14,9 @@ Quick start (prototype)
 
 ```bash
 cd eyas
-python -m venv .venv
+python3 -m venv .venv
 .venv\Scripts\activate        # Windows
-# source .venv/bin/activate   # macOS / Linux
+source .venv/bin/activate      # macOS / Linux
 ```
 
 2. Install dependencies
