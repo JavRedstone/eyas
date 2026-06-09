@@ -147,3 +147,28 @@ class TestTtsVoiceWiring:
         model.generate_streaming.assert_called_once_with(
             text="(A deep male narrator voice)Hello"
         )
+
+    @patch("eyas.postprocessing.translate_tts.get_voxcpm2_model")
+    def test_forwards_all_streaming_chunks(self, mock_get_voxcpm):
+        model = MagicMock()
+        sample_rate = 48000
+        raw_chunks = [
+            np.array([0.1, -0.2], dtype=np.float64),
+            np.array([0.3], dtype=np.float64),
+            np.array([0.4, 0.5, -0.6], dtype=np.float64),
+        ]
+
+        def _stream(*, text: str):
+            del text
+            yield from raw_chunks
+
+        model.generate_streaming.side_effect = _stream
+        mock_get_voxcpm.return_value = (model, sample_rate)
+
+        chunks = list(tts("Hello", target_lang="English"))
+
+        assert len(chunks) == len(raw_chunks)
+        for (rate, audio), raw in zip(chunks, raw_chunks):
+            assert rate == sample_rate
+            assert audio.dtype == np.float32
+            np.testing.assert_array_equal(audio, raw.astype(np.float32))
