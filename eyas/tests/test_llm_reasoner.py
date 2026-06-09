@@ -2,11 +2,28 @@
 
 import json
 import sys
+import textwrap
+from pathlib import Path
 from unittest.mock import MagicMock, patch
+
+_REPO_ROOT = Path(__file__).parent.parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
 import pytest
 
 from eyas.llm.reasoner import Reasoner, _ALERT_FALLBACK, _QA_FALLBACK, _SUMMARIZE_FALLBACK
+
+_W = 72
+
+
+def _box(title: str, body: str) -> None:
+    print(f"\n{'=' * _W}")
+    print(f"  {title}")
+    print(f"{'-' * _W}")
+    for line in str(body).splitlines():
+        print(textwrap.fill(line, width=_W - 4, initial_indent="  ", subsequent_indent="    ") if line.strip() else "")
+    print(f"{'=' * _W}")
 
 
 # ---------------------------------------------------------------------------
@@ -54,7 +71,9 @@ def _llama_module_mock(json_response: dict):
 
 class TestFormatEvents:
     def test_contains_type(self, two_events):
-        assert "[entry]" in Reasoner("dummy.gguf")._format_events(two_events)
+        formatted = Reasoner("dummy.gguf")._format_events(two_events)
+        _box(f"_format_events ({len(two_events)} events)", formatted)
+        assert "[entry]" in formatted
 
     def test_contains_zone(self, two_events):
         assert "back_door" in Reasoner("dummy.gguf")._format_events(two_events)
@@ -132,6 +151,10 @@ class TestSummarizeEvents:
     def test_empty_events_skips_model(self):
         r = Reasoner("dummy.gguf")
         result = r.summarize_events([])
+        _box(
+            "summarize_events([]) empty-events fallback",
+            f"summary:    {result['summary']}\nrisk_level: {result['risk_level']}",
+        )
         assert "No events" in result["summary"]
         assert result["risk_level"] == "none"
 
@@ -215,3 +238,7 @@ class TestModelNotFound:
         r = Reasoner("nonexistent_model.gguf")
         with pytest.raises(RuntimeError, match="not found"):
             r._load_model()
+
+
+if __name__ == "__main__":
+    sys.exit(pytest.main([__file__] + sys.argv[1:]))
