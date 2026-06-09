@@ -63,48 +63,76 @@ class TestEvidenceCrops:
 
 
 class TestPickupInference:
-    def _make_sequence_vlm(self, first_json: str, second_json: str):
+    def _make_vlm(self, observation_json: str):
         class _VLM:
             backend = "test"
-            calls = 0
 
             def observe_person(self, frames, track_id=None):
-                self.calls += 1
-                return parse_person_observation(first_json if self.calls == 1 else second_json)
+                return parse_person_observation(observation_json)
 
         return _VLM()
 
-    def test_recent_interaction_then_new_held_object_confirms_pickup(self):
-        vlm = self._make_sequence_vlm(
-            '{"activity":"reaching toward items on a shelf","held_objects":[],"pickup_confirmed":false}',
-            '{"description":"a person holding a small object","activity":"walking","held_objects":[],"pickup_confirmed":false}',
+    def test_confirmed_pickup_with_held_object_is_recorded(self):
+        vlm = self._make_vlm(
+            '{"description":"a person holding a small object",'
+            '"activity":"picking up a small object",'
+            '"held_objects":[{"name":"small object","count":1}],'
+            '"pickup_confirmed":true}'
         )
         structurer = EventStructurer(
             [Zone("all", (0, 0, 200, 200))], vlm=vlm, semantic_interval_s=0
         )
         frame = np.zeros((200, 200, 3), dtype=np.uint8)
         track = Track(1, "person", 0.9, (40, 40, 120, 180))
-        structurer.update([track], 0.0, frame)
         events = structurer.update([track], 1.0, frame)
-        assert events[0].pickup_confirmed is False
-        assert structurer.events[0].timestamp == 0.0
-        assert structurer.events[0].confirmation_timestamp == 1.0
-        assert structurer.events[0].pickup_confirmed is True
-        assert structurer.events[0].picked_up_items == [{"name": "small object", "count": 1}]
+        assert events[0].timestamp == 1.0
+        assert events[0].confirmation_timestamp == 1.0
+        assert events[0].pickup_confirmed is True
+        assert events[0].picked_up_items == [{"name": "small object", "count": 1}]
 
-    def test_tiny_track_cannot_infer_pickup(self):
-        vlm = self._make_sequence_vlm(
-            '{"activity":"reaching toward items","held_objects":[]}',
-            '{"description":"a person holding an object","held_objects":[]}',
+    def test_pickup_wording_without_object_is_recorded_without_inventing_item(self):
+        vlm = self._make_vlm(
+            '{"activity":"possibly picking something up",'
+            '"held_objects":[],"pickup_confirmed":false}'
         )
         structurer = EventStructurer(
-            [Zone("all", (0, 0, 1000, 1000))], vlm=vlm, semantic_interval_s=0
+            [Zone("all", (0, 0, 200, 200))], vlm=vlm, semantic_interval_s=0
         )
-        frame = np.zeros((1000, 1000, 3), dtype=np.uint8)
-        tiny_track = Track(1, "person", 0.9, (0, 0, 100, 100))
-        structurer.update([tiny_track], 0.0, frame)
-        events = structurer.update([tiny_track], 1.0, frame)
-        assert events[0].pickup_confirmed is False
+        frame = np.zeros((200, 200, 3), dtype=np.uint8)
+        events = structurer.update(
+            [Track(1, "person", 0.9, (40, 40, 120, 180))], 1.0, frame
+        )
+        assert events[0].pickup_confirmed is True
+        assert events[0].picked_up_items == []
+
+    def test_confirmed_pickup_without_named_object_uses_generic_item(self):
+        vlm = self._make_vlm(
+            '{"activity":"the person reaches toward a shelf and picks up an item",'
+            '"held_objects":[],"pickup_confirmed":true,"picked_up_items":[]}'
+        )
+        structurer = EventStructurer(
+            [Zone("all", (0, 0, 200, 200))], vlm=vlm, semantic_interval_s=0
+        )
+        frame = np.zeros((200, 200, 3), dtype=np.uint8)
+        events = structurer.update(
+            [Track(1, "person", 0.9, (40, 40, 120, 180))], 1.0, frame
+        )
+        assert events[0].picked_up_items == [{"name": "retail item", "count": 1}]
+
+    def test_hand_to_hold_transition_without_named_object_is_recorded(self):
+        vlm = self._make_vlm(
+            '{"activity":"the hand moves toward an item and then holds it",'
+            '"held_objects":[],"pickup_confirmed":false,"picked_up_items":[]}'
+        )
+        structurer = EventStructurer(
+            [Zone("all", (0, 0, 200, 200))], vlm=vlm, semantic_interval_s=0
+        )
+        frame = np.zeros((200, 200, 3), dtype=np.uint8)
+        events = structurer.update(
+            [Track(1, "person", 0.9, (40, 40, 120, 180))], 1.0, frame
+        )
+        assert events[0].pickup_confirmed is True
+        assert events[0].picked_up_items == [{"name": "retail item", "count": 1}]
 
 
 if __name__ == "__main__":
