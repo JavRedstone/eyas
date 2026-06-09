@@ -13,7 +13,7 @@ Why person-only:
     the cropped region around that person.
 
 Usage:
-    det = PersonTracker()                      # loads yolo11n.pt (auto-downloads)
+    det = PersonTracker()                      # loads eyas/models/yolo11n.pt (auto-downloads if absent)
     for frame in frames:                       # frame = BGR np.ndarray (cv2)
         tracks = det.track(frame)              # list of Track dicts for this frame
 
@@ -25,9 +25,12 @@ Usage:
 from __future__ import annotations
 
 from dataclasses import dataclass, asdict
+from pathlib import Path
 from typing import Dict, Iterator, List, Optional, Tuple
 
 import numpy as np
+
+_MODELS_DIR = Path(__file__).parent.parent / "models"
 
 # COCO class id for 'person'. YOLO11 default weights are COCO-80.
 PERSON_CLASS_ID = 0
@@ -63,7 +66,7 @@ class PersonTracker:
     """Thin wrapper over Ultralytics YOLO11 `.track()` for person tracking.
 
     Args:
-        weights:  model weights. 'yolo11n.pt' (nano, fastest) by default.
+        weights:  path to model weights. Defaults to eyas/models/yolo11n.pt (nano, fastest).
         tracker:  'botsort.yaml' (default, ReID — survives occlusion, best for
                   CCTV) or 'bytetrack.yaml' (faster, no ReID).
         conf:     confidence threshold.
@@ -72,7 +75,7 @@ class PersonTracker:
 
     def __init__(
         self,
-        weights: str = "yolo11n.pt",
+        weights: str = str(_MODELS_DIR / "yolo11n.pt"),
         tracker: str = "botsort.yaml",
         conf: float = 0.6,
         device: Optional[str] = None,

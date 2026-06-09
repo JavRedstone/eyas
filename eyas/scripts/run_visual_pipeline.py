@@ -8,6 +8,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from utils.paths import models_dir  # noqa: E402
+
+_DEFAULT_WEIGHTS = str(models_dir() / "yolo11n.pt")
+
 from event_structuring.structurer import Zone  # noqa: E402
 from visual_pipeline import run_visual_pipeline  # noqa: E402
 
@@ -29,7 +33,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("video", help="Input MP4/MOV path")
     parser.add_argument("--output-dir", default="output/visual")
     parser.add_argument("--device", choices=["cpu", "mps", "cuda"], default=None)
-    parser.add_argument("--weights", default="yolo11n.pt")
+    parser.add_argument("--weights", default=_DEFAULT_WEIGHTS)
     parser.add_argument("--tracker", default="botsort.yaml")
     parser.add_argument(
         "--confidence",

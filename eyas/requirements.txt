@@ -1,10 +1,11 @@
 gradio
 opencv-python
 numpy
-ffmpeg-python
 pillow
 torch
 torchaudio
 transformers
+ultralytics
 voxcpm
+llama-cpp-python
 pytest
