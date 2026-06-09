@@ -10,6 +10,7 @@ Module integration tests — run real video through real components, one layer a
 | `test_module_vlm.py` | YOLO + real MiniCPM-V VLM | `yolo11n.pt` + MiniCPM-V (HF) |
 | `test_module_tracker_structurer.py` | YOLO + **stub** VLM + EventStructurer | `yolo11n.pt` |
 | `test_reasoning_integration.py` | Reasoner against `samples/events.json` | GGUF (skipped if absent) |
+| `test_translate_tts.py` | `translate()` / `tts()` with real TinyAya GGUF + VoxCPM2 | `llama-cpp-python`, `voxcpm`; CUDA for TTS streaming |
 
 ## Run
 
