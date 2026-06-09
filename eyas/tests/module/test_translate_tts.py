@@ -147,6 +147,20 @@ class TestTtsStreaming:
         assert len(chunks) >= 1
         _assert_valid_audio_stream(chunks)
 
+    def test_english_summary_concatenates_to_audio(self):
+        chunks = list(tts(LONG_ALERT, target_lang="English"))
+        assert len(chunks) >= 1
+
+        sample_rate = chunks[0][0]
+        audio = np.concatenate([chunk for _, chunk in chunks])
+
+        assert audio.dtype == np.float32
+        assert audio.ndim == 1
+        assert audio.size > 0
+        assert np.all(audio >= -1.0)
+        assert np.all(audio <= 1.0)
+        assert audio.size / sample_rate >= 0.1
+
 
 # ---------------------------------------------------------------------------
 # Language coverage
