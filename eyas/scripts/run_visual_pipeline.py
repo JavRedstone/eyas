@@ -56,8 +56,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--evidence-frames",
         type=int,
-        default=5,
-        help="Maximum ordered snapshots supplied per observation. Default: 5.",
+        default=4,
+        help="Maximum ordered snapshots supplied per observation. Default: 4.",
     )
     parser.add_argument(
         "--crop-pad",
