@@ -5,6 +5,7 @@ the Gradio theme object.  No runtime CSS class-toggling; restart to change.
 """
 
 import json
+import traceback
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -292,7 +293,8 @@ button.secondary, button[data-testid="secondary"] {
 }
 
 /* Analyze button: full-width pill, Material icon, physical press */
-div:has(> #analyze-btn) {
+div:has(> #analyze-btn),
+div:has(> #load-sample-btn) {
     padding: 0 16px !important;
     box-sizing: border-box !important;
 }
@@ -1026,6 +1028,7 @@ def build_app(
                 gr.HTML(f'<div class="eyas-theme-badge">Theme: <strong>{current_label}</strong></div>')
 
         event_log_state: gr.State = gr.State([])
+        output_dir_state: gr.State = gr.State("")
 
         # ── Main layout: sidebar + analysis panel ────────────────────────────
         with gr.Row():
@@ -1043,7 +1046,7 @@ def build_app(
                     label="Sample clips",
                     interactive=True,
                 )
-                load_sample_btn = gr.Button("Load Sample", variant="secondary", size="sm")
+                load_sample_btn = gr.Button("Load Sample", variant="secondary", size="sm", elem_id="load-sample-btn")
                 video_input = gr.Video(label="Original Video", sources=["upload"])
                 upload_status = gr.Textbox(label="Storage", interactive=False, lines=1)
 
@@ -1081,7 +1084,7 @@ def build_app(
                     with gr.Column(scale=2):
                         clip_selector = gr.Dropdown(label="Select clip to preview", choices=[], interactive=True)
                     with gr.Column(scale=3):
-                        _clip_video("Clip Preview")
+                        clip_preview = _clip_video("Clip Preview")
 
             with gr.TabItem("Summary & Alerts"):
                 with gr.Row():
@@ -1095,7 +1098,7 @@ def build_app(
                         suspicious_clips_dd = gr.Dropdown(
                             label="Suspicious clips — select to preview", choices=[], interactive=True,
                         )
-                        _clip_video("Flagged Clip Preview")
+                        flagged_clip_preview = _clip_video("Flagged Clip Preview")
 
             with gr.TabItem("Ask Footage"):
                 _section_title("Ask a question about the footage")
@@ -1260,7 +1263,7 @@ def build_app(
             def _blank():
                 return ([], [], gr.update(choices=[]), "", {"none": 1.0},
                         [], gr.update(choices=[]), {}, 0, 0, 0, 0,
-                        gr.update(visible=False), gr.update(visible=False))
+                        gr.update(visible=False), gr.update(visible=False), "")
 
             def emit(status):
                 f = _last_frame[0]
@@ -1271,6 +1274,7 @@ def build_app(
                     [], gr.update(choices=[]), {}, 0, 0, 0, 0,
                     ann,
                     gr.update(visible=False),
+                    "",
                 )
 
             def _start_step(idx: int, name: str, detail: str = "") -> None:
@@ -1329,7 +1333,7 @@ def build_app(
                     )
                     _q.put(("done", result))
                 except Exception as exc:
-                    _q.put(("error", exc))
+                    _q.put(("error", f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}"))
 
             _threading.Thread(target=_run, daemon=True).start()
 
@@ -1432,6 +1436,7 @@ def build_app(
                 zone_counts["back_door"], zone_counts["aisles"],
                 gr.update(visible=False),
                 gr.update(value=ann_vid_path, visible=ann_vid_path is not None),
+                output_dir,
             )
 
         analyze_btn.click(
@@ -1443,8 +1448,24 @@ def build_app(
                 summary_box, risk_badge, flags_box, suspicious_clips_dd,
                 metrics_json, count_entrance, count_counter, count_back_door, count_aisles,
                 annotated_img, annotated_vid,
+                output_dir_state,
             ],
         )
+
+        def _load_clip(clip_name: str, out_dir: str):
+            if not clip_name or not out_dir:
+                return gr.update()
+            p = Path(out_dir) / clip_name
+            if p.is_file():
+                return gr.update(value=str(p), visible=True)
+            # Clip file not extracted — show annotated video as fallback
+            ann = Path(out_dir) / next(
+                (f for f in Path(out_dir).iterdir() if f.suffix == ".mp4"), Path()
+            )
+            return gr.update(value=str(ann) if ann.exists() else None, visible=ann.exists())
+
+        clip_selector.change(_load_clip, inputs=[clip_selector, output_dir_state], outputs=[clip_preview])
+        suspicious_clips_dd.change(_load_clip, inputs=[suspicious_clips_dd, output_dir_state], outputs=[flagged_clip_preview])
 
         def ask_footage(message: str, history: list, events: List[Dict]):
             if not message.strip():
@@ -1459,12 +1480,16 @@ def build_app(
                     else:
                         from llm.reasoner import answer_query as _answer
                         result = _answer(events, message)
-                    reply  = result["answer"]
+                    reply = result["answer"]
                     if result.get("clips"):
                         reply += "\n\nRelated clips: " + ", ".join(result["clips"])
                 except Exception as exc:
                     reply = f"LLM error: {exc}"
-            return history + [(message, reply)], ""
+            history = list(history) + [
+                {"role": "user",      "content": message},
+                {"role": "assistant", "content": reply},
+            ]
+            return history, ""
 
         ask_btn.click(ask_footage, inputs=[query_input, chatbot, event_log_state], outputs=[chatbot, query_input])
         query_input.submit(ask_footage, inputs=[query_input, chatbot, event_log_state], outputs=[chatbot, query_input])
