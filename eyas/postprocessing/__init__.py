@@ -1,23 +1,25 @@
+import os
+
 TINYAYA_LANGUAGES_BY_REGION = {
     "South Asia": [
-        "Telugu", "Marathi", "Bengali", "Tamil", "Hindi", 
+        "Telugu", "Marathi", "Bengali", "Tamil", "Hindi",
         "Punjabi", "Gujarati", "Urdu", "Nepali"
     ],
     "Asia Pacific": [
-        "Traditional Chinese", "Cantonese", "Vietnamese", "Tagalog", "Javanese", 
-        "Khmer", "Thai", "Burmese", "Malay", "Korean", 
+        "Traditional Chinese", "Cantonese", "Vietnamese", "Tagalog", "Javanese",
+        "Khmer", "Thai", "Burmese", "Malay", "Korean",
         "Lao", "Indonesian", "Simplified Chinese", "Japanese"
     ],
     "Europe": [
-        "Catalan", "Galician", "Dutch", "Danish", "Finnish", 
-        "Czech", "Portuguese", "French", "Lithuanian", "Slovak", 
-        "Basque", "English", "Swedish", "Polish", "Spanish", 
-        "Slovenian", "Ukrainian", "Greek", "Bokmål", "Romanian", 
-        "Serbian", "German", "Italian", "Russian", "Irish", 
+        "Catalan", "Galician", "Dutch", "Danish", "Finnish",
+        "Czech", "Portuguese", "French", "Lithuanian", "Slovak",
+        "Basque", "English", "Swedish", "Polish", "Spanish",
+        "Slovenian", "Ukrainian", "Greek", "Bokmål", "Romanian",
+        "Serbian", "German", "Italian", "Russian", "Irish",
         "Hungarian", "Bulgarian", "Croatian", "Estonian", "Latvian", "Welsh"
     ],
     "Africa": [
-        "Zulu", "Amharic", "Hausa", "Igbo", "Swahili", 
+        "Zulu", "Amharic", "Hausa", "Igbo", "Swahili",
         "Xhosa", "Wolof", "Shona", "Yoruba", "Nigerian Pidgin", "Malagasy"
     ],
     "West Asia": [
@@ -29,20 +31,54 @@ TINYAYA_SUPPORTED_LANGUAGES = {
     lang for langs in TINYAYA_LANGUAGES_BY_REGION.values() for lang in langs
 }
 
-from transformers import AutoTokenizer, AutoModelForCausalLM
-TINYAYA_GLOBAL_MODEL_ID = "CohereLabs/tiny-aya-global"
-TINYAYA_GLOBAL_TOKENIZER = AutoTokenizer.from_pretrained(TINYAYA_GLOBAL_MODEL_ID)
-TINYAYA_GLOBAL_MODEL = AutoModelForCausalLM.from_pretrained(
-    TINYAYA_GLOBAL_MODEL_ID, device_map="auto"
-)
+TINYAYA_GGUF_REPO = "CohereLabs/tiny-aya-global-GGUF"
+TINYAYA_GGUF_FILE = os.getenv("EYAS_TINYAYA_GGUF_FILE", "tiny-aya-global-q4_k_m.gguf")
 
-from voxcpm import VoxCPM
-VOXCPM2_MODEL = VoxCPM.from_pretrained("openbmb/VoxCPM2", load_denoiser=False)
-TTS_SAMPLE_RATE = VOXCPM2_MODEL.tts_model.sample_rate
+_tinyaya_models: dict[bool, object] = {}
+
+
+def get_tinyaya_model(use_gpu: bool = True):
+    """Lazy-load tiny-aya-global via llama-cpp-python."""
+    if use_gpu in _tinyaya_models:
+        return _tinyaya_models[use_gpu]
+    try:
+        from llama_cpp import Llama  # type: ignore
+    except ImportError as exc:
+        raise RuntimeError(
+            "llama-cpp-python is not installed. Run: pip install llama-cpp-python"
+        ) from exc
+    n_gpu_layers = -1 if use_gpu else 0
+    _tinyaya_models[use_gpu] = Llama.from_pretrained(
+        repo_id=TINYAYA_GGUF_REPO,
+        filename=TINYAYA_GGUF_FILE,
+        n_ctx=int(os.getenv("EYAS_TINYAYA_N_CTX", "4096")),
+        n_gpu_layers=n_gpu_layers,
+        verbose=False,
+    )
+    return _tinyaya_models[use_gpu]
+
+
+_voxcpm2_model = None
+_voxcpm2_sample_rate = None
+
+
+def get_voxcpm2_model():
+    """Lazy-load VoxCPM2 TTS model and its output sample rate."""
+    global _voxcpm2_model, _voxcpm2_sample_rate
+    if _voxcpm2_model is not None:
+        return _voxcpm2_model, _voxcpm2_sample_rate
+    from voxcpm import VoxCPM
+
+    _voxcpm2_model = VoxCPM.from_pretrained(
+        "openbmb/VoxCPM2", device="auto", load_denoiser=False, optimize=False
+    ) 
+    # TODO: test with optimize=True if python 3.10 or higher
+    _voxcpm2_sample_rate = _voxcpm2_model.tts_model.sample_rate
+    return _voxcpm2_model, _voxcpm2_sample_rate
 
 VOXCPM2_SUPPORTED_LANGUAGES = [
-    "Arabic", "Burmese", "Simplified Chinese", "Traditional Chinese", "Danish", "Dutch", "English", "Finnish", "French", 
-    "German", "Greek", "Hebrew", "Hindi", "Indonesian", "Italian", "Japanese", "Khmer", 
-    "Korean", "Lao", "Malay", "Norwegian", "Polish", "Portuguese", "Russian", "Spanish", 
+    "Arabic", "Burmese", "Simplified Chinese", "Traditional Chinese", "Danish", "Dutch", "English", "Finnish", "French",
+    "German", "Greek", "Hebrew", "Hindi", "Indonesian", "Italian", "Japanese", "Khmer",
+    "Korean", "Lao", "Malay", "Norwegian", "Polish", "Portuguese", "Russian", "Spanish",
     "Swahili", "Swedish", "Tagalog", "Thai", "Turkish", "Vietnamese"
 ]

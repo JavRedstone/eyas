@@ -3,43 +3,40 @@
 Wrap translation APIs or local models and a TTS backend.
 """
 
+# TODO: smaller max_tokens once we see the output length 
+# TODO: warm up models once at startup during app initialization
+
 from collections.abc import Iterator
-
+import sys
+from pathlib import Path
 import numpy as np
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
-from . import (
-    TINYAYA_GLOBAL_MODEL,
-    TINYAYA_GLOBAL_TOKENIZER,
+from eyas.postprocessing import (
     TINYAYA_SUPPORTED_LANGUAGES,
-    TTS_SAMPLE_RATE,
-    VOXCPM2_MODEL,
     VOXCPM2_SUPPORTED_LANGUAGES,
+    get_tinyaya_model,
+    get_voxcpm2_model,
 )
-
-
-def translate(text: str, target_lang: str = "English") -> str:
-    # https://huggingface.co/CohereLabs/tiny-aya-global
+def translate(text: str, target_lang: str = "English", use_gpu: bool = True) -> str:
+    # https://huggingface.co/CohereLabs/tiny-aya-global-GGUF
     if target_lang not in TINYAYA_SUPPORTED_LANGUAGES:
         raise ValueError(f"Target language {target_lang} not supported")
 
-    messages = [{"role": "user", "content": f"Translate the following text to {target_lang}: {text}"}]
-    input_ids = TINYAYA_GLOBAL_TOKENIZER.apply_chat_template(
-        messages,
-        tokenize=True,
-        add_generation_prompt=True,
-        return_tensors="pt",
-    ).to(TINYAYA_GLOBAL_MODEL.device)
-
-    gen_tokens = TINYAYA_GLOBAL_MODEL.generate(
-        input_ids,
-        max_new_tokens=4096,
-        do_sample=True,
-        temperature=0.1,
+    response = get_tinyaya_model(use_gpu=use_gpu).create_chat_completion(
+        messages=[
+            {
+                "role": "user",
+                "content": f"Translate the following text to {target_lang}: {text}",
+            }
+        ],
+        max_tokens=4096, # max number of tokens in the output
+        temperature=0, # take the most likely output
         top_p=0.95,
     )
-
-    new_tokens = gen_tokens[0][input_ids.shape[-1] :]
-    return TINYAYA_GLOBAL_TOKENIZER.decode(new_tokens, skip_special_tokens=True)
+    return response["choices"][0]["message"]["content"].strip()
 
 
 def tts(text: str, target_lang: str = "English", voice: str = "A young woman, gentle and sweet voice") -> Iterator[tuple[int, np.ndarray]]:
@@ -54,5 +51,6 @@ def tts(text: str, target_lang: str = "English", voice: str = "A young woman, ge
     if voice:
         text = f"({voice}){text}"
 
-    for chunk in VOXCPM2_MODEL.generate_streaming(text=text):
-        yield TTS_SAMPLE_RATE, chunk.astype(np.float32)
+    model, sample_rate = get_voxcpm2_model()
+    for chunk in model.generate_streaming(text=text):
+        yield sample_rate, chunk.astype(np.float32)
