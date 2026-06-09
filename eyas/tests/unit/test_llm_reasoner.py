@@ -53,13 +53,17 @@ def two_events():
 def _mock_llama(json_response: dict):
     """Return a mock Llama class whose __call__ returns json_response as text."""
     mock_instance = MagicMock()
-    mock_instance.return_value = {"choices": [{"text": json.dumps(json_response)}]}
+    mock_instance.create_chat_completion.return_value = {
+        "choices": [{"message": {"content": json.dumps(json_response)}}]
+    }
     return MagicMock(return_value=mock_instance)
 
 
 def _llama_module_mock(json_response: dict):
     m = MagicMock()
-    m.Llama = _mock_llama(json_response)
+    llama_cls = _mock_llama(json_response)
+    llama_cls.from_pretrained = MagicMock(return_value=llama_cls.return_value)
+    m.Llama = llama_cls
     m.LlamaGrammar = MagicMock()
     m.LlamaGrammar.from_string.return_value = None
     return m
@@ -166,7 +170,7 @@ class TestSummarizeEvents:
             "risk_level": "medium",
         }
         with patch.dict(sys.modules, {"llama_cpp": _llama_module_mock(expected)}), \
-             patch("os.path.isfile", return_value=True):
+             patch("pathlib.Path.is_file", return_value=True):
             from importlib import reload
             import eyas.llm.reasoner as mod
             reload(mod)
@@ -195,7 +199,7 @@ class TestAnswerQuery:
             "clips": ["cam2_02h14.mp4"],
         }
         with patch.dict(sys.modules, {"llama_cpp": _llama_module_mock(expected)}), \
-             patch("os.path.isfile", return_value=True):
+             patch("pathlib.Path.is_file", return_value=True):
             from importlib import reload
             import eyas.llm.reasoner as mod
             reload(mod)
@@ -218,7 +222,7 @@ class TestGenerateAlert:
             "clip": "cam2_02h14.mp4",
         }
         with patch.dict(sys.modules, {"llama_cpp": _llama_module_mock(expected)}), \
-             patch("os.path.isfile", return_value=True):
+             patch("pathlib.Path.is_file", return_value=True):
             from importlib import reload
             import eyas.llm.reasoner as mod
             reload(mod)
@@ -234,10 +238,31 @@ class TestGenerateAlert:
 # ---------------------------------------------------------------------------
 
 class TestModelNotFound:
-    def test_raises_runtime_error_if_file_missing(self):
-        r = Reasoner("nonexistent_model.gguf")
+    def test_raises_runtime_error_if_custom_model_missing(self):
+        r = Reasoner("/tmp/custom-model.gguf")
         with pytest.raises(RuntimeError, match="not found"):
             r._load_model()
+
+
+class TestNemotronAutoDownload:
+    def test_default_model_uses_from_pretrained_when_local_file_missing(self, two_events):
+        expected = {
+            "summary": "auto-downloaded",
+            "flags": [],
+            "suspicious_clips": [],
+            "risk_level": "none",
+        }
+        llama_module = _llama_module_mock(expected)
+        with patch.dict(sys.modules, {"llama_cpp": llama_module}), \
+             patch("pathlib.Path.is_file", return_value=False):
+            from importlib import reload
+            import eyas.llm.reasoner as mod
+            reload(mod)
+            r = mod.Reasoner("models/nemotron-nano-4b.gguf")
+            result = r.summarize_events(two_events)
+
+        llama_module.Llama.from_pretrained.assert_called_once()
+        assert result["summary"] == expected["summary"]
 
 
 if __name__ == "__main__":

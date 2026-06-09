@@ -13,6 +13,9 @@ import argparse
 import json
 from pathlib import Path
 
+from dotenv import load_dotenv
+load_dotenv(Path(__file__).parent / ".env")
+
 from ui.gradio_app import build_app
 
 _PREFS = Path(__file__).parent / "preferences.json"
