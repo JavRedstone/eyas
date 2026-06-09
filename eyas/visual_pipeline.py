@@ -12,6 +12,11 @@ import cv2
 from event_structuring.structurer import EventStructurer, PersonStatus, Zone
 from object_detection.detector import PersonTracker, Track
 from video_processing.process import MiniCPMVLM
+from utils.device import get_device
+from utils.paths import models_dir
+from utils.video import create_video_writer, get_video_info
+
+_DEFAULT_YOLO_WEIGHTS = str(models_dir() / "yolo11n.pt")
 
 
 @dataclass
@@ -30,19 +35,6 @@ class VisualPipelineResult:
             f"{len(self.events)} MiniCPM-V observations."
         )
 
-
-def auto_device() -> str:
-    """Choose the best available PyTorch device for YOLO/MiniCPM-V."""
-    try:
-        import torch
-
-        if torch.cuda.is_available():
-            return "cuda"
-        if torch.backends.mps.is_available():
-            return "mps"
-    except Exception:
-        pass
-    return "cpu"
 
 
 def full_frame_zone(width: int, height: int) -> Zone:
@@ -125,16 +117,9 @@ def overlay_confirmed_pickups(
     if not confirmed or not video_path.exists():
         return
     cap = cv2.VideoCapture(str(video_path))
-    fps = cap.get(cv2.CAP_PROP_FPS) or 12.0
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fps, width, height = get_video_info(cap)
     temp_path = video_path.with_name(f"{video_path.stem}_review{video_path.suffix}")
-    writer = cv2.VideoWriter(
-        str(temp_path),
-        cv2.VideoWriter_fourcc(*"mp4v"),
-        fps,
-        (width, height),
-    )
+    writer = create_video_writer(str(temp_path), fps, width, height)
     frame_index = 0
     try:
         while cap.isOpened():
@@ -175,7 +160,7 @@ def run_visual_pipeline(
     output_dir: str,
     zones: Optional[List[Zone]] = None,
     device: Optional[str] = None,
-    yolo_weights: str = "yolo11n.pt",
+    yolo_weights: str = _DEFAULT_YOLO_WEIGHTS,
     tracker_config: str = "botsort.yaml",
     confidence: float = 0.6,
     semantic_interval_seconds: float = 1.0,
@@ -189,7 +174,7 @@ def run_visual_pipeline(
     vlm_max_tokens: int = 96,
     max_frames: Optional[int] = None,
     write_annotated_video: bool = True,
-    progress: Optional[Callable[[int, int], None]] = None,
+    progress: Optional[Callable[[int, int, int, bool], None]] = None,
 ) -> VisualPipelineResult:
     """Run the complete visual processing track on one video."""
     source = Path(video_path).expanduser().resolve()
@@ -201,15 +186,13 @@ def run_visual_pipeline(
     cap = cv2.VideoCapture(str(source))
     if not cap.isOpened():
         raise ValueError(f"could not open video: {source}")
-    fps = cap.get(cv2.CAP_PROP_FPS) or 12.0
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fps, width, height = get_video_info(cap)
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     if max_frames is not None:
         total_frames = min(total_frames, max_frames)
 
     resolved_zones = zones or [full_frame_zone(width, height)]
-    resolved_device = device or auto_device()
+    resolved_device = device or get_device()
     tracker = PersonTracker(
         weights=yolo_weights,
         tracker=tracker_config,
@@ -235,11 +218,17 @@ def run_visual_pipeline(
         post_trigger_s=post_trigger_seconds,
     )
 
+    # Mutable cell so the VLM-start hook always reads the current frame state.
+    _frame_info: List[int] = [0, total_frames or 0, 0]  # [frame_index, total, track_count]
+    if progress:
+        def _on_vlm_start() -> None:
+            progress(_frame_info[0], _frame_info[1], _frame_info[2], True)
+        structurer.on_vlm_start = _on_vlm_start
+
     annotated_path = out_dir / f"{source.stem}_annotated.mp4"
     writer = None
     if write_annotated_video:
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        writer = cv2.VideoWriter(str(annotated_path), fourcc, fps, (width, height))
+        writer = create_video_writer(str(annotated_path), fps, width, height)
 
     seen_tracks = set()
     frame_index = 0
@@ -251,14 +240,15 @@ def run_visual_pipeline(
             t = frame_index / fps
             tracks = tracker.track(frame)
             seen_tracks.update(track.track_id for track in tracks)
+            frame_index += 1
+            _frame_info[:] = [frame_index, total_frames or 0, len(tracks)]
+            if progress:
+                progress(frame_index, total_frames, len(tracks), False)
             structurer.update(tracks, t, latest_frame=frame)
             if writer is not None:
                 writer.write(
                     draw_tracks(frame, tracks, resolved_zones, structurer.display_statuses())
                 )
-            frame_index += 1
-            if progress and (frame_index == 1 or frame_index % 30 == 0):
-                progress(frame_index, total_frames)
     finally:
         cap.release()
         if writer is not None:

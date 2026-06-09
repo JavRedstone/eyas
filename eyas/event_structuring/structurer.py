@@ -119,6 +119,7 @@ class EventStructurer:
         self._last_semantic: Dict[int, float] = {}
         self._pending_interactions: Dict[int, float] = {}
         self._track_history: Dict[int, Deque[TrackSnapshot]] = {}
+        self.on_vlm_start: Optional[Callable] = None
 
     def _zone_for(self, track: Track) -> Optional[Zone]:
         x1, _, x2, y2 = track.bbox
@@ -152,7 +153,9 @@ class EventStructurer:
         x1 = max(0, min(snapshot.bbox[0] for snapshot in snapshots) - self.crop_pad)
         y1 = max(0, min(snapshot.bbox[1] for snapshot in snapshots) - self.crop_pad)
         x2 = min(width, max(snapshot.bbox[2] for snapshot in snapshots) + self.crop_pad)
-        y2 = min(height, max(snapshot.bbox[3] for snapshot in snapshots) + self.crop_pad)
+        y2 = min(
+            height, max(snapshot.bbox[3] for snapshot in snapshots) + self.crop_pad
+        )
         return [snapshot.frame[y1:y2, x1:x2] for snapshot in snapshots]
 
     def _motion_score(self, track_id: int) -> float:
@@ -162,14 +165,20 @@ class EventStructurer:
             return 0.0
         previous = cv2.resize(crops[-2], (160, 160), interpolation=cv2.INTER_AREA)
         current = cv2.resize(crops[-1], (160, 160), interpolation=cv2.INTER_AREA)
-        previous_gray = cv2.GaussianBlur(cv2.cvtColor(previous, cv2.COLOR_BGR2GRAY), (5, 5), 0)
-        current_gray = cv2.GaussianBlur(cv2.cvtColor(current, cv2.COLOR_BGR2GRAY), (5, 5), 0)
+        previous_gray = cv2.GaussianBlur(
+            cv2.cvtColor(previous, cv2.COLOR_BGR2GRAY), (5, 5), 0
+        )
+        current_gray = cv2.GaussianBlur(
+            cv2.cvtColor(current, cv2.COLOR_BGR2GRAY), (5, 5), 0
+        )
         difference = cv2.absdiff(previous_gray, current_gray)
         return float(np.count_nonzero(difference > 18) / difference.size)
 
     def _should_observe(self, track_id: int, t: float) -> bool:
         if not self.interaction_trigger:
-            return t - self._last_semantic.get(track_id, -1e9) >= self.semantic_interval_s
+            return (
+                t - self._last_semantic.get(track_id, -1e9) >= self.semantic_interval_s
+            )
 
         pending_at = self._pending_interactions.get(track_id)
         if pending_at is not None:
@@ -190,13 +199,17 @@ class EventStructurer:
     def _activity_indicates_pickup(self, activity: str) -> bool:
         """Promote explicit pickup wording unless its surrounding clause negates it."""
         for match in PICKUP_ACTIVITY.finditer(activity):
-            clause_start = max(
-                activity.rfind(".", 0, match.start()),
-                activity.rfind(";", 0, match.start()),
-                activity.rfind("\n", 0, match.start()),
-            ) + 1
+            clause_start = (
+                max(
+                    activity.rfind(".", 0, match.start()),
+                    activity.rfind(";", 0, match.start()),
+                    activity.rfind("\n", 0, match.start()),
+                )
+                + 1
+            )
             clause_end_candidates = [
-                position for position in (
+                position
+                for position in (
                     activity.find(".", match.end()),
                     activity.find(";", match.end()),
                     activity.find("\n", match.end()),
@@ -239,6 +252,8 @@ class EventStructurer:
             frames = self._evidence_crops(track.track_id)
             if not frames or frames[-1].size == 0:
                 continue
+            if self.on_vlm_start is not None:
+                self.on_vlm_start()
             observation: PersonObservation = self.vlm.observe_person(
                 frames, track_id=person_id
             )
