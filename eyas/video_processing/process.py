@@ -39,6 +39,8 @@ RETAIL_PROMPT = (
 
 PERSON_STATUS_PROMPT = (
     "You are observing one YOLO-tracked person in convenience-store CCTV. "
+    "The ordered images were selected because motion near the person may show an "
+    "interaction; treat them as before, during, and after evidence. "
     "Describe only what is visibly present in the supplied images. Give a short "
     "non-biometric appearance description useful during this visit, then state "
     "what the person is currently doing. Set held_objects only for objects with "
@@ -50,6 +52,9 @@ PERSON_STATUS_PROMPT = (
     "clearly show the person's hand contacting a retail item and the item moving "
     "from its previous location into the person's hand. An item merely inside "
     "the bounding box, on a nearby shelf, or already visible is NOT a pickup. "
+    "If the sequence shows the hand moving toward an item and then holding it, "
+    "describe the activity explicitly as picking up the item. Do not use only "
+    "the vague phrase 'interacting with retail items' for a visible pickup. "
     "Set pickup_confirmed=true only when this hand-contact plus movement is "
     "clearly visible across the images. Do not infer identity, intent, theft, "
     "ownership, colors that are not clearly visible, or events outside these "
@@ -272,12 +277,16 @@ class MiniCPMVLM:
         dtype: str = "auto",
         attn: str = "sdpa",
         downsample_mode: str = "16x",
+        max_image_size: int = 448,
+        max_new_tokens: int = 96,
     ) -> None:
         self.model_id = model_id
         self.device = device
         self.dtype = dtype
         self.attn = attn
         self.downsample_mode = downsample_mode
+        self.max_image_size = max(0, max_image_size)
+        self.max_new_tokens = max(32, max_new_tokens)
         self.model = None
         self.processor = None
         self._loaded = False
@@ -317,7 +326,10 @@ class MiniCPMVLM:
 
         if frame.ndim == 3 and frame.shape[2] == 3:
             frame = frame[:, :, ::-1]        # BGR (cv2) -> RGB
-        return Image.fromarray(np.ascontiguousarray(frame))
+        image = Image.fromarray(np.ascontiguousarray(frame))
+        if self.max_image_size and max(image.size) > self.max_image_size:
+            image.thumbnail((self.max_image_size, self.max_image_size))
+        return image
 
     def caption_frames(
         self,
@@ -378,7 +390,7 @@ class MiniCPMVLM:
         self,
         frames: List[np.ndarray],
         track_id: Optional[int] = None,
-        max_new_tokens: int = 160,
+        max_new_tokens: Optional[int] = None,
     ) -> PersonObservation:
         """Describe a tracked person and their latest action from live snapshots."""
         if not frames:
@@ -407,8 +419,9 @@ class MiniCPMVLM:
         generated = self.model.generate(
             **inputs,
             downsample_mode=self.downsample_mode,
-            max_new_tokens=max_new_tokens,
+            max_new_tokens=max_new_tokens or self.max_new_tokens,
             do_sample=False,
+            use_cache=True,
         )
         trimmed = [out[len(inp):] for inp, out in zip(inputs.input_ids, generated)]
         text = self.processor.batch_decode(
