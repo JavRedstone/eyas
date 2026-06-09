@@ -29,6 +29,12 @@ PICKUP_NEGATION = re.compile(
     r"didn't|did\s+not|isn't|is\s+not|aren't|are\s+not)\b",
     re.IGNORECASE,
 )
+PICKUP_TRANSITION = re.compile(
+    r"\b(?:then|afterwards?|subsequently)\b.+\b(?:holds?|grasps?|carries?)\b|"
+    r"\b(?:moves?|moving)\s+(?:his|her|their|the)?\s*hand\b.+"
+    r"\b(?:holds?|grasps?)\b",
+    re.IGNORECASE,
+)
 
 
 @dataclass
@@ -259,20 +265,27 @@ class EventStructurer:
             )
             self._last_semantic[track.track_id] = t
 
-            activity_pickup = self._activity_indicates_pickup(observation.activity)
+            pickup_transition = bool(PICKUP_TRANSITION.search(observation.activity))
+            activity_pickup = (
+                self._activity_indicates_pickup(observation.activity)
+                or pickup_transition
+            )
             pickup_confirmed = observation.pickup_confirmed or activity_pickup
             picked_up_items = list(observation.picked_up_items)
             if pickup_confirmed and not picked_up_items:
-                picked_up_items = (
-                    list(observation.held_objects)
-                    if observation.held_objects
-                    else [{"name": "retail item", "count": 1}]
-                )
+                picked_up_items = list(observation.held_objects)
+            strong_pickup_evidence = (
+                observation.pickup_confirmed
+                or pickup_transition
+            )
+            if pickup_confirmed and not picked_up_items and strong_pickup_evidence:
+                picked_up_items = [{"name": "retail item", "count": 1}]
+            record_pickup = pickup_confirmed and bool(picked_up_items)
 
             status.description = observation.description or status.description
             status.current_activity = observation.activity
             status.current_held_objects = observation.held_objects
-            if pickup_confirmed:
+            if record_pickup:
                 status.confirmed_pickups = self._merge_items(
                     status.confirmed_pickups, picked_up_items
                 )
