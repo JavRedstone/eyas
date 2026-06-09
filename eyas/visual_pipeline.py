@@ -175,6 +175,8 @@ def run_visual_pipeline(
     max_frames: Optional[int] = None,
     write_annotated_video: bool = True,
     progress: Optional[Callable[[int, int, int, bool], None]] = None,
+    preloaded_tracker=None,
+    preloaded_vlm=None,
 ) -> VisualPipelineResult:
     """Run the complete visual processing track on one video."""
     source = Path(video_path).expanduser().resolve()
@@ -193,14 +195,14 @@ def run_visual_pipeline(
 
     resolved_zones = zones or [full_frame_zone(width, height)]
     resolved_device = device or get_device()
-    tracker = PersonTracker(
+    tracker = preloaded_tracker or PersonTracker(
         weights=yolo_weights,
         tracker=tracker_config,
         conf=confidence,
         device=resolved_device,
     )
     vlm_dtype = "float16" if resolved_device in {"mps", "cuda"} else "auto"
-    vlm = MiniCPMVLM(
+    vlm = preloaded_vlm or MiniCPMVLM(
         device=resolved_device,
         dtype=vlm_dtype,
         max_image_size=vlm_max_image_size,
@@ -222,7 +224,7 @@ def run_visual_pipeline(
     _frame_info: List[int] = [0, total_frames or 0, 0]  # [frame_index, total, track_count]
     if progress:
         def _on_vlm_start() -> None:
-            progress(_frame_info[0], _frame_info[1], _frame_info[2], True)
+            progress(_frame_info[0], _frame_info[1], _frame_info[2], True, None)
         structurer.on_vlm_start = _on_vlm_start
 
     annotated_path = out_dir / f"{source.stem}_annotated.mp4"
@@ -242,13 +244,16 @@ def run_visual_pipeline(
             seen_tracks.update(track.track_id for track in tracks)
             frame_index += 1
             _frame_info[:] = [frame_index, total_frames or 0, len(tracks)]
-            if progress:
-                progress(frame_index, total_frames, len(tracks), False)
             structurer.update(tracks, t, latest_frame=frame)
+            annotated_frame = (
+                draw_tracks(frame, tracks, resolved_zones, structurer.display_statuses())
+                if (writer is not None or progress)
+                else None
+            )
+            if progress:
+                progress(frame_index, total_frames, len(tracks), False, annotated_frame)
             if writer is not None:
-                writer.write(
-                    draw_tracks(frame, tracks, resolved_zones, structurer.display_statuses())
-                )
+                writer.write(annotated_frame)
     finally:
         cap.release()
         if writer is not None:
