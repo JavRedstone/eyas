@@ -83,7 +83,8 @@ def run_pipeline(video: str = str(_SAMPLE), max_frames: int = 400) -> dict:
             total_fired += 1
             print(
                 f"[{ev.timestamp:.1f}s] track#{ev.track_id} "
-                f"@ {ev.zone}: {ev.summary}  (backend={ev.backend})"
+                f"@ {ev.zone}: {ev.summary}  (backend={ev.backend})",
+                flush=True,
             )
         idx += 1
     cap.release()
