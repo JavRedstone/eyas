@@ -165,7 +165,7 @@ def run_visual_pipeline(
     confidence: float = 0.6,
     semantic_interval_seconds: float = 1.0,
     evidence_window_seconds: float = 2.0,
-    evidence_frames: int = 5,
+    evidence_frames: int = 4,
     crop_pad: int = 120,
     interaction_trigger: bool = True,
     motion_threshold: float = 0.035,
