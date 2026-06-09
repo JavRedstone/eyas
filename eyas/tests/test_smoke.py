@@ -1,8 +1,38 @@
+import sys
+from pathlib import Path
+
+_REPO_ROOT = Path(__file__).parent.parent.parent
+_EYAS_ROOT = Path(__file__).parent.parent
+for _p in (_REPO_ROOT, _EYAS_ROOT):
+    if str(_p) not in sys.path:
+        sys.path.insert(0, str(_p))
+
+import pytest
+
 from video_processing.process import PERSON_STATUS_PROMPT, parse_person_observation
 from event_structuring.structurer import EventStructurer, Zone
 from object_detection.detector import Track
 
+import textwrap
+
 import numpy as np
+
+_W = 72
+
+
+def _box(title: str, body: str) -> None:
+    print(f"\n{'=' * _W}")
+    print(f"  {title}")
+    print(f"{'-' * _W}")
+    for line in str(body).splitlines():
+        print(
+            textwrap.fill(
+                line, width=_W - 4, initial_indent="  ", subsequent_indent="    "
+            )
+            if line.strip()
+            else ""
+        )
+    print(f"{'=' * _W}")
 
 
 def test_smoke():
@@ -10,6 +40,7 @@ def test_smoke():
 
 
 def test_status_prompt_does_not_suggest_specific_products():
+    _box("PERSON_STATUS_PROMPT (preview)", PERSON_STATUS_PROMPT[:300].strip())
     assert "red object" not in PERSON_STATUS_PROMPT
     assert "chocolate bar" not in PERSON_STATUS_PROMPT
 
@@ -20,6 +51,12 @@ def test_vague_activity_is_not_promoted_to_held_object():
         '"pickup_confirmed":false,"picked_up_items":[]}'
     )
 
+    _box(
+        "parse_person_observation | vague activity",
+        f"held_objects:    {observation.held_objects}\n"
+        f"pickup_confirmed: {observation.pickup_confirmed}\n"
+        f"picked_up_items: {observation.picked_up_items}",
+    )
     assert observation.held_objects == []
     assert observation.picked_up_items == []
 
@@ -319,7 +356,9 @@ def test_returning_track_with_new_yolo_id_remains_distinct():
     )
     frame = np.zeros((200, 200, 3), dtype=np.uint8)
     structurer.update([Track(2, "person", 0.9, (20, 20, 100, 180))], 0.0, frame)
-    events = structurer.update([Track(7, "person", 0.9, (30, 20, 110, 180))], 3.0, frame)
+    events = structurer.update(
+        [Track(7, "person", 0.9, (30, 20, 110, 180))], 3.0, frame
+    )
 
     assert events[0].track_id == 7
     assert sorted(structurer.statuses) == [2, 7]
