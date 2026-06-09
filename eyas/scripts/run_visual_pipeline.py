@@ -24,9 +24,7 @@ def parse_zone(value: str) -> Zone:
         if len(bbox) != 4:
             raise ValueError
     except ValueError as exc:
-        raise argparse.ArgumentTypeError(
-            "zone must use NAME:KIND:X1,Y1,X2,Y2"
-        ) from exc
+        raise argparse.ArgumentTypeError("zone must use NAME:KIND:X1,Y1,X2,Y2") from exc
     return Zone(name=name, kind=kind, bbox=bbox)
 
 
@@ -47,7 +45,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--semantic-interval",
         type=float,
         default=1.0,
-        help="Seconds between MiniCPM-V observations per track; 0 observes every frame.",
+        help="Minimum seconds between MiniCPM-V reviews per track. Default: 1.",
     )
     parser.add_argument(
         "--evidence-window",
@@ -64,26 +62,37 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--crop-pad",
         type=int,
-        default=120,
-        help="Pixels of shelf/hand context around the combined person track. Default: 120.",
+        default=30,
+        help="Pixels of shelf/hand context around the combined person track. Default: 30.",
     )
     parser.add_argument(
-        "--min-pickup-area-ratio",
-        type=float,
-        default=0.03,
-        help="Minimum fraction of frame covered by a track for inferred pickups. Default: 0.03.",
+        "--continuous-vlm",
+        action="store_true",
+        help="Run VLM periodically instead of only after interaction-motion triggers.",
     )
     parser.add_argument(
-        "--reid-max-gap",
+        "--motion-threshold",
         type=float,
-        default=15.0,
-        help="Maximum disappearance time for reconnecting a similar person. Default: 15.",
+        default=0.035,
+        help="Changed-pixel ratio that triggers VLM review. Lower is more sensitive.",
     )
     parser.add_argument(
-        "--reid-similarity",
+        "--post-trigger",
         type=float,
-        default=0.40,
-        help="Minimum combined visual/description similarity for reconnecting tracks. Default: 0.40.",
+        default=0.5,
+        help="Seconds to wait after interaction motion before VLM review. Default: 0.5.",
+    )
+    parser.add_argument(
+        "--vlm-max-image-size",
+        type=int,
+        default=448,
+        help="Maximum VLM crop dimension in pixels. Lower is faster. Default: 448.",
+    )
+    parser.add_argument(
+        "--vlm-max-tokens",
+        type=int,
+        default=96,
+        help="Maximum tokens generated per VLM observation. Lower is faster. Default: 96.",
     )
     parser.add_argument("--max-frames", type=int)
     parser.add_argument("--no-annotated-video", action="store_true")
@@ -98,6 +107,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     args = build_parser().parse_args()
+
     def show_progress(done: int, total: int) -> None:
         suffix = f"/{total}" if total > 0 else ""
         print(f"processed frames: {done}{suffix}", flush=True)
@@ -114,16 +124,17 @@ def main() -> None:
         evidence_window_seconds=args.evidence_window,
         evidence_frames=args.evidence_frames,
         crop_pad=args.crop_pad,
-        minimum_pickup_area_ratio=args.min_pickup_area_ratio,
-        reid_max_gap_seconds=args.reid_max_gap,
-        reid_similarity_threshold=args.reid_similarity,
+        interaction_trigger=not args.continuous_vlm,
+        motion_threshold=args.motion_threshold,
+        post_trigger_seconds=args.post_trigger,
+        vlm_max_image_size=args.vlm_max_image_size,
+        vlm_max_tokens=args.vlm_max_tokens,
         max_frames=args.max_frames,
         write_annotated_video=not args.no_annotated_video,
         progress=show_progress,
     )
     print(result.summary())
     print(f"events: {result.events_path}")
-    print(f"statuses: {result.statuses_path}")
     if result.annotated_video_path:
         print(f"annotated video: {result.annotated_video_path}")
 
