@@ -44,7 +44,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--semantic-interval",
         type=float,
-        default=1.0,
+        default=1.5,
         help="Minimum seconds between MiniCPM-V reviews per track. Default: 1.",
     )
     parser.add_argument(
@@ -62,7 +62,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--crop-pad",
         type=int,
-        default=30,
+        default=50,
         help="Pixels of shelf/hand context around the combined person track. Default: 30.",
     )
     parser.add_argument(
@@ -73,7 +73,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--motion-threshold",
         type=float,
-        default=0.035,
+        default=0.025,
         help="Changed-pixel ratio that triggers VLM review. Lower is more sensitive.",
     )
     parser.add_argument(
@@ -108,9 +108,17 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     args = build_parser().parse_args()
 
-    def show_progress(done: int, total: int) -> None:
+    def show_progress(
+        done: int,
+        total: int,
+        track_count: int,
+        vlm_fired: bool,
+    ) -> None:
+        if not vlm_fired and done != 1 and done % 30 != 0 and done != total:
+            return
         suffix = f"/{total}" if total > 0 else ""
-        print(f"processed frames: {done}{suffix}", flush=True)
+        stage = "VLM review" if vlm_fired else "processed"
+        print(f"{stage}: frame {done}{suffix}, tracks: {track_count}", flush=True)
 
     result = run_visual_pipeline(
         video_path=args.video,
