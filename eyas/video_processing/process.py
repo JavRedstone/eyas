@@ -674,6 +674,7 @@ class LlamaCppMiniCPMVLM:
         observation.backend = self.backend
         return observation
 
+
 # ---------------------------------------------------------------------------
 # Module-level convenience matching the original scaffold signature.
 # ---------------------------------------------------------------------------

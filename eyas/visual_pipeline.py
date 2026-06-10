@@ -181,7 +181,7 @@ def run_visual_pipeline(
     post_trigger_seconds: float = 0.5,
     vlm_max_image_size: int = 448,
     vlm_max_tokens: int = 96,
-    vlm_backend: str = "transformers",
+    vlm_backend: str = "minicpm-v",
     llama_model_path: Optional[str] = None,
     llama_mmproj_path: Optional[str] = None,
     llama_repo_id: str = "openbmb/MiniCPM-V-4.6-gguf",
@@ -193,6 +193,7 @@ def run_visual_pipeline(
     max_frames: Optional[int] = None,
     write_annotated_video: bool = True,
     progress: Optional[Callable[..., None]] = None,
+    on_event: Optional[Callable] = None,
     preloaded_tracker=None,
     preloaded_vlm=None,
     locale: str = "en",
@@ -293,12 +294,12 @@ def run_visual_pipeline(
     else:
         _report_progress = None
 
+    overlay_labels = OverlayLabels(locale)
     annotated_path = out_dir / f"{source.stem}_annotated.mp4"
     writer = None
     if write_annotated_video:
         writer = create_video_writer(str(annotated_path), fps, width, height)
 
-    overlay_labels = OverlayLabels(locale)
     seen_tracks = set()
     frame_index = 0
     try:
@@ -311,7 +312,9 @@ def run_visual_pipeline(
             seen_tracks.update(track.track_id for track in tracks)
             frame_index += 1
             _frame_info[:] = [frame_index, total_frames or 0, len(tracks)]
-            structurer.update(tracks, t, latest_frame=frame)
+            fired = structurer.update(tracks, t, latest_frame=frame)
+            if on_event and fired:
+                on_event([e.as_dict() for e in fired])
             annotated_frame = (
                 draw_tracks(
                     frame,
