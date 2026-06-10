@@ -27,6 +27,7 @@ _STATES: Dict[str, ModelState] = {
     "yolo": ModelState("Object Detector (YOLO)"),
     "vlm":  ModelState("Visual Language Model"),
     "llm":  ModelState("LLM Reasoner"),
+    "tts":  ModelState("Audio Report (VoxCPM2)"),
 }
 _INSTANCES: Dict[str, Any] = {}
 
@@ -142,6 +143,18 @@ def _load_models() -> None:
         _set("llm", "check_circle", "ready", "Ready")
     except Exception as exc:
         _set("llm", "error", "error", str(exc)[:120])
+
+    # ── TTS (VoxCPM2) ───────────────────────────────────────────────────────
+    _set("tts", "sync", "loading",
+         "Loading weights…" if _hf_cached("openbmb/VoxCPM2") else "Downloading (~5 GB)…")
+    try:
+        from postprocessing import get_voxcpm2_model
+        model, rate = get_voxcpm2_model()
+        with _LOCK:
+            _INSTANCES["tts"] = (model, rate)
+        _set("tts", "check_circle", "ready", "Ready")
+    except Exception as exc:
+        _set("tts", "error", "error", str(exc)[:120])
 
 
 def start() -> None:
