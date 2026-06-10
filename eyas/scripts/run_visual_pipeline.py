@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -92,7 +93,47 @@ def build_parser() -> argparse.ArgumentParser:
         "--vlm-max-tokens",
         type=int,
         default=96,
-        help="Maximum tokens generated per VLM observation. Lower is faster. Default: 96.",
+        help=(
+            "Maximum tokens generated per VLM observation. Use at least 96 for "
+            "the full JSON response. Default: 96."
+        ),
+    )
+    parser.add_argument(
+        "--vlm-backend",
+        choices=["transformers", "llama-cpp-python"],
+        default="transformers",
+        help="MiniCPM-V inference backend. Default: transformers.",
+    )
+    parser.add_argument(
+        "--llama-model-path",
+        help="Optional local MiniCPM-V 4.6 GGUF path. Otherwise download from Hugging Face.",
+    )
+    parser.add_argument(
+        "--llama-mmproj-path",
+        help="Optional local MiniCPM-V 4.6 multimodal projector GGUF path.",
+    )
+    parser.add_argument(
+        "--llama-repo-id",
+        default="openbmb/MiniCPM-V-4.6-gguf",
+        help="Hugging Face GGUF repository used when --llama-model-path is omitted.",
+    )
+    parser.add_argument(
+        "--llama-filename",
+        default="MiniCPM-V-4_6-F16.gguf",
+        help="GGUF filename selected from --llama-repo-id. Default: F16.",
+    )
+    parser.add_argument(
+        "--llama-mmproj-filename",
+        default="mmproj-model-f16.gguf",
+        help="Vision projector selected from --llama-repo-id. Default: F16.",
+    )
+    parser.add_argument("--llama-threads", type=int)
+    parser.add_argument("--llama-context", type=int, default=8192)
+    parser.add_argument(
+        "--llama-gpu-layers",
+        type=int,
+        default=-1,
+        help="Layers offloaded by llama.cpp; -1 requests all layers. Default: -1.",
     )
     parser.add_argument("--max-frames", type=int)
     parser.add_argument("--no-annotated-video", action="store_true")
@@ -137,6 +178,15 @@ def main() -> None:
         post_trigger_seconds=args.post_trigger,
         vlm_max_image_size=args.vlm_max_image_size,
         vlm_max_tokens=args.vlm_max_tokens,
+        vlm_backend=args.vlm_backend,
+        llama_model_path=args.llama_model_path,
+        llama_mmproj_path=args.llama_mmproj_path,
+        llama_repo_id=args.llama_repo_id,
+        llama_filename=args.llama_filename,
+        llama_mmproj_filename=args.llama_mmproj_filename,
+        llama_threads=args.llama_threads,
+        llama_context=args.llama_context,
+        llama_gpu_layers=args.llama_gpu_layers,
         max_frames=args.max_frames,
         write_annotated_video=not args.no_annotated_video,
         progress=show_progress,
@@ -148,4 +198,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    start_time = time.time()
     main()
+
+    print(f"Total Time for Inference: {time.time() - start_time:.2f}s")

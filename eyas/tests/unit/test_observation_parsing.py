@@ -66,6 +66,13 @@ class TestParsePersonObservation:
         )
         assert obs.held_objects == [{"name": "small red object", "count": 1}]
 
+    def test_negated_holding_phrase_does_not_populate_held_object(self):
+        obs = parse_person_observation(
+            '{"description":"a person","activity":"initially not holding any objects; '
+            'then moves near a shelf","held_objects":[]}'
+        )
+        assert obs.held_objects == []
+
 
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__] + sys.argv[1:]))
