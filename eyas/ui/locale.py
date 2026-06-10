@@ -56,6 +56,11 @@ ACTIVITIES: dict[str, dict[str, str]] = {
     },
 }
 
+EVENT_TYPES: dict[str, dict[str, str]] = {
+    "en": {"pickup": "pickup", "observation": "observation"},
+    "ko": {"pickup": "집기", "observation": "관찰"},
+}
+
 RISK: dict[str, dict[str, str]] = {
     "en": {"none": "none", "low": "low", "medium": "medium", "high": "high"},
     "ko": {"none": "없음", "low": "낮음", "medium": "중간", "high": "높음"},
@@ -163,7 +168,8 @@ MESSAGES: dict[str, dict[str, str]] = {
         "modes.dark": "Dark",
         "modes.light": "Light",
         "table.col_num": "#",
-        "table.col_type": "Type",
+        "table.col_event": "Event",
+        "table.col_activity": "Activity",
         "table.col_start": "Start",
         "table.col_end": "End",
         "table.col_zone": "Zone",
@@ -331,7 +337,8 @@ MESSAGES: dict[str, dict[str, str]] = {
         "modes.dark": "다크",
         "modes.light": "라이트",
         "table.col_num": "#",
-        "table.col_type": "유형",
+        "table.col_event": "이벤트",
+        "table.col_activity": "활동",
         "table.col_start": "시작",
         "table.col_end": "종료",
         "table.col_zone": "구역",
@@ -444,7 +451,8 @@ class Strings:
     def table_headers(self) -> list[str]:
         return [
             self.t("table.col_num"),
-            self.t("table.col_type"),
+            self.t("table.col_event"),
+            self.t("table.col_activity"),
             self.t("table.col_start"),
             self.t("table.col_end"),
             self.t("table.col_zone"),
@@ -457,6 +465,9 @@ class Strings:
 
     def activity_label(self, activity: str) -> str:
         return display_activity(activity, self.locale)
+
+    def event_type_label(self, event_type: str) -> str:
+        return display_event_type(event_type, self.locale)
 
     def risk_label(self, risk: str) -> str:
         return display_risk(risk, self.locale)
@@ -488,6 +499,14 @@ def display_activity(key: str, locale: str = DEFAULT_LOCALE) -> str:
     return activities.get(norm, key)
 
 
+def display_event_type(key: str, locale: str = DEFAULT_LOCALE) -> str:
+    if not key:
+        return key
+    norm = normalize_key(key)
+    types = EVENT_TYPES.get(locale, EVENT_TYPES["en"])
+    return types.get(norm, key)
+
+
 def display_risk(key: str, locale: str = DEFAULT_LOCALE) -> str:
     if not key:
         return key
@@ -499,6 +518,80 @@ def display_risk(key: str, locale: str = DEFAULT_LOCALE) -> str:
 def is_known_activity(key: str) -> bool:
     norm = normalize_key(key)
     return norm in ACTIVITIES["en"]
+
+
+def fmt_event_time(seconds) -> str:
+    if seconds is None:
+        return ""
+    t = float(seconds)
+    m, s = divmod(int(t), 60)
+    h, m = divmod(m, 60)
+    return f"{h:02d}:{m:02d}:{s:02d}" if h else f"{m:02d}:{s:02d}"
+
+
+def _cached_localize(
+    text: str,
+    locale: str,
+    text_cache: dict[str, str],
+    stats: "TranslateStats | None",
+) -> str:
+    if not text or text == "—":
+        return text
+    if text in text_cache:
+        return text_cache[text]
+    if locale != "ko":
+        text_cache[text] = text
+        return text
+    translated, row_stats = localize_text(text, locale)
+    text_cache[text] = translated
+    if stats is not None and row_stats is not None:
+        merged = stats.merge(row_stats)
+        stats.elapsed_s = merged.elapsed_s
+        stats.cache_hits = merged.cache_hits
+        stats.cache_misses = merged.cache_misses
+    return translated
+
+
+def format_event_row(
+    ev: dict,
+    index: int,
+    S: Strings,
+    *,
+    text_cache: dict[str, str],
+    stats: "TranslateStats | None" = None,
+) -> list:
+    """Build one localized event-table row from a structurer event dict."""
+    event_type = "pickup" if ev.get("pickup_confirmed") else "observation"
+    raw_activity = "pickup" if ev.get("pickup_confirmed") else (ev.get("activity") or "")
+    if is_known_activity(raw_activity):
+        activity = S.activity_label(raw_activity)
+    elif raw_activity.strip():
+        activity = _cached_localize(raw_activity.strip(), S.locale, text_cache, stats)
+    else:
+        activity = "—"
+
+    zone_raw = ev.get("zone", "")
+    zone = S.zone_label(zone_raw) if zone_raw else "—"
+
+    clip_name = "—"
+    if ev.get("pickup_confirmed"):
+        picked = ev.get("picked_up_items") or []
+        if picked:
+            clip_name = picked[0].get("name", "—") or "—"
+    if clip_name != "—":
+        clip_name = _cached_localize(clip_name, S.locale, text_cache, stats)
+
+    end_time = ev.get("confirmation_timestamp")
+    return [
+        index,
+        S.event_type_label(event_type),
+        activity,
+        fmt_event_time(ev.get("timestamp")),
+        fmt_event_time(end_time) if end_time is not None else "—",
+        zone,
+        round(float(ev.get("confidence", 0)), 2),
+        clip_name,
+    ]
 
 
 def format_translation_time(S: Strings, stats: "TranslateStats | None") -> str:
