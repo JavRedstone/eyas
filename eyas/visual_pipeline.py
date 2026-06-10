@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -191,7 +192,7 @@ def run_visual_pipeline(
     llama_gpu_layers: int = -1,
     max_frames: Optional[int] = None,
     write_annotated_video: bool = True,
-    progress: Optional[Callable[[int, int, int, bool], None]] = None,
+    progress: Optional[Callable[..., None]] = None,
     preloaded_tracker=None,
     preloaded_vlm=None,
     locale: str = "en",
@@ -219,7 +220,9 @@ def run_visual_pipeline(
         conf=confidence,
         device=resolved_device,
     )
-    if vlm_backend == "llama-cpp-python":
+    if preloaded_vlm is not None:
+        vlm = preloaded_vlm
+    elif vlm_backend == "llama-cpp-python":
         vlm = LlamaCppMiniCPMVLM(
             model_path=llama_model_path,
             mmproj_path=llama_mmproj_path,
@@ -259,11 +262,36 @@ def run_visual_pipeline(
         0,
     ]  # [frame_index, total, track_count]
     if progress:
+        try:
+            progress_parameters = inspect.signature(progress).parameters.values()
+            progress_accepts_frame = (
+                any(
+                    parameter.kind == parameter.VAR_POSITIONAL
+                    for parameter in progress_parameters
+                )
+                or len(progress_parameters) >= 5
+            )
+        except (TypeError, ValueError):
+            progress_accepts_frame = True
+
+        def _report_progress(
+            done: int,
+            total: int,
+            track_count: int,
+            vlm_fired: bool,
+            annotated_frame=None,
+        ) -> None:
+            if progress_accepts_frame:
+                progress(done, total, track_count, vlm_fired, annotated_frame)
+            else:
+                progress(done, total, track_count, vlm_fired)
 
         def _on_vlm_start() -> None:
-            progress(_frame_info[0], _frame_info[1], _frame_info[2], True, None)
+            _report_progress(_frame_info[0], _frame_info[1], _frame_info[2], True)
 
         structurer.on_vlm_start = _on_vlm_start
+    else:
+        _report_progress = None
 
     annotated_path = out_dir / f"{source.stem}_annotated.mp4"
     writer = None
@@ -296,7 +324,9 @@ def run_visual_pipeline(
                 else None
             )
             if progress:
-                progress(frame_index, total_frames, len(tracks), False, annotated_frame)
+                _report_progress(
+                    frame_index, total_frames, len(tracks), False, annotated_frame
+                )
             if writer is not None:
                 writer.write(annotated_frame)
     finally:
