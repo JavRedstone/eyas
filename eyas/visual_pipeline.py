@@ -11,7 +11,7 @@ import cv2
 
 from event_structuring.structurer import EventStructurer, PersonStatus, Zone
 from object_detection.detector import PersonTracker, Track
-from video_processing.process import MiniCPMVLM
+from video_processing.process import LlamaCppMiniCPMVLM, MiniCPMVLM
 from utils.device import get_device
 from utils.paths import models_dir
 from utils.video import create_video_writer, get_video_info
@@ -172,6 +172,15 @@ def run_visual_pipeline(
     post_trigger_seconds: float = 0.5,
     vlm_max_image_size: int = 448,
     vlm_max_tokens: int = 96,
+    vlm_backend: str = "transformers",
+    llama_model_path: Optional[str] = None,
+    llama_mmproj_path: Optional[str] = None,
+    llama_repo_id: str = "openbmb/MiniCPM-V-4.6-gguf",
+    llama_filename: str = "MiniCPM-V-4_6-F16.gguf",
+    llama_mmproj_filename: str = "mmproj-model-f16.gguf",
+    llama_threads: Optional[int] = None,
+    llama_context: int = 8192,
+    llama_gpu_layers: int = -1,
     max_frames: Optional[int] = None,
     write_annotated_video: bool = True,
     progress: Optional[Callable[[int, int, int, bool], None]] = None,
@@ -199,13 +208,27 @@ def run_visual_pipeline(
         conf=confidence,
         device=resolved_device,
     )
-    vlm_dtype = "float16" if resolved_device in {"mps", "cuda"} else "auto"
-    vlm = MiniCPMVLM(
-        device=resolved_device,
-        dtype=vlm_dtype,
-        max_image_size=vlm_max_image_size,
-        max_new_tokens=vlm_max_tokens,
-    )
+    if vlm_backend == "llama-cpp-python":
+        vlm = LlamaCppMiniCPMVLM(
+            model_path=llama_model_path,
+            mmproj_path=llama_mmproj_path,
+            repo_id=llama_repo_id,
+            filename=llama_filename,
+            mmproj_filename=llama_mmproj_filename,
+            n_ctx=llama_context,
+            n_threads=llama_threads,
+            n_gpu_layers=llama_gpu_layers,
+            max_image_size=vlm_max_image_size,
+            max_new_tokens=vlm_max_tokens,
+        )
+    else:
+        vlm_dtype = "float16" if resolved_device in {"mps", "cuda"} else "auto"
+        vlm = MiniCPMVLM(
+            device=resolved_device,
+            dtype=vlm_dtype,
+            max_image_size=vlm_max_image_size,
+            max_new_tokens=vlm_max_tokens,
+        )
     structurer = EventStructurer(
         resolved_zones,
         vlm=vlm,
@@ -272,7 +295,19 @@ def run_visual_pipeline(
         "yolo_weights": yolo_weights,
         "tracker": tracker_config,
         "confidence": confidence,
-        "vlm_backend": "minicpmv",
+        "vlm_backend": vlm.backend,
+        "llama_model_path": llama_model_path,
+        "llama_mmproj_path": llama_mmproj_path,
+        "llama_repo_id": llama_repo_id if vlm_backend == "llama-cpp-python" else None,
+        "llama_filename": llama_filename if vlm_backend == "llama-cpp-python" else None,
+        "llama_mmproj_filename": (
+            llama_mmproj_filename if vlm_backend == "llama-cpp-python" else None
+        ),
+        "llama_threads": llama_threads,
+        "llama_context": llama_context if vlm_backend == "llama-cpp-python" else None,
+        "llama_gpu_layers": (
+            llama_gpu_layers if vlm_backend == "llama-cpp-python" else None
+        ),
         "semantic_interval_seconds": semantic_interval_seconds,
         "evidence_window_seconds": evidence_window_seconds,
         "evidence_frames": evidence_frames,
