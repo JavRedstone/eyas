@@ -5,8 +5,18 @@ the Gradio theme object.  No runtime CSS class-toggling; restart to change.
 """
 
 import json
+import sys
 from pathlib import Path
 from typing import Dict, List, Optional
+
+# Direct execution puts ``ui/`` first on sys.path, causing ``ui/locale.py`` to
+# shadow Python's standard-library ``locale`` module when Gradio imports pandas.
+_EYAS_ROOT = str(Path(__file__).resolve().parents[1])
+_UI_ROOT = str(Path(__file__).resolve().parent)
+if sys.path and str(Path(sys.path[0]).resolve()) == _UI_ROOT:
+    sys.path.pop(0)
+if _EYAS_ROOT not in sys.path:
+    sys.path.insert(0, _EYAS_ROOT)
 
 import gradio as gr
 from gradio.themes.base import Base
