@@ -5,9 +5,19 @@ the Gradio theme object.  No runtime CSS class-toggling; restart to change.
 """
 
 import json
+import sys
 import traceback
 from pathlib import Path
 from typing import Dict, List, Optional
+
+# Direct execution puts ``ui/`` first on sys.path, causing ``ui/locale.py`` to
+# shadow Python's standard-library ``locale`` module when Gradio imports pandas.
+_EYAS_ROOT = str(Path(__file__).resolve().parents[1])
+_UI_ROOT = str(Path(__file__).resolve().parent)
+if sys.path and str(Path(sys.path[0]).resolve()) == _UI_ROOT:
+    sys.path.pop(0)
+if _EYAS_ROOT not in sys.path:
+    sys.path.insert(0, _EYAS_ROOT)
 
 import gradio as gr
 from gradio.themes.base import Base
@@ -16,6 +26,19 @@ from gradio.themes.utils import colors, fonts, sizes
 from storage import manager as storage
 from streaming.capture import default_capture as _stream
 import model_registry as _mreg
+from ui.locale import (
+    LANGUAGE_KEY,
+    LANGUAGE_LABELS,
+    SPLASH_MODEL_KEYS,
+    Strings,
+    batch_translate_freeform,
+    display_risk,
+    format_translation_time,
+    is_known_activity,
+    localize_llm_result,
+    localize_text,
+    pipeline_steps_default,
+)
 
 _mreg.start()
 
@@ -649,9 +672,10 @@ pre code { background-color: transparent !important; border: none !important; pa
 .splash-item-icon.si-error   { color: var(--_danger); }
 .splash-item-icon.si-skipped { color: #f59e0b; }
 @keyframes splash-spin { to { transform: rotate(360deg); } }
-.splash-item-body { display: flex; flex-direction: column; gap: 2px; }
-.splash-item-label { font-size: 0.85rem; font-weight: 500; color: var(--_text); }
-.splash-item-detail { font-size: 0.72rem; color: var(--_muted); font-family: var(--font-mono); }
+.splash-item-body { display: flex; flex-direction: column; gap: 1px; }
+.splash-item-label { font-size: 0.8rem; font-weight: 600; color: var(--_muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.splash-item-model { font-size: 0.9rem; font-weight: 500; color: var(--_text); }
+.splash-item-detail { font-size: 0.72rem; color: var(--_muted); font-family: var(--font-mono); margin-top: 1px; }
 .splash-progress-wrap {
     height: 3px; background: var(--_border); margin: 0;
     border-radius: 0 0 16px 16px; overflow: hidden;
@@ -895,15 +919,15 @@ _REC_JS = "(v) => { if (v) document.body.classList.add('has-feed'); else documen
 # Static HTML
 # ---------------------------------------------------------------------------
 
-_HEADER_HTML = """
+def _header_html(S: Strings) -> str:
+    return f"""
 <div class="eyas-title-row">
     <span class="eyas-rec">&#9679;&nbsp;REC</span>
     <span class="eyas-title">Eyas</span>
 </div>
-<div class="eyas-tagline">AI Security Camera Agent</div>
+<div class="eyas-tagline">{S.t("header.tagline")}</div>
 <p class="eyas-subtitle">
-    Offline AI-powered CCTV analysis &mdash; structured event log,
-    security summaries &amp; natural-language queries.
+    {S.t("header.subtitle")}
 </p>
 <div class="eyas-divider"></div>
 """
@@ -931,30 +955,23 @@ _SAMPLE_PATHS: Dict[str, str] = {
 }
 
 
-_STEP_ICONS = {
-    "pending": "radio_button_unchecked",
-    "running": "sync",
-    "done":    "check_circle",
-    "error":   "error",
-}
-
-_PIPELINE_STEPS_DEFAULT = [
-    ("Load video",                  "pending", ""),
-    ("Object detection (YOLO)",     "pending", ""),
-    ("Semantic analysis (VLM)",     "pending", ""),
-    ("LLM summarization",           "pending", ""),
-]
+_STEP_ICONS = {"pending": "radio_button_unchecked", "running": "sync", "done": "check_circle", "error": "error"}
 
 
-def _steps_html(steps: list) -> str:
+def _splash_model_label(S: Strings, key: str, default: str) -> str:
+    msg_key = SPLASH_MODEL_KEYS.get(key)
+    return S.t(msg_key) if msg_key else default
+
+
+def _steps_html(S: Strings, steps: list) -> str:
     rows = []
-    for name, state, detail in steps:
-        icon = _STEP_ICONS.get(state, "radio_button_unchecked")
+    for step_id, state, detail in steps:
+        icon = _STEP_ICONS.get(state, "○")
         detail_span = f'<span class="ps-detail">{detail}</span>' if detail else ""
         rows.append(
             f'<div class="pipeline-step {state}">'
-            f'<span class="ps-icon material-symbols-outlined">{icon}</span>'
-            f'<span class="ps-name">{name}</span>'
+            f'<span class="ps-icon">{icon}</span>'
+            f'<span class="ps-name">{S.pipeline_step_label(step_id)}</span>'
             f'{detail_span}'
             f'</div>'
         )
@@ -989,7 +1006,9 @@ def _annotate_elapsed(steps: list, start_times: dict) -> list:
 # Splash screen
 # ---------------------------------------------------------------------------
 
-def _splash_html(states: list | None = None, fading: bool = False) -> str:
+def _splash_html(S: "Strings | None" = None, states: list | None = None, fading: bool = False) -> str:
+    if S is None:
+        S = Strings("en")
     _icon_class = {
         "waiting": ("hourglass_empty", ""),
         "loading": ("sync",            "si-loading"),
@@ -998,29 +1017,35 @@ def _splash_html(states: list | None = None, fading: bool = False) -> str:
         "skipped": ("warning",         "si-skipped"),
     }
     _detail_text = {
-        "waiting": "Waiting…",
-        "loading": "Loading weights…",
-        "ready":   "Ready",
-        "error":   "Failed",
-        "skipped": "Not available",
+        "waiting": S.t("splash.waiting"),
+        "loading": S.t("splash.loading"),
+        "ready":   S.t("splash.ready"),
+        "error":   S.t("splash.failed"),
+        "skipped": S.t("splash.skipped"),
     }
     if states is None:
         from model_registry import get_states
         states = get_states()
+
+    _registry_keys = ["yolo", "vlm", "llm", "tinyaya"]
 
     total = len(states)
     done_count = sum(1 for s in states if s.status in {"ready", "error", "skipped"})
     progress_pct = int(done_count / total * 100) if total else 0
 
     items_html = ""
-    for s in states:
+    for i, s in enumerate(states):
         icon, cls = _icon_class.get(s.status, ("hourglass_empty", ""))
         detail = s.detail if s.detail else _detail_text.get(s.status, "")
+        reg_key = _registry_keys[i] if i < len(_registry_keys) else ""
+        label = _splash_model_label(S, reg_key, s.label)
+        model_name = s.model_name or ""
         items_html += (
             f'<div class="splash-item">'
             f'<span class="splash-item-icon material-symbols-outlined {cls}">{icon}</span>'
             f'<div class="splash-item-body">'
-            f'<span class="splash-item-label">{s.label}</span>'
+            f'<span class="splash-item-label">{label}</span>'
+            f'<span class="splash-item-model">{model_name}</span>'
             f'<span class="splash-item-detail">{detail}</span>'
             f'</div></div>'
         )
@@ -1032,9 +1057,9 @@ def _splash_html(states: list | None = None, fading: bool = False) -> str:
         f'<span class="splash-logo-dot"></span>'
         f'<span class="splash-wordmark">Eyas</span>'
         f'</div>'
-        f'<div class="splash-subtitle">AI Security Camera Agent</div>'
+        f'<div class="splash-subtitle">{S.t("header.tagline")}</div>'
         f'<div class="splash-card">'
-        f'<div class="splash-card-header">Initializing Models</div>'
+        f'<div class="splash-card-header">{S.t("splash.initializing")}</div>'
         f'{items_html}'
         f'<div class="splash-progress-wrap">'
         f'<div class="splash-progress-bar" style="width:{progress_pct}%"></div>'
@@ -1048,31 +1073,54 @@ def _splash_html(states: list | None = None, fading: bool = False) -> str:
 # App
 # ---------------------------------------------------------------------------
 
+def _load_prefs_file(prefs_path: Optional[Path]) -> dict:
+    if prefs_path is None:
+        return {}
+    try:
+        return json.loads(prefs_path.read_text())
+    except Exception:
+        return {}
+
+
+def _save_prefs_file(prefs_path: Optional[Path], updates: dict) -> None:
+    if prefs_path is None:
+        return
+    merged = {**_load_prefs_file(prefs_path), **updates}
+    prefs_path.write_text(json.dumps(merged, indent=2))
+
+
 def build_app(
     color: str = "night",
     dark: bool = True,
     advanced: Optional[str] = None,
+    language: str = "en",
     prefs_path: Optional[Path] = None,
 ) -> gr.Blocks:
 
+    S = Strings(language)
     current_label = (
         _ADVANCED_NAMES.get(advanced, advanced)
         if advanced else _theme_label(color, dark)
     )
     _theme = EyasTheme(color=color, dark=dark, advanced=advanced)
 
-    with gr.Blocks(title="AI Security Camera Agent") as demo:
+    with gr.Blocks(title=S.t("app.title")) as demo:
 
         # ── Startup splash (ComfyUI-style model loading screen) ──────────────
-        splash_html  = gr.HTML(value=_splash_html(), elem_id="splash-wrapper")
+        splash_html  = gr.HTML(value=_splash_html(S), elem_id="splash-wrapper")
         splash_timer = gr.Timer(value=0.9, active=True)
 
         # ── Header ──────────────────────────────────────────────────────────
         with gr.Row():
             with gr.Column(scale=5, elem_id="eyas-header"):
-                gr.HTML(_HEADER_HTML)
+                gr.HTML(_header_html(S))
             with gr.Column(scale=1, min_width=160, elem_id="theme-col"):
-                gr.HTML(f'<div class="eyas-theme-badge">Theme: <strong>{current_label}</strong></div>')
+                gr.HTML(
+                    f'<div class="eyas-theme-badge">'
+                    f'{S.t("badge.theme", theme=current_label)}<br>'
+                    f'{S.t("badge.language", language=LANGUAGE_LABELS.get(language, language))}'
+                    f'</div>'
+                )
 
         event_log_state: gr.State = gr.State([])
         output_dir_state: gr.State = gr.State("")
@@ -1085,179 +1133,182 @@ def build_app(
                 gr.HTML(
                     '<div class="eyas-panel-header">'
                     '<span class="ph-dot"></span>'
-                    '<span class="ph-label">Footage</span>'
+                    f'<span class="ph-label">{S.t("header.footage")}</span>'
                     '</div>'
                 )
                 sample_dd = gr.Dropdown(
                     choices=list(_SAMPLE_PATHS.keys()),
-                    label="Sample clips",
+                    label=S.t("labels.sample_clips"),
                     interactive=True,
                 )
-                load_sample_btn = gr.Button("Load Sample", variant="secondary", size="sm", elem_id="load-sample-btn")
-                video_input = gr.Video(label="Original Video", sources=["upload"])
-                upload_status = gr.Textbox(label="Storage", interactive=False, lines=1)
+                load_sample_btn = gr.Button(S.t("buttons.load_sample"), variant="secondary", size="sm", elem_id="load-sample-btn")
+                video_input = gr.Video(label=S.t("labels.original_video"), sources=["upload"])
+                upload_status = gr.Textbox(label=S.t("labels.storage"), interactive=False, lines=1)
 
             # — Right panel: analysis + output ───────────────────────────────
             with gr.Column(scale=2, elem_id="eyas-main"):
                 gr.HTML(
                     '<div class="eyas-panel-header">'
                     '<span class="ph-dot"></span>'
-                    '<span class="ph-label">Analysis</span>'
+                    f'<span class="ph-label">{S.t("header.analysis")}</span>'
                     '</div>'
                 )
                 analyze_btn = gr.Button(
-                    "Analyze", variant="primary", size="lg", elem_id="analyze-btn",
+                    S.t("buttons.analyze"), variant="primary", size="lg", elem_id="analyze-btn",
                 )
                 status_box = gr.Textbox(
-                    label="Status", interactive=False, lines=1,
+                    label=S.t("labels.status"), interactive=False, lines=1,
                     elem_id="status-box",
                 )
-                pipeline_html = gr.HTML(_steps_html(_PIPELINE_STEPS_DEFAULT))
-                annotated_img = gr.Image(label="Annotated (Live)", interactive=False)
-                annotated_vid = gr.Video(label="Annotated Video", interactive=False, visible=False)
+                pipeline_html = gr.HTML(_steps_html(S, pipeline_steps_default()))
+                annotated_img = gr.Image(label=S.t("labels.annotated_live"), interactive=False)
+                annotated_vid = gr.Video(label=S.t("labels.annotated_video"), interactive=False, visible=False)
 
         video_input.change(fn=None, inputs=[video_input], js=_REC_JS)
 
         # ── Tabs ────────────────────────────────────────────────────────────
         with gr.Tabs(selected=0):
 
-            with gr.TabItem("Event Timeline"):
+            with gr.TabItem(S.t("tabs.event_timeline")):
                 with gr.Row():
-                    _section_title("Detected Events")
+                    _section_title(S.t("labels.detected_events"))
                     refresh_events_btn = gr.Button(
                         "", variant="secondary", size="sm",
                         elem_id="refresh-events-btn", scale=0, min_width=40,
                     )
                 event_table = gr.DataFrame(
                     headers=["#", "Event", "Activity", "Start", "End", "Zone", "Confidence", "Clip"],
-                    label="Event Log", interactive=False, wrap=True, elem_id="event-table",
+                    label=S.t("labels.event_log"), interactive=False, wrap=True, elem_id="event-table",
                 )
                 with gr.Row():
                     with gr.Column(scale=2):
-                        clip_selector = gr.Dropdown(label="Select clip to preview", choices=[], interactive=True)
+                        clip_selector = gr.Dropdown(label=S.t("labels.select_clip"), choices=[], interactive=True)
                     with gr.Column(scale=3):
-                        clip_preview = _clip_video("Clip Preview")
+                        clip_preview = _clip_video(S.t("labels.clip_preview"))
 
-            with gr.TabItem("Summary & Alerts"):
+            with gr.TabItem(S.t("tabs.summary_alerts")):
                 with gr.Row():
                     with gr.Column():
-                        _section_title("AI Security Summary")
-                        summary_box = gr.Textbox(label="Overnight Summary", lines=6, interactive=False)
-                        risk_badge  = gr.Label(label="Risk Level")
-                    with gr.Column():
-                        _section_title("Flagged Items")
-                        flags_box = gr.JSON(label="Flags")
-                        suspicious_clips_dd = gr.Dropdown(
-                            label="Suspicious clips — select to preview", choices=[], interactive=True,
+                        _section_title(S.t("labels.ai_summary"))
+                        summary_box = gr.Textbox(label=S.t("labels.overnight_summary"), lines=6, interactive=False)
+                        summary_translation_time = gr.Textbox(
+                            label=S.t("labels.translation_time"), interactive=False, lines=1,
                         )
-                        flagged_clip_preview = _clip_video("Flagged Clip Preview")
+                        risk_badge  = gr.Label(label=S.t("labels.risk_level"))
+                    with gr.Column():
+                        _section_title(S.t("labels.flagged_items"))
+                        flags_box = gr.JSON(label=S.t("labels.flags"))
+                        suspicious_clips_dd = gr.Dropdown(
+                            label=S.t("labels.suspicious_clips"), choices=[], interactive=True,
+                        )
+                        flagged_clip_preview = _clip_video(S.t("labels.flagged_clip_preview"))
 
-            with gr.TabItem("Ask Footage"):
-                _section_title("Ask a question about the footage")
-                gr.Markdown(
-                    "*e.g. 'Anything unusual overnight?', "
-                    "'Show back door activity', "
-                    "'What happened between 2–4 AM?'*"
+            with gr.TabItem(S.t("tabs.ask_footage")):
+                _section_title(S.t("labels.ask_question"))
+                gr.Markdown(S.t("labels.ask_examples"))
+                chatbot = gr.Chatbot(label=S.t("labels.footage_qa"), height=420)
+                qa_translation_time = gr.Textbox(
+                    label=S.t("labels.translation_time"), interactive=False, lines=1,
                 )
-                chatbot = gr.Chatbot(label="Footage Q&A", height=420)
                 with gr.Row():
                     query_input = gr.Textbox(
-                        placeholder="Ask about the footage...", label="Your question", scale=5, lines=1,
+                        placeholder=S.t("labels.question_placeholder"),
+                        label=S.t("labels.your_question"), scale=5, lines=1,
                     )
-                    ask_btn = gr.Button("Ask", variant="primary", scale=1)
-                clear_btn = gr.Button("Clear chat", variant="secondary", size="sm")
+                    ask_btn = gr.Button(S.t("buttons.ask"), variant="primary", scale=1)
+                clear_btn = gr.Button(S.t("buttons.clear_chat"), variant="secondary", size="sm")
 
-            with gr.TabItem("Detection Metrics"):
-                _section_title("Per-Zone Object Counts")
+            with gr.TabItem(S.t("tabs.detection_metrics")):
+                _section_title(S.t("labels.zone_counts"))
                 with gr.Row():
-                    count_entrance  = _zone_number("Entrance",  "count-entrance")
-                    count_counter   = _zone_number("Counter",   "count-counter")
-                    count_back_door = _zone_number("Back Door", "count-back-door")
-                    count_aisles    = _zone_number("Aisles",    "count-aisles")
-                metrics_json = gr.JSON(label="Raw detection counts by zone")
+                    count_entrance  = _zone_number(S.zone_label("entrance"),  "count-entrance")
+                    count_counter   = _zone_number(S.zone_label("counter"),   "count-counter")
+                    count_back_door = _zone_number(S.zone_label("back_door"), "count-back-door")
+                    count_aisles    = _zone_number(S.zone_label("aisles"),    "count-aisles")
+                metrics_json = gr.JSON(label=S.t("labels.raw_counts"))
 
-            with gr.TabItem("Audio Report"):
-                _section_title("Spoken Security Report")
-                gr.Markdown(
-                    "Generates a spoken playback of the AI security summary using VoxCPM2 TTS. "
-                    "Run **Analyze** first, then click the button below."
-                )
-                audio_output      = gr.Audio(label="TTS Report", interactive=False)
-                generate_audio_btn = gr.Button("Generate Audio Report", variant="secondary")
+            with gr.TabItem(S.t("tabs.audio_report")):
+                _section_title(S.t("labels.spoken_report"))
+                gr.Markdown(S.t("labels.audio_help"))
+                audio_output      = gr.Audio(label=S.t("labels.tts_report"), interactive=False)
+                generate_audio_btn = gr.Button(S.t("buttons.generate_audio"), variant="secondary")
 
             # ── Live Feed ────────────────────────────────────────────────────
-            with gr.TabItem("Live Feed"):
-                _section_title("Camera Stream")
-                gr.Markdown(
-                    "*Enter an RTSP URL, a file path, or `0` for the default webcam. "
-                    "Click **Start** to connect.*"
-                )
+            with gr.TabItem(S.t("tabs.live_feed")):
+                _section_title(S.t("labels.camera_stream"))
+                gr.Markdown(S.t("labels.live_feed_help"))
                 with gr.Row():
                     stream_src = gr.Textbox(
-                        placeholder="rtsp://192.168.1.x:554/stream  or  0",
-                        label="Source", scale=4, lines=1,
+                        placeholder=S.t("labels.source_placeholder"),
+                        label=S.t("labels.source"), scale=4, lines=1,
                     )
-                    start_stream_btn = gr.Button("Start", variant="primary", scale=1)
-                    stop_stream_btn  = gr.Button("Stop",  variant="secondary", scale=1)
+                    start_stream_btn = gr.Button(S.t("buttons.start"), variant="primary", scale=1)
+                    stop_stream_btn  = gr.Button(S.t("buttons.stop"),  variant="secondary", scale=1)
 
-                stream_status = gr.Textbox(label="Stream status", interactive=False, lines=1)
-                live_image    = gr.Image(label="Live Feed", interactive=False, height=420)
+                stream_status = gr.Textbox(label=S.t("labels.stream_status"), interactive=False, lines=1)
+                live_image    = gr.Image(label=S.t("labels.live_feed"), interactive=False, height=420)
                 feed_timer    = gr.Timer(value=0.1, active=False)
 
                 with gr.Row():
-                    start_rec_btn = gr.Button("Start Recording", variant="primary")
-                    stop_rec_btn  = gr.Button("Stop Recording",  variant="secondary")
-                rec_status = gr.Textbox(label="Recording", interactive=False, lines=1)
+                    start_rec_btn = gr.Button(S.t("buttons.start_recording"), variant="primary")
+                    stop_rec_btn  = gr.Button(S.t("buttons.stop_recording"),  variant="secondary")
+                rec_status = gr.Textbox(label=S.t("labels.recording"), interactive=False, lines=1)
 
             # ── Clip Library ─────────────────────────────────────────────────
-            with gr.TabItem("Clip Library"):
-                _section_title("Stored Clips")
+            with gr.TabItem(S.t("tabs.clip_library")):
+                _section_title(S.t("labels.stored_clips"))
                 with gr.Row():
-                    refresh_lib_btn = gr.Button("Refresh", size="sm", variant="secondary")
+                    refresh_lib_btn = gr.Button(S.t("buttons.refresh"), size="sm", variant="secondary")
                     lib_dd = gr.Dropdown(
-                        label="Clips", choices=storage.choices(), interactive=True, scale=4,
+                        label=S.t("labels.clips"), choices=storage.choices(language), interactive=True, scale=4,
                     )
-                    load_clip_btn   = gr.Button("Load for Analysis", variant="primary", size="sm", scale=1)
-                    delete_clip_btn = gr.Button("Delete", variant="stop", size="sm", scale=1)
+                    load_clip_btn   = gr.Button(S.t("buttons.load_for_analysis"), variant="primary", size="sm", scale=1)
+                    delete_clip_btn = gr.Button(S.t("buttons.delete"), variant="stop", size="sm", scale=1)
 
-                lib_status   = gr.Textbox(label="Status", interactive=False, lines=1)
-                lib_preview  = gr.Video(label="Preview", interactive=False)
+                lib_status   = gr.Textbox(label=S.t("labels.status"), interactive=False, lines=1)
+                lib_preview  = gr.Video(label=S.t("labels.preview"), interactive=False)
 
-            with gr.TabItem("Settings"):
-                _section_title("Simple Theme")
-                gr.Markdown(
-                    "Pick a color and mode, then click **Save**. "
-                    "Restart the server to apply."
+            with gr.TabItem(S.t("tabs.settings")):
+                _section_title(S.t("labels.language"))
+                gr.Markdown(S.t("labels.language_help"))
+                language_dd = gr.Dropdown(
+                    choices=list(LANGUAGE_LABELS.values()),
+                    value=LANGUAGE_LABELS.get(language, LANGUAGE_LABELS["en"]),
+                    label=S.t("labels.language"),
+                    interactive=True,
                 )
+                save_lang_btn = gr.Button(S.t("buttons.save_language"), variant="secondary", size="sm")
+                lang_status = gr.Markdown("")
+
+                gr.HTML("<hr style='border-color:var(--_border);margin:18px 0;'>")
+                _section_title(S.t("labels.simple_theme"))
+                gr.Markdown(S.t("labels.theme_help"))
                 with gr.Row():
                     color_dd = gr.Dropdown(
                         choices=list(_COLOR_NAMES.values()),
                         value=_COLOR_NAMES[color],
-                        label="Color",
+                        label=S.t("labels.color"),
                         interactive=True,
                     )
                     mode_dd = gr.Dropdown(
-                        choices=["Dark", "Light"],
-                        value="Dark" if dark else "Light",
-                        label="Mode",
+                        choices=[S.t("modes.dark"), S.t("modes.light")],
+                        value=S.t("modes.dark") if dark else S.t("modes.light"),
+                        label=S.t("labels.mode"),
                         interactive=True,
                     )
-                save_btn     = gr.Button("Save theme", variant="secondary", size="sm")
+                save_btn     = gr.Button(S.t("buttons.save_theme"), variant="secondary", size="sm")
                 theme_status = gr.Markdown("")
 
                 gr.HTML("<hr style='border-color:var(--_border);margin:18px 0;'>")
-                _section_title("Advanced Theme")
-                gr.Markdown(
-                    "DESIGN.md-sourced palettes from real production websites. "
-                    "See `designs/` for the source files."
-                )
+                _section_title(S.t("labels.advanced_theme"))
+                gr.Markdown(S.t("labels.advanced_theme_help"))
                 advanced_dd = gr.Dropdown(
                     choices=list(_ADVANCED_NAMES.values()),
                     value=_ADVANCED_NAMES.get(advanced) if advanced else None,
-                    label="Advanced Theme",
+                    label=S.t("labels.advanced_theme"),
                     interactive=True,
                 )
-                save_adv_btn    = gr.Button("Save advanced theme", variant="secondary", size="sm")
+                save_adv_btn    = gr.Button(S.t("buttons.save_advanced_theme"), variant="secondary", size="sm")
                 adv_theme_status = gr.Markdown("")
 
         # ── Callbacks ───────────────────────────────────────────────────────
@@ -1276,14 +1327,14 @@ def build_app(
                 return ""
             norm = video_path.replace("\\", "/")
             if _CLIPS_DIR.replace("\\", "/") in norm:
-                return "Clip from library — already stored."
+                return S.t("status.clip_from_library")
             if _INPUTS_DIR.replace("\\", "/") in norm:
-                return "Sample clip — not stored."
+                return S.t("status.sample_not_stored")
             try:
                 entry = storage.store(video_path, source="upload")
-                return f"Stored: {entry['filename']}  ({entry['size_mb']} MB)"
+                return S.t("status.stored", filename=entry["filename"], size_mb=entry["size_mb"])
             except Exception as exc:
-                return f"Storage error: {exc}"
+                return S.t("status.storage_error", error=exc)
 
         video_input.change(on_upload, inputs=[video_input], outputs=[upload_status])
 
@@ -1295,7 +1346,7 @@ def build_app(
         # ── Splash timer — polls model registry, fades splash when ready ──────
         def _poll_splash():
             done = _mreg.all_done()
-            return _splash_html(fading=done), gr.update(active=not done)
+            return _splash_html(S, fading=done), gr.update(active=not done)
 
         splash_timer.tick(_poll_splash, outputs=[splash_html, splash_timer])
 
@@ -1312,50 +1363,46 @@ def build_app(
                 from llm.reasoner import summarize_events as _fallback
                 return _fallback(events)
 
-            steps = list(_PIPELINE_STEPS_DEFAULT)  # mutable copy
+            steps = pipeline_steps_default()  # mutable copy
             step_start: dict = {}
             _last_frame: list = [None]  # latest annotated frame (RGB numpy array)
+            activity_stats = None
             _live_events.clear()
             _live_rows.clear()
-
-            def _blank():
-                return ([], [], gr.update(choices=[]), "", {"none": 1.0},
-                        [], gr.update(choices=[]), {}, 0, 0, 0, 0,
-                        gr.update(visible=False), gr.update(visible=False), "")
 
             def emit(status):
                 f = _last_frame[0]
                 ann = gr.update(value=f, visible=f is not None) if f is not None else gr.update(visible=False)
                 return (
-                    _steps_html(_annotate_elapsed(steps, step_start)), status,
-                    list(_live_events), list(_live_rows), gr.update(choices=[]), "", {"none": 1.0},
+                    _steps_html(S, _annotate_elapsed(steps, step_start)), status,
+                    list(_live_events), list(_live_rows), gr.update(choices=[]), "", "", {"none": 1.0},
                     [], gr.update(choices=[]), {}, 0, 0, 0, 0,
                     ann,
                     gr.update(visible=False),
                     "",
                 )
 
-            def _start_step(idx: int, name: str, detail: str = "") -> None:
+            def _start_step(idx: int, step_id: str, detail: str = "") -> None:
                 step_start[idx] = _time.time()
-                steps[idx] = (name, "running", detail)
+                steps[idx] = (step_id, "running", detail)
 
-            def _finish_step(idx: int, name: str, detail: str = "") -> None:
+            def _finish_step(idx: int, step_id: str, detail: str = "") -> None:
                 step_start.pop(idx, None)
-                steps[idx] = (name, "done", detail)
+                steps[idx] = (step_id, "done", detail)
 
             if video_path is None:
-                steps[0] = ("Load video", "error", "No video selected")
-                yield emit("No video uploaded.")
+                steps[0] = ("load_video", "error", S.t("status.no_video_selected"))
+                yield emit(S.t("status.no_video"))
                 return
 
             # ── Step 1: load ────────────────────────────────────────────────
-            _start_step(0, "Load video")
-            yield emit("Loading video…")
+            _start_step(0, "load_video")
+            yield emit(S.t("status.loading_video"))
 
-            _finish_step(0, "Load video", Path(video_path).name)
-            _start_step(1, "Object detection (YOLO)", "starting…")
-            steps[2] = ("Semantic analysis (VLM)", "pending", "")
-            yield emit("Running YOLO + event structuring…")
+            _finish_step(0, "load_video", Path(video_path).name)
+            _start_step(1, "yolo", S.t("pipeline.starting"))
+            steps[2] = ("vlm", "pending", "")
+            yield emit(S.t("status.running_yolo"))
 
             # ── Step 2: visual pipeline (threaded so progress yields work) ───
             import queue as _queue
@@ -1414,6 +1461,7 @@ def build_app(
                         on_event=_on_new_events,
                         preloaded_tracker=_mreg.get("yolo"),
                         preloaded_vlm=_mreg.get("vlm"),
+                        locale=language,
                     )
                     _q.put(("done", result))
                 except Exception as exc:
@@ -1429,12 +1477,12 @@ def build_app(
                 except _queue.Empty:
                     # Still in model-load phase — pulse the detail so the user knows
                     if not _model_loaded:
-                        steps[1] = ("Object detection (YOLO)", "running", "loading model weights…")
-                        steps[2] = ("Semantic analysis (VLM)", "running", "loading model weights…")
-                        yield emit("Loading YOLO + VLM weights…")
+                        steps[1] = ("yolo", "running", S.t("pipeline.loading_weights"))
+                        steps[2] = ("vlm", "running", S.t("pipeline.loading_weights"))
+                        yield emit(S.t("status.loading_models"))
                     else:
                         # Already processing — re-yield to refresh elapsed timers
-                        yield emit(f"Processing…")
+                        yield emit(S.t("status.processing"))
                     continue
 
                 kind = msg[0]
@@ -1446,43 +1494,56 @@ def build_app(
                     if display_frame is not None:
                         _last_frame[0] = display_frame
                     pct = f"{done}/{total}" if total else str(done)
-                    person_s = f"{track_count} person{'s' if track_count != 1 else ''}"
-                    steps[1] = ("Object detection (YOLO)", "running", f"frame {pct} · {person_s}")
+                    person_key = "pipeline.persons" if track_count == 1 else "pipeline.persons_plural"
+                    person_s = S.t(person_key, count=track_count)
+                    steps[1] = ("yolo", "running", f"{S.t('pipeline.frame', pct=pct)} · {person_s}")
                     if vlm_fired:
                         if 2 not in step_start:
                             step_start[2] = _time.time()
-                        steps[2] = ("Semantic analysis (VLM)", "running", f"frame {pct}")
-                    yield emit(f"Processing frame {pct}…")
+                        steps[2] = ("vlm", "running", S.t("pipeline.frame", pct=pct))
+                    yield emit(S.t("status.processing_frame", pct=pct))
                 elif kind == "done":
                     vp = msg[1]
                     break
                 else:
-                    steps[1] = ("Object detection (YOLO)", "error", str(msg[1])[:80])
-                    steps[2] = ("Semantic analysis (VLM)", "error", "")
-                    yield emit(f"Pipeline error: {msg[1]}")
+                    steps[1] = ("yolo", "error", str(msg[1])[:80])
+                    steps[2] = ("vlm", "error", "")
+                    yield emit(S.t("status.pipeline_error", error=msg[1]))
                     return
 
             events: List[Dict] = vp.events
-            _finish_step(1, "Object detection (YOLO)",
-                         f"{vp.frames_processed} frames · {vp.unique_tracks} tracks")
-            _finish_step(2, "Semantic analysis (VLM)", f"{len(events)} events")
-            _start_step(3, "LLM summarization")
+            _finish_step(1, "yolo",
+                         S.t("pipeline.frames_tracks", frames=vp.frames_processed, tracks=vp.unique_tracks))
+            _finish_step(2, "vlm", S.t("pipeline.events_count", count=len(events)))
+            _start_step(3, "llm_summarize")
+
+            freeform_activities: set[str] = set()
+            for ev in events:
+                activity = "pickup" if ev.get("pickup_confirmed") else ev.get("activity", "")
+                if activity and not is_known_activity(activity):
+                    freeform_activities.add(activity)
+            activity_stats, activity_translations = None, {}
+            activity_translations, activity_stats = batch_translate_freeform(freeform_activities, language)
 
             rows = []
             for i, ev in enumerate(events):
-                kind = "pickup" if ev.get("pickup_confirmed") else "observation"
-                activity = (ev.get("activity") or "").strip() or "—"
+                raw_activity = "pickup" if ev.get("pickup_confirmed") else ev.get("activity", "")
+                if is_known_activity(raw_activity):
+                    activity = S.activity_label(raw_activity)
+                else:
+                    activity = activity_translations.get(raw_activity, raw_activity) or "—"
+                zone_raw = ev.get("zone", "")
                 clip_name = "—"
                 if ev.get("pickup_confirmed"):
                     picked_up_items = ev.get("picked_up_items") or []
                     if picked_up_items:
                         clip_name = picked_up_items[0].get("name", "—") or "—"
                 rows.append([
-                    i, kind,
+                    i, "pickup" if ev.get("pickup_confirmed") else "observation",
                     activity,
                     _fmt_time(ev.get("timestamp")),
                     _fmt_time(ev.get("confirmation_timestamp")) or "—",
-                    ev.get("zone", "") or "—",
+                    S.zone_label(zone_raw) if zone_raw else "—",
                     round(float(ev.get("confidence", 0)), 2),
                     clip_name,
                 ])
@@ -1494,9 +1555,9 @@ def build_app(
 
             f = _last_frame[0]
             yield (
-                _steps_html(_annotate_elapsed(steps, step_start)), "Running LLM summarization…",
+                _steps_html(S, _annotate_elapsed(steps, step_start)), S.t("status.running_llm"),
                 events, rows, gr.update(choices=[]),
-                "", {"none": 1.0}, [], gr.update(choices=[]),
+                "", "", {"none": 1.0}, [], gr.update(choices=[]),
                 zone_counts,
                 zone_counts["entrance"], zone_counts["counter"],
                 zone_counts["back_door"], zone_counts["aisles"],
@@ -1509,20 +1570,39 @@ def build_app(
             try:
                 llm = _summarize(events)
             except Exception:
-                llm = {"summary": "LLM unavailable — no model loaded.",
+                llm = {"summary": S.t("status.llm_unavailable"),
                        "flags": [], "suspicious_clips": [], "risk_level": "none"}
 
-            _finish_step(3, "LLM summarization", f"risk: {llm['risk_level']}")
-            status = (
-                f"Done. {vp.frames_processed} frames · "
-                f"{vp.unique_tracks} tracks · {len(events)} events."
+            llm_display, llm_stats = localize_llm_result(llm, language)
+            from postprocessing.translate_tts import TranslateStats
+
+            combined_stats = TranslateStats()
+            if activity_stats:
+                combined_stats = combined_stats.merge(activity_stats)
+            if llm_stats:
+                combined_stats = combined_stats.merge(llm_stats)
+            translation_time_str = format_translation_time(
+                S,
+                combined_stats if (combined_stats.cache_hits or combined_stats.cache_misses) else None,
             )
+
+            risk_key = llm.get("risk_level", "none")
+            _finish_step(3, "llm_summarize", S.t("pipeline.risk", level=S.risk_label(risk_key)))
+            status = S.t(
+                "status.done",
+                frames=vp.frames_processed,
+                tracks=vp.unique_tracks,
+                events=len(events),
+            )
+            if translation_time_str:
+                status = f"{status}  ·  {translation_time_str}"
             ann_vid_path = vp.annotated_video_path
             yield (
-                _steps_html(_annotate_elapsed(steps, step_start)), status,
+                _steps_html(S, _annotate_elapsed(steps, step_start)), status,
                 events, rows, gr.update(choices=[]),
-                llm["summary"], {llm["risk_level"]: 1.0},
-                llm["flags"], gr.update(choices=llm["suspicious_clips"]),
+                llm_display["summary"], translation_time_str,
+                {S.risk_label(risk_key): 1.0},
+                llm_display["flags"], gr.update(choices=llm["suspicious_clips"]),
                 zone_counts,
                 zone_counts["entrance"], zone_counts["counter"],
                 zone_counts["back_door"], zone_counts["aisles"],
@@ -1537,7 +1617,7 @@ def build_app(
             outputs=[
                 pipeline_html, status_box,
                 event_log_state, event_table, clip_selector,
-                summary_box, risk_badge, flags_box, suspicious_clips_dd,
+                summary_box, summary_translation_time, risk_badge, flags_box, suspicious_clips_dd,
                 metrics_json, count_entrance, count_counter, count_back_door, count_aisles,
                 annotated_img, annotated_vid,
                 output_dir_state,
@@ -1566,35 +1646,42 @@ def build_app(
 
         def ask_footage(message: str, history: list, events: List[Dict]):
             if not message.strip():
-                return history, ""
+                return history, "", ""
             if not events:
-                reply = "No events loaded yet — please upload and analyze a video first."
-            else:
-                try:
-                    _r = _mreg.get("llm")
-                    if _r is not None:
-                        result = _r.answer_query(events, message)
-                    else:
-                        from llm.reasoner import answer_query as _answer
-                        result = _answer(events, message)
-                    reply = result["answer"]
-                    if result.get("clips"):
-                        reply += "\n\nRelated clips: " + ", ".join(result["clips"])
-                except Exception as exc:
-                    reply = f"LLM error: {exc}"
-            history = list(history) + [
-                {"role": "user",      "content": message},
-                {"role": "assistant", "content": reply},
-            ]
-            return history, ""
+                reply = S.t("status.no_events_qa")
+                return history + [(message, reply)], "", ""
+            try:
+                _r = _mreg.get("llm")
+                if _r is not None:
+                    result = _r.answer_query(events, message)
+                else:
+                    from llm.reasoner import answer_query as _answer
+                    result = _answer(events, message)
+                reply = result["answer"]
+                reply, stats = localize_text(reply, language)
+                if result.get("clips"):
+                    reply += "\n\n" + S.t("status.related_clips", clips=", ".join(result["clips"]))
+                timing = format_translation_time(S, stats)
+            except Exception as exc:
+                reply = S.t("status.llm_error", error=exc)
+                timing = ""
+            return history + [(message, reply)], "", timing
 
-        ask_btn.click(ask_footage, inputs=[query_input, chatbot, event_log_state], outputs=[chatbot, query_input])
-        query_input.submit(ask_footage, inputs=[query_input, chatbot, event_log_state], outputs=[chatbot, query_input])
-        clear_btn.click(lambda: ([], ""), outputs=[chatbot, query_input])
+        ask_btn.click(
+            ask_footage,
+            inputs=[query_input, chatbot, event_log_state],
+            outputs=[chatbot, query_input, qa_translation_time],
+        )
+        query_input.submit(
+            ask_footage,
+            inputs=[query_input, chatbot, event_log_state],
+            outputs=[chatbot, query_input, qa_translation_time],
+        )
+        clear_btn.click(lambda: ([], "", ""), outputs=[chatbot, query_input, qa_translation_time])
 
         def generate_audio(events: List[Dict]):
             if not events:
-                return None
+                return None, ""
             try:
                 _r = _mreg.get("llm")
                 if _r is not None:
@@ -1604,63 +1691,60 @@ def build_app(
                     llm = _summarize(events)
                 text = llm.get("summary", "").strip()
                 if not text:
-                    return None
+                    return None, ""
+                text, stats = localize_text(text, language)
+                from postprocessing.translate_tts import tts
                 import numpy as np
-                preloaded_tts = _mreg.get("tts")
-                if preloaded_tts is not None:
-                    model, sample_rate = preloaded_tts
-                    chunks = list(model.generate_streaming(text=f"(A young woman, gentle and sweet voice){text}"))
-                    if not chunks:
-                        return None
-                    audio = np.concatenate([c.astype(np.float32) for c in chunks])
-                else:
-                    from postprocessing.translate_tts import tts
-                    chunks = list(tts(text, target_lang="English"))
-                    if not chunks:
-                        return None
-                    sample_rate = chunks[0][0]
-                    audio = np.concatenate([c[1] for c in chunks])
-                return sample_rate, audio
+                chunks = list(tts(text, target_lang=S.tts_lang))
+                if not chunks:
+                    return None, format_translation_time(S, stats)
+                sample_rate = chunks[0][0]
+                audio = np.concatenate([c[1] for c in chunks])
+                return (sample_rate, audio), format_translation_time(S, stats)
             except Exception:
-                return None
+                return None, ""
 
-        generate_audio_btn.click(generate_audio, inputs=[event_log_state], outputs=[audio_output])
+        generate_audio_btn.click(
+            generate_audio,
+            inputs=[event_log_state],
+            outputs=[audio_output, summary_translation_time],
+        )
 
         # ── Live Feed callbacks ──────────────────────────────────────────────
 
         def start_stream(src: str):
             src = src.strip()
             if not src:
-                return "No source specified.", gr.Timer(active=False)
+                return S.t("status.no_source"), gr.Timer(active=False)
             try:
                 source = int(src) if src.isdigit() else src
                 _stream.start(source)
-                return f"Connected: {src}", gr.Timer(active=True)
+                return S.t("status.connected", src=src), gr.Timer(active=True)
             except Exception as exc:
-                return f"Error: {exc}", gr.Timer(active=False)
+                return S.t("status.stream_error", error=exc), gr.Timer(active=False)
 
         def stop_stream():
             _stream.stop()
-            return "Stream stopped.", gr.Timer(active=False)
+            return S.t("status.stream_stopped"), gr.Timer(active=False)
 
         def poll_frame():
             return _stream.get_rgb()
 
         def start_recording():
             if not _stream.is_open():
-                return "No active stream."
+                return S.t("status.no_active_stream")
             path = _stream.start_recording()
-            return f"Recording → {path}"
+            return S.t("status.recording_to", path=path)
 
         def stop_recording():
             path = _stream.stop_recording()
             if path is None:
-                return "No recording in progress."
+                return S.t("status.no_recording")
             try:
                 entry = storage.store(path, source="stream")
-                return f"Saved: {entry['filename']}  ({entry['size_mb']} MB)"
+                return S.t("status.saved_recording", filename=entry["filename"], size_mb=entry["size_mb"])
             except Exception as exc:
-                return f"Saved to {path}. Storage error: {exc}"
+                return S.t("status.saved_path_error", path=path, error=exc)
 
         start_stream_btn.click(start_stream, inputs=[stream_src],  outputs=[stream_status, feed_timer])
         stop_stream_btn.click(stop_stream,   inputs=[],            outputs=[stream_status, feed_timer])
@@ -1671,7 +1755,7 @@ def build_app(
         # ── Clip Library callbacks ───────────────────────────────────────────
 
         def refresh_library():
-            return gr.update(choices=storage.choices())
+            return gr.update(choices=storage.choices(language))
 
         def preview_clip(choice: str):
             path = storage.path_from_choice(choice) if choice else None
@@ -1680,16 +1764,16 @@ def build_app(
         def load_for_analysis(choice: str):
             path = storage.path_from_choice(choice) if choice else None
             if path is None:
-                return None, "Clip not found."
-            return path, f"Loaded: {choice}"
+                return None, S.t("status.clip_not_found")
+            return path, S.t("status.loaded_clip", choice=choice)
 
         def delete_clip(choice: str):
             if not choice:
-                return "Nothing selected.", gr.update(choices=storage.choices())
+                return S.t("status.nothing_selected"), gr.update(choices=storage.choices(language))
             filename = choice.split(" — ", 1)[1].split("  ")[0].strip() if " — " in choice else ""
             ok = storage.delete(filename) if filename else False
-            msg = f"Deleted {filename}." if ok else "Delete failed."
-            return msg, gr.update(choices=storage.choices())
+            msg = S.t("status.deleted", filename=filename) if ok else S.t("status.delete_failed")
+            return msg, gr.update(choices=storage.choices(language))
 
         refresh_lib_btn.click(refresh_library, outputs=[lib_dd])
         lib_dd.change(preview_clip, inputs=[lib_dd], outputs=[lib_preview])
@@ -1698,29 +1782,43 @@ def build_app(
 
         def save_theme(color_label: str, mode_label: str) -> str:
             if prefs_path is None:
-                return "No preferences file path set."
+                return S.t("status.no_prefs_path")
             c = _COLOR_KEY.get(color_label, "night")
             d = mode_label == "Dark"
             try:
-                prefs_path.write_text(json.dumps({"theme": c, "dark": d}, indent=2))
-                return f"Saved **{color_label} · {mode_label}**. Restart the server to apply."
+                _save_prefs_file(prefs_path, {"theme": c, "dark": d})
+                return S.t("status.theme_saved", color=color_label, mode=mode_label)
             except Exception as exc:
-                return f"Error saving preferences: {exc}"
+                return S.t("status.theme_save_error", error=exc)
 
         save_btn.click(save_theme, inputs=[color_dd, mode_dd], outputs=[theme_status])
 
         def save_advanced_theme(adv_label: str) -> str:
             if prefs_path is None:
-                return "No preferences file path set."
+                return S.t("status.no_prefs_path")
             key = _ADVANCED_KEY.get(adv_label)
             if key is None:
-                return f"Unknown advanced theme: {adv_label}"
+                return S.t("status.unknown_theme", theme=adv_label)
             try:
-                prefs_path.write_text(json.dumps({"advanced": key}, indent=2))
-                return f"Saved **{adv_label}**. Restart the server to apply."
+                _save_prefs_file(prefs_path, {"advanced": key})
+                return S.t("status.advanced_saved", theme=adv_label)
             except Exception as exc:
-                return f"Error saving preferences: {exc}"
+                return S.t("status.theme_save_error", error=exc)
 
         save_adv_btn.click(save_advanced_theme, inputs=[advanced_dd], outputs=[adv_theme_status])
+
+        def save_language(lang_label: str) -> str:
+            if prefs_path is None:
+                return S.t("status.no_prefs_path")
+            lang_key = next((k for k, v in LANGUAGE_LABELS.items() if v == lang_label), None)
+            if lang_key is None:
+                lang_key = lang_label if lang_label in LANGUAGE_LABELS else "en"
+            try:
+                _save_prefs_file(prefs_path, {"language": lang_key})
+                return S.t("status.language_saved", language=lang_label)
+            except Exception as exc:
+                return S.t("status.theme_save_error", error=exc)
+
+        save_lang_btn.click(save_language, inputs=[language_dd], outputs=[lang_status])
 
     return demo, _theme
