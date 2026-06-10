@@ -7,6 +7,7 @@ Gradio web application — the main operator-facing interface.
 ```bash
 python app.py
 python app.py --lang ko
+python app.py --port 7960
 ```
 
 ## Language

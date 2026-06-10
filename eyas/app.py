@@ -49,6 +49,12 @@ def _parse_args(prefs: dict) -> dict:
         default=None,
         help="UI language (overrides preferences.json)",
     )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=None,
+        help="Gradio server port. Default: automatically choose from 7860-7959.",
+    )
     args = parser.parse_args()
 
     result = dict(prefs)
@@ -61,6 +67,8 @@ def _parse_args(prefs: dict) -> dict:
         result["advanced"] = args.advanced
     if args.lang is not None:
         result["language"] = args.lang
+    if args.port is not None:
+        result["port"] = args.port
     return result
 
 
@@ -74,4 +82,8 @@ app, _theme = build_app(
 )
 
 if __name__ == "__main__":
-    app.launch(theme=_theme, css=_theme.custom_css)
+    app.launch(
+        theme=_theme,
+        css=_theme.custom_css,
+        server_port=prefs.get("port"),
+    )
