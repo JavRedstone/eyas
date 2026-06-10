@@ -14,7 +14,13 @@ import numpy as np
 import pytest
 
 import eyas.postprocessing as postprocessing
-from eyas.postprocessing.translate_tts import translate, tts
+from eyas.postprocessing.translate_tts import (
+    clear_translation_cache,
+    translate,
+    translate_cached,
+    translate_many,
+    tts,
+)
 
 
 def _mock_tinyaya_response(content: str = "  안녕  ") -> MagicMock:
@@ -172,3 +178,48 @@ class TestTtsVoiceWiring:
             assert rate == sample_rate
             assert audio.dtype == np.float32
             np.testing.assert_array_equal(audio, raw.astype(np.float32))
+
+
+# ---------------------------------------------------------------------------
+# translate_cached / translate_many
+# ---------------------------------------------------------------------------
+
+
+class TestTranslateCache:
+    def setup_method(self):
+        clear_translation_cache()
+
+    @patch("eyas.postprocessing.translate_tts.translate")
+    def test_cache_miss_calls_translate(self, mock_translate):
+        mock_translate.return_value = "안녕"
+        result, stats = translate_cached("hello", target_lang="Korean")
+        assert result == "안녕"
+        assert stats.cache_misses == 1
+        assert stats.cache_hits == 0
+        assert stats.elapsed_s >= 0
+        mock_translate.assert_called_once_with("hello", target_lang="Korean", use_gpu=True)
+
+    @patch("eyas.postprocessing.translate_tts.translate")
+    def test_cache_hit_skips_translate(self, mock_translate):
+        mock_translate.return_value = "안녕"
+        translate_cached("hello", target_lang="Korean")
+        result, stats = translate_cached("hello", target_lang="Korean")
+        assert result == "안녕"
+        assert stats.cache_hits == 1
+        assert stats.cache_misses == 0
+        assert stats.elapsed_s == 0
+        mock_translate.assert_called_once()
+
+    @patch("eyas.postprocessing.translate_tts.translate")
+    def test_translate_many_dedupes_and_aggregates(self, mock_translate):
+        mock_translate.side_effect = lambda text, **kwargs: f"ko:{text}"
+        mapping, stats = translate_many({"a", "b"}, "Korean")
+        assert mapping == {"a": "ko:a", "b": "ko:b"}
+        assert stats.cache_misses == 2
+        assert stats.cache_hits == 0
+
+        mapping2, stats2 = translate_many({"a"}, "Korean")
+        assert mapping2["a"] == "ko:a"
+        assert stats2.cache_hits == 1
+        assert stats2.cache_misses == 0
+        assert mock_translate.call_count == 2

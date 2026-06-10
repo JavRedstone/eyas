@@ -8,6 +8,8 @@ Wrap translation APIs or local models and a TTS backend.
 
 from collections.abc import Iterator
 import sys
+import time
+from dataclasses import dataclass
 from pathlib import Path
 import numpy as np
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -20,6 +22,32 @@ from eyas.postprocessing import (
     get_tinyaya_model,
     get_voxcpm2_model,
 )
+
+
+@dataclass
+class TranslateStats:
+    """Timing and cache stats for a translation batch or single call."""
+
+    elapsed_s: float = 0.0
+    cache_hits: int = 0
+    cache_misses: int = 0
+
+    def merge(self, other: "TranslateStats") -> "TranslateStats":
+        return TranslateStats(
+            elapsed_s=self.elapsed_s + other.elapsed_s,
+            cache_hits=self.cache_hits + other.cache_hits,
+            cache_misses=self.cache_misses + other.cache_misses,
+        )
+
+
+_translation_cache: dict[tuple[str, str], str] = {}
+
+
+def clear_translation_cache() -> None:
+    """Clear the in-memory translation cache (for tests)."""
+    _translation_cache.clear()
+
+
 def translate(text: str, target_lang: str = "English", use_gpu: bool = True) -> str:
     # https://huggingface.co/CohereLabs/tiny-aya-global-GGUF
     if target_lang not in TINYAYA_SUPPORTED_LANGUAGES:
@@ -37,6 +65,44 @@ def translate(text: str, target_lang: str = "English", use_gpu: bool = True) -> 
         top_p=0.95,
     )
     return response["choices"][0]["message"]["content"].strip()
+
+
+def translate_cached(
+    text: str,
+    target_lang: str = "English",
+    use_gpu: bool = True,
+) -> tuple[str, TranslateStats]:
+    """Translate with in-memory cache; returns (result, stats)."""
+    stripped = text.strip()
+    if not stripped:
+        return text, TranslateStats()
+
+    key = (stripped, target_lang)
+    if key in _translation_cache:
+        return _translation_cache[key], TranslateStats(cache_hits=1)
+
+    start = time.perf_counter()
+    result = translate(stripped, target_lang=target_lang, use_gpu=use_gpu)
+    elapsed = time.perf_counter() - start
+    _translation_cache[key] = result
+    return result, TranslateStats(elapsed_s=elapsed, cache_misses=1)
+
+
+def translate_many(
+    texts: set[str],
+    target_lang: str,
+    use_gpu: bool = True,
+) -> tuple[dict[str, str], TranslateStats]:
+    """Translate a set of strings, deduplicated via cache."""
+    mapping: dict[str, str] = {}
+    stats = TranslateStats()
+    for text in texts:
+        if not text or not text.strip():
+            continue
+        translated, item_stats = translate_cached(text, target_lang, use_gpu=use_gpu)
+        mapping[text] = translated
+        stats = stats.merge(item_stats)
+    return mapping, stats
 
 
 def tts(text: str, target_lang: str = "English", voice: str = "A young woman, gentle and sweet voice") -> Iterator[tuple[int, np.ndarray]]:
