@@ -13,6 +13,13 @@ from event_structuring.structurer import EventStructurer, PersonStatus, Zone
 from object_detection.detector import PersonTracker, Track
 from video_processing.process import LlamaCppMiniCPMVLM, MiniCPMVLM
 from utils.device import get_device
+from utils.overlay_text import (
+    FONT_HEIGHT_DETAIL,
+    FONT_HEIGHT_MAIN,
+    FONT_HEIGHT_PICKUP,
+    FrameTextOverlay,
+    OverlayLabels,
+)
 from utils.paths import models_dir
 from utils.video import create_video_writer, get_video_info
 
@@ -36,7 +43,6 @@ class VisualPipelineResult:
         )
 
 
-
 def full_frame_zone(width: int, height: int) -> Zone:
     """Development default that guarantees any tracked person can trigger."""
     return Zone(name="review_area", bbox=(0, 0, width, height), kind="shelf")
@@ -47,46 +53,42 @@ def draw_tracks(
     tracks: List[Track],
     zones: List[Zone],
     statuses: Optional[Dict[int, PersonStatus]] = None,
+    labels: Optional[OverlayLabels] = None,
 ):
     """Draw current YOLO person tracks and semantic statuses."""
+    label_strings = labels or OverlayLabels("en")
     rendered = frame.copy()
+    text_overlay = FrameTextOverlay(rendered)
     for track in tracks:
         x1, y1, x2, y2 = track.bbox
-        cv2.rectangle(rendered, (x1, y1), (x2, y2), (0, 255, 0), 2)
         status = statuses.get(track.track_id) if statuses else None
-        label = status.description if status and status.description else f"person #{track.track_id}"
-        label = f"#{track.track_id} {label}"[:80]
-        cv2.putText(
-            rendered,
+        description = status.description if status and status.description else ""
+        label = label_strings.person_label(track.track_id, description)
+        text_overlay.draw(
             label,
             (x1, max(18, y1 - 7)),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.48,
             (0, 255, 0),
-            2,
+            font_height=FONT_HEIGHT_MAIN,
         )
         detail_lines = []
         if status and status.current_activity:
-            detail_lines.append((status.current_activity[:70], (255, 255, 0), 0.52))
+            detail_lines.append(
+                (label_strings.activity_line(status.current_activity), (255, 255, 0))
+            )
         if status and status.current_held_objects:
-            held_text = ", ".join(
-                f"HOLDING: {item['count']} x {item['name']}"
-                for item in status.current_held_objects
-            )[:70]
-            detail_lines.append((held_text, (0, 255, 255), 0.48))
+            detail_lines.append(
+                (label_strings.holding_line(status.current_held_objects), (0, 255, 255))
+            )
         if status and status.confirmed_pickups:
-            item_text = ", ".join(
-                f"PICKUP: {item['count']} x {item['name']}"
-                for item in status.confirmed_pickups
-            )[:70]
-            detail_lines.append((item_text, (0, 0, 255), 0.48))
+            detail_lines.append(
+                (label_strings.pickup_line(status.confirmed_pickups), (0, 0, 255))
+            )
 
         line_gap = 22
         required_below = line_gap * len(detail_lines)
         if y2 + required_below + 8 < rendered.shape[0]:
             detail_positions = [
-                y2 + line_gap * (index + 1)
-                for index in range(len(detail_lines))
+                y2 + line_gap * (index + 1) for index in range(len(detail_lines))
             ]
         else:
             # Keep labels visible when the person box reaches the bottom edge.
@@ -94,16 +96,18 @@ def draw_tracks(
                 max(18, y2 - line_gap * (len(detail_lines) - index))
                 for index in range(len(detail_lines))
             ]
-        for (text, color, scale), text_y in zip(detail_lines, detail_positions):
-            cv2.putText(
-                rendered,
+        for (text, color), text_y in zip(detail_lines, detail_positions):
+            text_overlay.draw(
                 text,
                 (x1, text_y),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                scale,
                 color,
-                2,
+                font_height=FONT_HEIGHT_DETAIL,
             )
+    text_overlay.apply()
+
+    for track in tracks:
+        x1, y1, x2, y2 = track.bbox
+        cv2.rectangle(rendered, (x1, y1), (x2, y2), (0, 255, 0), 2)
     return rendered
 
 
@@ -111,8 +115,10 @@ def overlay_confirmed_pickups(
     video_path: Path,
     events,
     display_seconds: float = 1.5,
+    labels: Optional[OverlayLabels] = None,
 ) -> None:
     """Overlay confirmed pickups at their corrected action timestamps."""
+    overlay = labels or OverlayLabels("en")
     confirmed = [event for event in events if event.pickup_confirmed]
     if not confirmed or not video_path.exists():
         return
@@ -127,26 +133,28 @@ def overlay_confirmed_pickups(
             if not ok:
                 break
             t = frame_index / fps
-            for event in confirmed:
-                if not (event.timestamp <= t <= event.timestamp + display_seconds):
-                    continue
+            active = [
+                event
+                for event in confirmed
+                if event.timestamp <= t <= event.timestamp + display_seconds
+            ]
+            if active:
+                text_overlay = FrameTextOverlay(frame)
+                for event in active:
+                    x1, y1, x2, y2 = event.bbox
+                    label = overlay.pickup_line(event.picked_up_items)
+                    text_y = y1 - 12 if y1 > 35 else min(height - 12, y2 + 28)
+                    text_overlay.draw(
+                        label,
+                        (x1, text_y),
+                        (0, 0, 255),
+                        font_height=FONT_HEIGHT_PICKUP,
+                        thickness=3,
+                    )
+                text_overlay.apply()
+            for event in active:
                 x1, y1, x2, y2 = event.bbox
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 255), 4)
-                items = ", ".join(
-                    f"{item['count']} x {item['name']}"
-                    for item in event.picked_up_items
-                )
-                label = f"PICKUP: {items}"[:80]
-                text_y = y1 - 12 if y1 > 35 else min(height - 12, y2 + 28)
-                cv2.putText(
-                    frame,
-                    label,
-                    (x1, text_y),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.65,
-                    (0, 0, 255),
-                    3,
-                )
             writer.write(frame)
             frame_index += 1
     finally:
@@ -184,6 +192,9 @@ def run_visual_pipeline(
     max_frames: Optional[int] = None,
     write_annotated_video: bool = True,
     progress: Optional[Callable[[int, int, int, bool], None]] = None,
+    preloaded_tracker=None,
+    preloaded_vlm=None,
+    locale: str = "en",
 ) -> VisualPipelineResult:
     """Run the complete visual processing track on one video."""
     source = Path(video_path).expanduser().resolve()
@@ -202,7 +213,7 @@ def run_visual_pipeline(
 
     resolved_zones = zones or [full_frame_zone(width, height)]
     resolved_device = device or get_device()
-    tracker = PersonTracker(
+    tracker = preloaded_tracker or PersonTracker(
         weights=yolo_weights,
         tracker=tracker_config,
         conf=confidence,
@@ -242,10 +253,16 @@ def run_visual_pipeline(
     )
 
     # Mutable cell so the VLM-start hook always reads the current frame state.
-    _frame_info: List[int] = [0, total_frames or 0, 0]  # [frame_index, total, track_count]
+    _frame_info: List[int] = [
+        0,
+        total_frames or 0,
+        0,
+    ]  # [frame_index, total, track_count]
     if progress:
+
         def _on_vlm_start() -> None:
-            progress(_frame_info[0], _frame_info[1], _frame_info[2], True)
+            progress(_frame_info[0], _frame_info[1], _frame_info[2], True, None)
+
         structurer.on_vlm_start = _on_vlm_start
 
     annotated_path = out_dir / f"{source.stem}_annotated.mp4"
@@ -253,6 +270,7 @@ def run_visual_pipeline(
     if write_annotated_video:
         writer = create_video_writer(str(annotated_path), fps, width, height)
 
+    overlay_labels = OverlayLabels(locale)
     seen_tracks = set()
     frame_index = 0
     try:
@@ -265,20 +283,31 @@ def run_visual_pipeline(
             seen_tracks.update(track.track_id for track in tracks)
             frame_index += 1
             _frame_info[:] = [frame_index, total_frames or 0, len(tracks)]
-            if progress:
-                progress(frame_index, total_frames, len(tracks), False)
             structurer.update(tracks, t, latest_frame=frame)
-            if writer is not None:
-                writer.write(
-                    draw_tracks(frame, tracks, resolved_zones, structurer.display_statuses())
+            annotated_frame = (
+                draw_tracks(
+                    frame,
+                    tracks,
+                    resolved_zones,
+                    structurer.display_statuses(),
+                    labels=overlay_labels,
                 )
+                if (writer is not None or progress)
+                else None
+            )
+            if progress:
+                progress(frame_index, total_frames, len(tracks), False, annotated_frame)
+            if writer is not None:
+                writer.write(annotated_frame)
     finally:
         cap.release()
         if writer is not None:
             writer.release()
 
     if writer is not None:
-        overlay_confirmed_pickups(annotated_path, structurer.events)
+        overlay_confirmed_pickups(
+            annotated_path, structurer.events, labels=overlay_labels
+        )
 
     events_path = out_dir / "events.json"
     events = [event.as_dict() for event in structurer.events]
