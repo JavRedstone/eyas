@@ -10,10 +10,11 @@ Run the full pipeline on a single video file.
 python scripts/run_visual_pipeline.py input/sample.mp4 \
   --device cuda \
   --output-dir output/visual \
-  --semantic-interval 1.0
+  --semantic-interval 1.0 \
+  --language ko
 ```
 
-Key flags: `--device`, `--weights`, `--confidence`, `--semantic-interval`, `--evidence-window`, `--zone NAME:KIND:X1,Y1,X2,Y2`, `--max-frames`.
+Key flags: `--device`, `--weights`, `--confidence`, `--semantic-interval`, `--evidence-window`, `--zone NAME:KIND:X1,Y1,X2,Y2`, `--max-frames`, `--language {en,ko}`.
 
 ## split_clips.py
 
