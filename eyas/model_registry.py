@@ -1,27 +1,34 @@
-"""Background model preloading — starts at app launch, caches instances for fast inference."""
+"""Background model preloading — downloads + initialises every model before the splash fades."""
 from __future__ import annotations
 
 import os
 import threading
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 _LOCK = threading.Lock()
 _started = False
 
+_NEMOTRON_REPO   = "nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF"
+_NEMOTRON_FILE   = "NVIDIA-Nemotron3-Nano-4B-Q4_K_M.gguf"
+_VLM_REPO        = "openbmb/MiniCPM-V-4.6"
+
 
 @dataclass
 class ModelState:
     label: str
+    model_name: str = ""
     icon: str = "hourglass_empty"
-    status: str = "waiting"   # waiting | loading | ready | error | skipped
+    status: str = "waiting"   # waiting | loading | ready | error
     detail: str = ""
 
 
 _STATES: Dict[str, ModelState] = {
-    "yolo": ModelState("Object Detector (YOLO)"),
-    "vlm":  ModelState("Visual Language Model"),
-    "llm":  ModelState("LLM Reasoner"),
+    "yolo":    ModelState("Object Detector",   "YOLO11n"),
+    "vlm":     ModelState("Vision Analyzer",   "MiniCPM-V 4.6"),
+    "llm":     ModelState("LLM Reasoner",      "Nemotron Nano 4B"),
+    "tinyaya": ModelState("Translator",        "Tiny Aya Global"),
 }
 _INSTANCES: Dict[str, Any] = {}
 
@@ -36,20 +43,51 @@ def _set(key: str, icon: str, status: str, detail: str = "") -> None:
 def get_states() -> List[ModelState]:
     with _LOCK:
         return [
-            ModelState(m.label, m.icon, m.status, m.detail)
+            ModelState(m.label, m.model_name, m.icon, m.status, m.detail)
             for m in _STATES.values()
         ]
 
 
 def all_done() -> bool:
     with _LOCK:
-        return all(m.status in {"ready", "error", "skipped"} for m in _STATES.values())
+        return all(m.status in {"ready", "error"} for m in _STATES.values())
 
 
 def get(key: str) -> Optional[Any]:
     with _LOCK:
         return _INSTANCES.get(key)
 
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _hf_cached(repo_id: str, filename: str = "config.json") -> bool:
+    """Return True if the file is already in the local HF cache."""
+    try:
+        from huggingface_hub import try_to_load_from_cache
+        result = try_to_load_from_cache(repo_id, filename)
+        return result is not None and result != "None"
+    except Exception:
+        return False
+
+
+def _download_gguf(dest: Path) -> None:
+    """Download the Nemotron GGUF from HF Hub into models/ and rename to dest."""
+    from huggingface_hub import hf_hub_download
+    tmp = hf_hub_download(
+        repo_id=_NEMOTRON_REPO,
+        filename=_NEMOTRON_FILE,
+        local_dir=str(dest.parent),
+    )
+    tmp_path = Path(tmp)
+    if tmp_path != dest:
+        tmp_path.rename(dest)
+
+
+# ---------------------------------------------------------------------------
+# Sequential model loading (runs in a daemon thread)
+# ---------------------------------------------------------------------------
 
 def _load_models() -> None:
     from utils.device import get_device
@@ -58,21 +96,24 @@ def _load_models() -> None:
     device = get_device()
 
     # ── YOLO ────────────────────────────────────────────────────────────────
-    _set("yolo", "sync", "loading")
+    _set("yolo", "sync", "loading", "Loading weights…")
     try:
+        yolo_path = models_dir() / "yolo11n.pt"
+        if not yolo_path.is_file():
+            _set("yolo", "sync", "loading", "Downloading from Ultralytics…")
         from object_detection.detector import PersonTracker
-        tracker = PersonTracker(
-            weights=str(models_dir() / "yolo11n.pt"),
-            device=device,
-        )
+        tracker = PersonTracker(weights=str(yolo_path), device=device)
         with _LOCK:
             _INSTANCES["yolo"] = tracker
-        _set("yolo", "check_circle", "ready")
+        _set("yolo", "check_circle", "ready", "Ready")
     except Exception as exc:
-        _set("yolo", "error", "error", str(exc)[:100])
+        _set("yolo", "error", "error", str(exc)[:120])
 
     # ── VLM ─────────────────────────────────────────────────────────────────
-    _set("vlm", "sync", "loading")
+    if _hf_cached(_VLM_REPO):
+        _set("vlm", "sync", "loading", "Loading weights…")
+    else:
+        _set("vlm", "sync", "loading", "Downloading from HuggingFace…")
     try:
         from video_processing.process import MiniCPMVLM
         dtype = "float16" if device in {"mps", "cuda"} else "auto"
@@ -82,26 +123,46 @@ def _load_models() -> None:
         vlm._ensure_loaded()
         with _LOCK:
             _INSTANCES["vlm"] = vlm
-        _set("vlm", "check_circle", "ready")
+        if hasattr(vlm, "_ensure_loaded"):
+            vlm._ensure_loaded()
+        _set("vlm", "check_circle", "ready", "Ready")
     except Exception as exc:
-        _set("vlm", "error", "error", str(exc)[:100])
+        _set("vlm", "error", "error", str(exc)[:120])
 
     # ── LLM Reasoner ────────────────────────────────────────────────────────
-    _set("llm", "sync", "loading")
     try:
-        model_path = os.getenv("EYAS_MODEL_PATH", str(models_dir() / "nemotron-nano-4b.gguf"))
-        if not os.path.isfile(model_path):
-            _set("llm", "warning", "skipped", "GGUF not found — download to enable")
+        gguf_path = Path(os.getenv("EYAS_MODEL_PATH", str(models_dir() / "nemotron-nano-4b.gguf")))
+
+        if gguf_path.is_file():
+            _set("llm", "sync", "loading", "Loading weights…")
         else:
-            from llm.reasoner import Reasoner
-            n_gpu_layers = int(os.getenv("EYAS_GPU_LAYERS", "-1"))
-            reasoner = Reasoner(model_path, n_gpu_layers=n_gpu_layers)
-            reasoner._load_model()
-            with _LOCK:
-                _INSTANCES["llm"] = reasoner
-            _set("llm", "check_circle", "ready")
+            _set("llm", "sync", "loading", "Downloading from HuggingFace…")
+            _download_gguf(gguf_path)
+            _set("llm", "sync", "loading", "Loading weights…")
+
+        from llm.reasoner import Reasoner
+        n_gpu_layers = int(os.getenv("EYAS_GPU_LAYERS", "-1"))
+        reasoner = Reasoner(str(gguf_path), n_gpu_layers=n_gpu_layers)
+        reasoner._load_model()
+        with _LOCK:
+            _INSTANCES["llm"] = reasoner
+        _set("llm", "check_circle", "ready", "Ready")
     except Exception as exc:
-        _set("llm", "error", "error", str(exc)[:100])
+        _set("llm", "error", "error", str(exc)[:120])
+
+    # ── Tiny Aya (translation) ───────────────────────────────────────────────
+    from postprocessing import TINYAYA_GGUF_REPO, TINYAYA_GGUF_FILE
+    _set("tinyaya", "sync", "loading",
+         "Loading weights…" if _hf_cached(TINYAYA_GGUF_REPO, TINYAYA_GGUF_FILE) else "Downloading…")
+    try:
+        from postprocessing import get_tinyaya_model
+        use_gpu = device in {"mps", "cuda"}
+        model = get_tinyaya_model(use_gpu=use_gpu)
+        with _LOCK:
+            _INSTANCES["tinyaya"] = model
+        _set("tinyaya", "check_circle", "ready", "Ready")
+    except Exception as exc:
+        _set("tinyaya", "error", "error", str(exc)[:120])
 
 
 def start() -> None:
