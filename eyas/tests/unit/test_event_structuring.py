@@ -63,12 +63,17 @@ class TestEvidenceCrops:
 
 
 class TestPickupInference:
-    def _make_vlm(self, observation_json: str):
+    def _make_vlm(self, observation_json: str, backend: str = "test"):
         class _VLM:
-            backend = "test"
+            pass
+
+            def __init__(self):
+                self.backend = backend
 
             def observe_person(self, frames, track_id=None):
-                return parse_person_observation(observation_json)
+                observation = parse_person_observation(observation_json)
+                observation.backend = self.backend
+                return observation
 
         return _VLM()
 
@@ -130,6 +135,61 @@ class TestPickupInference:
         frame = np.zeros((200, 200, 3), dtype=np.uint8)
         events = structurer.update(
             [Track(1, "person", 0.9, (40, 40, 120, 180))], 1.0, frame
+        )
+        assert events[0].pickup_confirmed is True
+        assert events[0].picked_up_items == [{"name": "retail item", "count": 1}]
+
+    def test_llama_speculative_generic_pickup_is_not_promoted(self):
+        vlm = self._make_vlm(
+            '{"activity":"then appears to be holding an object, suggesting picking up an item",'
+            '"held_objects":[{"name":"object","count":1}],'
+            '"pickup_confirmed":false,"picked_up_items":[]}',
+            backend="llama-cpp-python",
+        )
+        structurer = EventStructurer(
+            [Zone("all", (0, 0, 200, 200))], vlm=vlm, semantic_interval_s=0
+        )
+        events = structurer.update(
+            [Track(1, "person", 0.9, (40, 40, 120, 180))],
+            1.0,
+            np.zeros((200, 200, 3), dtype=np.uint8),
+        )
+        assert events[0].pickup_confirmed is False
+        assert events[0].picked_up_items == []
+
+    def test_llama_unhedged_pickup_activity_is_promoted(self):
+        vlm = self._make_vlm(
+            '{"activity":"the person picks up a yellow package",'
+            '"held_objects":[{"name":"yellow package","count":1}],'
+            '"pickup_confirmed":false,"picked_up_items":[]}',
+            backend="llama-cpp-python",
+        )
+        structurer = EventStructurer(
+            [Zone("all", (0, 0, 200, 200))], vlm=vlm, semantic_interval_s=0
+        )
+        events = structurer.update(
+            [Track(1, "person", 0.9, (40, 40, 120, 180))],
+            1.0,
+            np.zeros((200, 200, 3), dtype=np.uint8),
+        )
+        assert events[0].pickup_confirmed is True
+        assert events[0].picked_up_items == [{"name": "yellow package", "count": 1}]
+
+    def test_llama_strong_transition_with_generic_item_is_promoted(self):
+        vlm = self._make_vlm(
+            '{"activity":"The person is initially seen without any objects, then '
+            'shows a transition where a hand moves toward and eventually holds '
+            'a small item, suggesting picking it up.",'
+            '"held_objects":[],"pickup_confirmed":false,"picked_up_items":[]}',
+            backend="llama-cpp-python",
+        )
+        structurer = EventStructurer(
+            [Zone("all", (0, 0, 200, 200))], vlm=vlm, semantic_interval_s=0
+        )
+        events = structurer.update(
+            [Track(1, "person", 0.9, (40, 40, 120, 180))],
+            1.0,
+            np.zeros((200, 200, 3), dtype=np.uint8),
         )
         assert events[0].pickup_confirmed is True
         assert events[0].picked_up_items == [{"name": "retail item", "count": 1}]
