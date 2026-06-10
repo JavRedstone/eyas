@@ -18,16 +18,17 @@ _VLM_REPO        = "openbmb/MiniCPM-V-4.6"
 @dataclass
 class ModelState:
     label: str
+    model_name: str = ""
     icon: str = "hourglass_empty"
     status: str = "waiting"   # waiting | loading | ready | error
     detail: str = ""
 
 
 _STATES: Dict[str, ModelState] = {
-    "yolo": ModelState("Object Detector (YOLO)"),
-    "vlm":  ModelState("Visual Language Model"),
-    "llm":  ModelState("LLM Reasoner"),
-    "tts":  ModelState("Audio Report (VoxCPM2)"),
+    "yolo":    ModelState("Object Detector",   "YOLO11n"),
+    "vlm":     ModelState("Vision Analyzer",   "MiniCPM-V 4.6"),
+    "llm":     ModelState("LLM Reasoner",      "Nemotron Nano 4B"),
+    "tinyaya": ModelState("Translator",        "Tiny Aya Global"),
 }
 _INSTANCES: Dict[str, Any] = {}
 
@@ -42,7 +43,7 @@ def _set(key: str, icon: str, status: str, detail: str = "") -> None:
 def get_states() -> List[ModelState]:
     with _LOCK:
         return [
-            ModelState(m.label, m.icon, m.status, m.detail)
+            ModelState(m.label, m.model_name, m.icon, m.status, m.detail)
             for m in _STATES.values()
         ]
 
@@ -119,6 +120,8 @@ def _load_models() -> None:
         vlm = MiniCPMVLM(device=device, dtype=dtype)
         with _LOCK:
             _INSTANCES["vlm"] = vlm
+        if hasattr(vlm, "_ensure_loaded"):
+            vlm._ensure_loaded()
         _set("vlm", "check_circle", "ready", "Ready")
     except Exception as exc:
         _set("vlm", "error", "error", str(exc)[:120])
@@ -144,17 +147,19 @@ def _load_models() -> None:
     except Exception as exc:
         _set("llm", "error", "error", str(exc)[:120])
 
-    # ── TTS (VoxCPM2) ───────────────────────────────────────────────────────
-    _set("tts", "sync", "loading",
-         "Loading weights…" if _hf_cached("openbmb/VoxCPM2") else "Downloading (~5 GB)…")
+    # ── Tiny Aya (translation) ───────────────────────────────────────────────
+    from postprocessing import TINYAYA_GGUF_REPO, TINYAYA_GGUF_FILE
+    _set("tinyaya", "sync", "loading",
+         "Loading weights…" if _hf_cached(TINYAYA_GGUF_REPO, TINYAYA_GGUF_FILE) else "Downloading…")
     try:
-        from postprocessing import get_voxcpm2_model
-        model, rate = get_voxcpm2_model()
+        from postprocessing import get_tinyaya_model
+        use_gpu = device in {"mps", "cuda"}
+        model = get_tinyaya_model(use_gpu=use_gpu)
         with _LOCK:
-            _INSTANCES["tts"] = (model, rate)
-        _set("tts", "check_circle", "ready", "Ready")
+            _INSTANCES["tinyaya"] = model
+        _set("tinyaya", "check_circle", "ready", "Ready")
     except Exception as exc:
-        _set("tts", "error", "error", str(exc)[:120])
+        _set("tinyaya", "error", "error", str(exc)[:120])
 
 
 def start() -> None:
