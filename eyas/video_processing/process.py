@@ -19,9 +19,11 @@ The visual pipeline always runs the real local MiniCPM-V model.
 
 from __future__ import annotations
 
+import base64
 import json
 import re
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Dict, List, Optional
 
 import numpy as np
@@ -63,6 +65,18 @@ PERSON_STATUS_PROMPT = (
     "must be arrays of objects containing name and count. Default both arrays "
     "to empty and pickup_confirmed to false unless the images clearly prove "
     "otherwise."
+)
+
+LLAMA_CPP_FRAME_PROMPT = (
+    "The labeled images above are chronological evidence of the same tracked "
+    "person. Compare FRAME 1 through the newest frame carefully. Pay particular "
+    "attention to the person's clothing, hands, and whether an object changes "
+    "from being on a shelf to being visibly held. Do not reuse a generic answer "
+    "from another observation. Do not mistake the color of a nearby or held "
+    "product for the color of the person's clothing. Set pickup_confirmed=true "
+    "only if the frames visibly prove a shelf-to-hand transition involving a "
+    "specific product. Words such as appears, possibly, suggesting, or may mean "
+    "pickup_confirmed must be false. "
 )
 
 
@@ -122,6 +136,7 @@ _EXPLICIT_HELD_OBJECT = re.compile(
     r"\s+while\b|\s+and\s+(?:walking|moving|looking|standing)\b|$)",
     re.IGNORECASE,
 )
+_HELD_NEGATION = re.compile(r"\b(?:not|isn't|is\s+not|aren't|are\s+not|without)\b", re.IGNORECASE)
 
 
 def parse_items(text: str) -> List[Dict]:
@@ -228,6 +243,12 @@ def parse_person_observation(text: str) -> PersonObservation:
             held_objects.append({"name": name, "count": count})
     if not held_objects:
         explicit_held = _EXPLICIT_HELD_OBJECT.search(f"{description}, {activity}")
+        if explicit_held:
+            prefix = f"{description}, {activity}"[
+                max(0, explicit_held.start() - 12):explicit_held.start()
+            ]
+            if _HELD_NEGATION.search(prefix):
+                explicit_held = None
         if explicit_held:
             token = (explicit_held.group(1) or "1").lower()
             count = int(token) if token.isdigit() else _WORD_NUM.get(token, 1)
@@ -431,6 +452,227 @@ class MiniCPMVLM:
         observation.track_id = track_id
         observation.backend = "minicpmv"
         return observation
+
+class LlamaCppMiniCPMVLM:
+    """MiniCPM-V 4.6 GGUF backend using llama-cpp-python.
+
+    The official MiniCPM-V 4.6 GGUF repository supports multimodal
+    ``create_chat_completion`` calls in recent llama-cpp-python builds. Images
+    are passed as in-memory data URIs so the pipeline never writes crop files.
+    """
+
+    def __init__(
+        self,
+        model_path: Optional[str] = None,
+        mmproj_path: Optional[str] = None,
+        repo_id: str = "openbmb/MiniCPM-V-4.6-gguf",
+        filename: str = "MiniCPM-V-4_6-F16.gguf",
+        mmproj_filename: str = "mmproj-model-f16.gguf",
+        n_ctx: int = 8192,
+        n_threads: Optional[int] = None,
+        n_gpu_layers: int = -1,
+        max_image_size: int = 448,
+        max_new_tokens: int = 96,
+        verbose: bool = False,
+    ) -> None:
+        self.model_path = model_path
+        self.mmproj_path = mmproj_path
+        self.repo_id = repo_id
+        self.filename = filename
+        self.mmproj_filename = mmproj_filename
+        self.n_ctx = n_ctx
+        self.n_threads = n_threads
+        self.n_gpu_layers = n_gpu_layers
+        self.max_image_size = max(0, max_image_size)
+        self.max_new_tokens = max(32, max_new_tokens)
+        self.verbose = verbose
+        self.model = None
+        self._loaded = False
+        self.backend = "llama-cpp-python"
+
+    def _resolve_local_gguf(self, requested: str, pattern: str, label: str) -> Path:
+        """Resolve a requested GGUF, tolerating official-repo filename variants."""
+        path = Path(requested).expanduser().resolve()
+        if path.exists():
+            return path
+        matches = sorted(path.parent.glob(pattern)) if path.parent.exists() else []
+        if len(matches) == 1:
+            print(f"[llama-cpp-python] using {label}: {matches[0]}")
+            return matches[0].resolve()
+        available = ", ".join(match.name for match in matches) or "none"
+        raise FileNotFoundError(
+            f"{label} not found at {path}. Matching files beside it: {available}"
+        )
+
+    def _ensure_loaded(self) -> None:
+        if self._loaded:
+            return
+        try:
+            from llama_cpp import Llama
+            from llama_cpp.llama_chat_format import MTMDChatHandler
+        except ImportError as exc:
+            raise RuntimeError(
+                "llama-cpp-python is not installed. On Apple Silicon, install "
+                "a Metal build with: CMAKE_ARGS='-DGGML_METAL=on "
+                "-DGGML_ACCELERATE=on' pip install --upgrade --force-reinstall "
+                "llama-cpp-python"
+            ) from exc
+
+        if self.mmproj_path:
+            mmproj = self._resolve_local_gguf(
+                self.mmproj_path, "*mmproj*.gguf", "vision projector"
+            )
+        else:
+            try:
+                from huggingface_hub import hf_hub_download
+            except ImportError as exc:
+                raise RuntimeError(
+                    "Install huggingface-hub or pass --llama-mmproj-path."
+                ) from exc
+            mmproj = Path(
+                hf_hub_download(repo_id=self.repo_id, filename=self.mmproj_filename)
+            )
+        try:
+            chat_handler = MTMDChatHandler(
+                clip_model_path=str(mmproj),
+                verbose=self.verbose,
+                use_gpu=self.n_gpu_layers != 0,
+            )
+        except Exception as exc:
+            raise RuntimeError(
+                "The installed llama-cpp-python build cannot initialize the "
+                "MiniCPM-V 4.6 vision projector. Install a recent "
+                "libmtmd-enabled build."
+            ) from exc
+
+        kwargs = {
+            "n_ctx": self.n_ctx,
+            "n_gpu_layers": self.n_gpu_layers,
+            "verbose": self.verbose,
+            "chat_handler": chat_handler,
+        }
+        if self.n_threads is not None:
+            kwargs["n_threads"] = self.n_threads
+        try:
+            if self.model_path:
+                path = self._resolve_local_gguf(
+                    self.model_path, "*MiniCPM*F16.gguf", "language model"
+                )
+                self.model = Llama(model_path=str(path), **kwargs)
+            else:
+                self.model = Llama.from_pretrained(
+                    repo_id=self.repo_id,
+                    filename=self.filename,
+                    **kwargs,
+                )
+        except (TypeError, ValueError) as exc:
+            raise RuntimeError(
+                "The installed llama-cpp-python build cannot load MiniCPM-V "
+                "4.6 multimodal GGUF files. Install a recent libmtmd-enabled "
+                "build, or keep using the Transformers backend."
+            ) from exc
+        self._loaded = True
+
+    def _to_data_uri(self, frame: np.ndarray) -> str:
+        import cv2
+
+        image = frame
+        if self.max_image_size and max(image.shape[:2]) > self.max_image_size:
+            scale = self.max_image_size / max(image.shape[:2])
+            image = cv2.resize(
+                image,
+                (
+                    max(1, round(image.shape[1] * scale)),
+                    max(1, round(image.shape[0] * scale)),
+                ),
+                interpolation=cv2.INTER_AREA,
+            )
+        # Lossless PNG preserves small products and hand/object boundaries.
+        ok, encoded = cv2.imencode(".png", image)
+        if not ok:
+            raise RuntimeError("Could not encode a VLM crop as PNG")
+        payload = base64.b64encode(encoded.tobytes()).decode("ascii")
+        return f"data:image/png;base64,{payload}"
+
+    def _complete(self, frames: List[np.ndarray], prompt: str, max_tokens: int) -> str:
+        self._ensure_loaded()
+        content = []
+        for index, frame in enumerate(frames, start=1):
+            age = "oldest" if index == 1 else "newest" if index == len(frames) else ""
+            label = f"FRAME {index}" + (f" ({age})" if age else "")
+            content.append({"type": "text", "text": label})
+            content.append(
+                {"type": "image_url", "image_url": {"url": self._to_data_uri(frame)}}
+            )
+        content.append({"type": "text", "text": LLAMA_CPP_FRAME_PROMPT + prompt})
+        try:
+            response = self.model.create_chat_completion(
+                messages=[{"role": "user", "content": content}],
+                temperature=0.0,
+                top_k=1,
+                repeat_penalty=1.05,
+                response_format={"type": "json_object"},
+                max_tokens=max_tokens,
+            )
+        except Exception as exc:
+            raise RuntimeError(
+                "The installed llama-cpp-python build could not process "
+                "MiniCPM-V 4.6 image messages. On Metal, llama_decode failures "
+                "can indicate an incompatible llama-cpp-python build. Install "
+                "a recent MiniCPM-V 4.6/libmtmd build, or use Transformers."
+            ) from exc
+        choice = response.get("choices", [{}])[0]
+        text = choice.get("message", {}).get("content") or choice.get("text", "")
+        if not isinstance(text, str) or not text.strip():
+            raise RuntimeError(
+                "llama-cpp-python returned no multimodal text. The installed "
+                "build may not support MiniCPM-V 4.6 image input."
+            )
+        return text.strip()
+
+    def caption_frames(
+        self,
+        frames: List[np.ndarray],
+        prompt: str = RETAIL_PROMPT,
+        track_id: Optional[int] = None,
+        max_new_tokens: int = 192,
+    ) -> ClipAnnotation:
+        if not frames:
+            return ClipAnnotation(
+                caption="no frames supplied",
+                track_id=track_id,
+                backend=self.backend,
+            )
+        text = self._complete(frames, prompt, max_new_tokens)
+        return ClipAnnotation(
+            caption=text,
+            items=parse_items(text),
+            track_id=track_id,
+            backend=self.backend,
+        )
+
+    def observe_person(
+        self,
+        frames: List[np.ndarray],
+        track_id: Optional[int] = None,
+        max_new_tokens: Optional[int] = None,
+    ) -> PersonObservation:
+        if not frames:
+            return PersonObservation(
+                activity="no frames supplied",
+                track_id=track_id,
+                backend=self.backend,
+            )
+        text = self._complete(
+            frames[-5:],
+            PERSON_STATUS_PROMPT,
+            max_new_tokens or self.max_new_tokens,
+        )
+        observation = parse_person_observation(text)
+        observation.track_id = track_id
+        observation.backend = self.backend
+        return observation
+
 
 # ---------------------------------------------------------------------------
 # Module-level convenience matching the original scaffold signature.

@@ -35,6 +35,19 @@ PICKUP_TRANSITION = re.compile(
     r"\b(?:holds?|grasps?)\b",
     re.IGNORECASE,
 )
+LLAMA_STRONG_PICKUP_TRANSITION = re.compile(
+    r"\b(?:initially|first|before)\b.+"
+    r"\b(?:without|not holding|empty[- ]handed|near|on (?:a |the )?shelf)\b.+"
+    r"\b(?:then|transition|afterwards?|eventually|subsequently)\b.+"
+    r"\b(?:hand (?:moves?|moving|contacts?|grasps?)|"
+    r"(?:holds?|holding|grasps?|grabs?|carries?|brought) .+"
+    r"(?:hand|item|object|product|package))\b",
+    re.IGNORECASE,
+)
+LLAMA_SPECULATIVE = re.compile(
+    r"\b(?:appears?|possibly|maybe|may|might|could|seems?|suggesting|likely)\b",
+    re.IGNORECASE,
+)
 
 
 @dataclass
@@ -270,6 +283,17 @@ class EventStructurer:
                 self._activity_indicates_pickup(observation.activity)
                 or pickup_transition
             )
+            if observation.backend == "llama-cpp-python":
+                strong_transition = bool(
+                    LLAMA_STRONG_PICKUP_TRANSITION.search(observation.activity)
+                )
+                unhedged_pickup = (
+                    self._activity_indicates_pickup(observation.activity)
+                    and not LLAMA_SPECULATIVE.search(observation.activity)
+                )
+                # Strong before-to-after hand evidence counts even when llama
+                # cautiously says "suggesting." Generic "appears to hold" does not.
+                activity_pickup = strong_transition or unhedged_pickup
             pickup_confirmed = observation.pickup_confirmed or activity_pickup
             picked_up_items = list(observation.picked_up_items)
             if pickup_confirmed and not picked_up_items:
