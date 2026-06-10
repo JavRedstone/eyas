@@ -77,6 +77,9 @@ def _load_models() -> None:
         from video_processing.process import MiniCPMVLM
         dtype = "float16" if device in {"mps", "cuda"} else "auto"
         vlm = MiniCPMVLM(device=device, dtype=dtype)
+        # Load weights during application startup so the first pipeline run
+        # does not pay the model-loading cost.
+        vlm._ensure_loaded()
         with _LOCK:
             _INSTANCES["vlm"] = vlm
         _set("vlm", "check_circle", "ready")
