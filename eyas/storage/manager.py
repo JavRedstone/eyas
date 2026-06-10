@@ -57,14 +57,24 @@ def list_clips() -> List[Dict]:
     return _read_index()[::-1]
 
 
-def choices() -> List[str]:
+def choices(locale: str = "en") -> List[str]:
     """Dropdown-ready labels: 'YYYYMMDD_HHMMSS — name (X MB) [source]'."""
+    from ui.locale import Strings
+
+    s = Strings(locale)
     out = []
     for c in list_clips():
-        ts  = c["timestamp"]
+        ts = c["timestamp"]
         src = c.get("source", "upload")
-        mb  = c.get("size_mb", "?")
-        out.append(f"{ts} — {c['filename']}  ({mb} MB)  [{src}]")
+        mb = c.get("size_mb", "?")
+        src_label = s.storage_source_label(src)
+        out.append(s.t(
+            "storage.choice_format",
+            ts=ts,
+            filename=c["filename"],
+            size_mb=mb,
+            source=src_label,
+        ))
     return out
 
 
