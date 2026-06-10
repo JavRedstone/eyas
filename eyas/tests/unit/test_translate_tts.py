@@ -15,11 +15,25 @@ import pytest
 
 import eyas.postprocessing as postprocessing
 from eyas.postprocessing.translate_tts import (
+    _looks_like_meta_response,
     clear_translation_cache,
     translate,
     translate_cached,
     translate_many,
     tts,
+)
+
+SOURCE_EN = (
+    "The man is walking and moving through the store, with slight changes in "
+    "posture suggesting progression or adjustment of position."
+)
+META_GARBAGE = (
+    "이 문장은 이미 한국어로 작성되어 있습니다. "
+    '영어로 번역하면 다음과 같습니다: "The man is walking..."'
+)
+CLEAN_KO = (
+    "남자가 상점을 걸으며 이동하고 있으며, "
+    "자세의 미묘한 변화는 진행 또는 위치 조정을 암시합니다."
 )
 
 
@@ -87,9 +101,17 @@ class TestTranslatePrompt:
         mock_get_model.return_value.create_chat_completion.assert_called_once_with(
             messages=[
                 {
+                    "role": "system",
+                    "content": (
+                        "You are a translation engine. "
+                        "Output only the translated text. "
+                        "No explanations, notes, or language detection."
+                    ),
+                },
+                {
                     "role": "user",
-                    "content": "Translate the following text to Korean: hello",
-                }
+                    "content": "Translate to Korean:\nhello",
+                },
             ],
             max_tokens=4096,
             temperature=0,
@@ -101,6 +123,50 @@ class TestTranslatePrompt:
         mock_get_model.return_value = _mock_tinyaya_response("translated")
         translate("hello", target_lang="Korean", use_gpu=False)
         mock_get_model.assert_called_once_with(use_gpu=False)
+
+
+class TestMetaResponseValidation:
+    def test_clean_korean_is_valid(self):
+        assert not _looks_like_meta_response(SOURCE_EN, CLEAN_KO)
+
+    def test_clean_english_is_valid(self):
+        assert not _looks_like_meta_response("bonjour", "hello")
+
+    def test_meta_garbage_is_invalid(self):
+        assert _looks_like_meta_response(SOURCE_EN, META_GARBAGE)
+
+
+class TestTranslateRetry:
+    @patch("eyas.postprocessing.translate_tts.get_tinyaya_model")
+    def test_meta_response_triggers_retry(self, mock_get_model):
+        model = MagicMock()
+        model.create_chat_completion.side_effect = [
+            {"choices": [{"message": {"content": META_GARBAGE}}]},
+            {"choices": [{"message": {"content": CLEAN_KO}}]},
+        ]
+        mock_get_model.return_value = model
+
+        assert translate(SOURCE_EN, target_lang="Korean") == CLEAN_KO
+        assert model.create_chat_completion.call_count == 2
+
+    @patch("eyas.postprocessing.translate_tts.get_tinyaya_model")
+    def test_invalid_retry_returns_source(self, mock_get_model):
+        model = MagicMock()
+        model.create_chat_completion.side_effect = [
+            {"choices": [{"message": {"content": META_GARBAGE}}]},
+            {"choices": [{"message": {"content": META_GARBAGE}}]},
+        ]
+        mock_get_model.return_value = model
+
+        assert translate(SOURCE_EN, target_lang="Korean") == SOURCE_EN
+        assert model.create_chat_completion.call_count == 2
+
+    @patch("eyas.postprocessing.translate_tts.get_tinyaya_model")
+    def test_valid_first_response_no_retry(self, mock_get_model):
+        mock_get_model.return_value = _mock_tinyaya_response(CLEAN_KO)
+
+        assert translate(SOURCE_EN, target_lang="Korean") == CLEAN_KO
+        mock_get_model.return_value.create_chat_completion.assert_called_once()
 
 
 class TestTranslateCaching:
@@ -222,4 +288,11 @@ class TestTranslateCache:
         assert mapping2["a"] == "ko:a"
         assert stats2.cache_hits == 1
         assert stats2.cache_misses == 0
+        assert mock_translate.call_count == 2
+
+    @patch("eyas.postprocessing.translate_tts.translate")
+    def test_does_not_cache_invalid_result(self, mock_translate):
+        mock_translate.return_value = SOURCE_EN
+        translate_cached(SOURCE_EN, target_lang="Korean")
+        translate_cached(SOURCE_EN, target_lang="Korean")
         assert mock_translate.call_count == 2

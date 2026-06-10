@@ -6,8 +6,13 @@ Translation and text-to-speech for operator alerts.
 
 | Symbol | Description |
 |---|---|
-| `translate(text, target_lang)` | Translate `text` to `target_lang` using a local llama.cpp model |
+| `translate(text, target_lang)` | Translate `text` to `target_lang` using TinyAya (llama.cpp); validates output and retries once on meta/explanation garbage |
+| `translate_cached(text, target_lang)` | Cached wrapper; only stores clean translations (not fallbacks or invalid output) |
 | `tts(text, target_lang, voice)` | Stream `(sample_rate, audio_chunk)` tuples via VoxCPM2 (requires CUDA) |
+
+## Translation behavior
+
+When `translate()` gets an invalid response (known meta phrases such as language-detection notes), it retries with a stricter prompt. If the retry is still invalid, it returns the original source text unchanged.
 
 ## Dependencies
 
