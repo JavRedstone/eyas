@@ -31,10 +31,10 @@ from ui.locale import (
     LANGUAGE_LABELS,
     SPLASH_MODEL_KEYS,
     Strings,
-    batch_translate_freeform,
     display_risk,
+    fmt_event_time,
+    format_event_row,
     format_translation_time,
-    is_known_activity,
     localize_llm_result,
     localize_text,
     pipeline_steps_default,
@@ -1177,7 +1177,7 @@ def build_app(
                         elem_id="refresh-events-btn", scale=0, min_width=40,
                     )
                 event_table = gr.DataFrame(
-                    headers=["#", "Event", "Activity", "Start", "End", "Zone", "Confidence", "Clip"],
+                    headers=S.table_headers(),
                     label=S.t("labels.event_log"), interactive=False, wrap=True, elem_id="event-table",
                 )
                 with gr.Row():
@@ -1366,7 +1366,10 @@ def build_app(
             steps = pipeline_steps_default()  # mutable copy
             step_start: dict = {}
             _last_frame: list = [None]  # latest annotated frame (RGB numpy array)
-            activity_stats = None
+            from postprocessing.translate_tts import TranslateStats
+
+            text_cache: dict[str, str] = {}
+            translation_stats = TranslateStats()
             _live_events.clear()
             _live_rows.clear()
 
@@ -1429,24 +1432,15 @@ def build_app(
             def _on_new_events(evs: list) -> None:
                 for ev in evs:
                     i = len(_live_events)
+                    _live_events.append(ev)
+                    row = format_event_row(
+                        ev, i, S, text_cache=text_cache, stats=translation_stats,
+                    )
+                    _live_rows.append(row)
                     ev_kind = "pickup" if ev.get("pickup_confirmed") else "observation"
                     activity = (ev.get("activity") or "").strip() or "—"
-                    clip_name = "—"
-                    if ev.get("pickup_confirmed"):
-                        picked = ev.get("picked_up_items") or []
-                        if picked:
-                            clip_name = picked[0].get("name", "—") or "—"
-                    _live_events.append(ev)
-                    _live_rows.append([
-                        i, ev_kind, activity,
-                        _fmt_time(ev.get("timestamp")),
-                        _fmt_time(ev.get("confirmation_timestamp")) or "—",
-                        ev.get("zone", "") or "—",
-                        round(float(ev.get("confidence", 0)), 2),
-                        clip_name,
-                    ])
                     print(
-                        f"[EVENT #{i}] {_fmt_time(ev.get('timestamp'))} | "
+                        f"[EVENT #{i}] {fmt_event_time(ev.get('timestamp'))} | "
                         f"{ev_kind.upper()} | zone={ev.get('zone') or '?'} | "
                         f"{activity[:100]}"
                     )
@@ -1517,36 +1511,13 @@ def build_app(
             _finish_step(2, "vlm", S.t("pipeline.events_count", count=len(events)))
             _start_step(3, "llm_summarize")
 
-            freeform_activities: set[str] = set()
-            for ev in events:
-                activity = "pickup" if ev.get("pickup_confirmed") else ev.get("activity", "")
-                if activity and not is_known_activity(activity):
-                    freeform_activities.add(activity)
-            activity_stats, activity_translations = None, {}
-            activity_translations, activity_stats = batch_translate_freeform(freeform_activities, language)
+            rows = [
+                format_event_row(ev, i, S, text_cache=text_cache, stats=translation_stats)
+                for i, ev in enumerate(events)
+            ]
+            _live_rows.clear()
+            _live_rows.extend(rows)
 
-            rows = []
-            for i, ev in enumerate(events):
-                raw_activity = "pickup" if ev.get("pickup_confirmed") else ev.get("activity", "")
-                if is_known_activity(raw_activity):
-                    activity = S.activity_label(raw_activity)
-                else:
-                    activity = activity_translations.get(raw_activity, raw_activity) or "—"
-                zone_raw = ev.get("zone", "")
-                clip_name = "—"
-                if ev.get("pickup_confirmed"):
-                    picked_up_items = ev.get("picked_up_items") or []
-                    if picked_up_items:
-                        clip_name = picked_up_items[0].get("name", "—") or "—"
-                rows.append([
-                    i, "pickup" if ev.get("pickup_confirmed") else "observation",
-                    activity,
-                    _fmt_time(ev.get("timestamp")),
-                    _fmt_time(ev.get("confirmation_timestamp")) or "—",
-                    S.zone_label(zone_raw) if zone_raw else "—",
-                    round(float(ev.get("confidence", 0)), 2),
-                    clip_name,
-                ])
             zone_counts = {"entrance": 0, "counter": 0, "back_door": 0, "aisles": 0}
             for ev in events:
                 z = ev.get("zone", "").lower().replace(" ", "_")
@@ -1574,11 +1545,8 @@ def build_app(
                        "flags": [], "suspicious_clips": [], "risk_level": "none"}
 
             llm_display, llm_stats = localize_llm_result(llm, language)
-            from postprocessing.translate_tts import TranslateStats
 
-            combined_stats = TranslateStats()
-            if activity_stats:
-                combined_stats = combined_stats.merge(activity_stats)
+            combined_stats = translation_stats
             if llm_stats:
                 combined_stats = combined_stats.merge(llm_stats)
             translation_time_str = format_translation_time(

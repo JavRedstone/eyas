@@ -11,8 +11,10 @@ from ui.locale import (
     Strings,
     batch_translate_freeform,
     display_activity,
+    display_event_type,
     display_risk,
     display_zone,
+    format_event_row,
     format_translation_time,
     is_known_activity,
     localize_llm_result,
@@ -54,7 +56,13 @@ class TestStrings:
         assert s.locale == "en"
 
     def test_table_headers_count(self):
-        assert len(Strings("en").table_headers()) == 7
+        assert len(Strings("en").table_headers()) == 8
+
+    def test_korean_table_headers(self):
+        headers = Strings("ko").table_headers()
+        assert "이벤트" in headers
+        assert "활동" in headers
+        assert "구역" in headers
 
     def test_tts_lang(self):
         assert Strings("ko").tts_lang == "Korean"
@@ -70,6 +78,10 @@ class TestDisplayHelpers:
 
     def test_display_activity_known(self):
         assert display_activity("pickup", "ko") == "집기"
+
+    def test_display_event_type(self):
+        assert display_event_type("observation", "ko") == "관찰"
+        assert display_event_type("pickup", "en") == "pickup"
 
     def test_display_activity_unknown_passthrough(self):
         assert display_activity("browsing shelves", "ko") == "browsing shelves"
@@ -158,3 +170,51 @@ class TestLocalizeHelpers:
         assert result["risk_level"] == "medium"
         assert stats is not None
         assert stats.cache_misses == 2
+
+
+class TestFormatEventRow:
+    def setup_method(self):
+        clear_translation_cache()
+
+    def test_english_row(self):
+        ev = {
+            "pickup_confirmed": False,
+            "activity": "entry",
+            "timestamp": 65.0,
+            "confirmation_timestamp": None,
+            "zone": "back_door",
+            "confidence": 0.94,
+        }
+        row = format_event_row(ev, 0, Strings("en"), text_cache={})
+        assert row[1] == "observation"
+        assert row[2] == "entry"
+        assert row[5] == "Back Door"
+
+    def test_korean_row_catalog_labels(self):
+        ev = {
+            "pickup_confirmed": True,
+            "activity": "walking",
+            "timestamp": 10.0,
+            "confirmation_timestamp": 12.0,
+            "zone": "review_area",
+            "confidence": 0.88,
+            "picked_up_items": [{"name": "bottle", "count": 1}],
+        }
+        cache: dict[str, str] = {}
+
+        def fake_localize(text, locale):
+            return f"KO:{text}", None
+
+        import ui.locale as locale_mod
+
+        original = locale_mod.localize_text
+        locale_mod.localize_text = fake_localize
+        try:
+            row = format_event_row(ev, 0, Strings("ko"), text_cache=cache)
+        finally:
+            locale_mod.localize_text = original
+
+        assert row[1] == "집기"
+        assert row[2] == "집기"
+        assert row[5] == "검토 구역"
+        assert row[7] == "KO:bottle"
