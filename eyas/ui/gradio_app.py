@@ -14,6 +14,22 @@ from gradio.themes.utils import colors, fonts, sizes
 
 from storage import manager as storage
 from streaming.capture import default_capture as _stream
+import model_registry as _mreg
+from ui.locale import (
+    LANGUAGE_KEY,
+    LANGUAGE_LABELS,
+    SPLASH_MODEL_KEYS,
+    Strings,
+    batch_translate_freeform,
+    display_risk,
+    format_translation_time,
+    is_known_activity,
+    localize_llm_result,
+    localize_text,
+    pipeline_steps_default,
+)
+
+_mreg.start()
 
 # ---------------------------------------------------------------------------
 # Palette definitions
@@ -208,25 +224,254 @@ footer { display: none !important; }
 body.has-feed .eyas-rec { display: inline; }
 @keyframes blink { 50% { opacity: 0; } }
 
-/* Tabs */
-.tab-nav { border-bottom: 1px solid var(--_border) !important; }
-.tab-nav button {
-    background: transparent !important; color: var(--_muted) !important;
-    border-bottom: 2px solid transparent !important; text-transform: uppercase !important;
-    font-size: .72rem !important; letter-spacing: .07em !important; padding: 8px 14px !important;
+/* ── Card panels ─────────────────────────────────────────────────────── */
+#eyas-sidebar {
+    background: var(--_panel) !important;
+    border: 1px solid var(--_border) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,.35) !important;
+    overflow: hidden !important;
+    padding: 0 !important;
 }
-.tab-nav button.selected { color: var(--_accent) !important; border-bottom-color: var(--_accent) !important; }
+#eyas-sidebar .block, #eyas-sidebar .form,
+#eyas-sidebar .block-container, #eyas-sidebar > div > div {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+}
 
-/* Pipeline steps */
-.pipeline-steps { display: flex; flex-direction: column; gap: 6px; padding: 2px 0; }
+#eyas-main {
+    background: var(--_surface) !important;
+    border: 1px solid var(--_border) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,.35) !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+}
+#eyas-main .block, #eyas-main .form,
+#eyas-main .block-container, #eyas-main > div > div {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+}
+
+/* Re-style inputs/selects/textareas inside the cards so they still look distinct */
+#eyas-sidebar input, #eyas-sidebar textarea, #eyas-sidebar select,
+#eyas-main    input, #eyas-main    textarea, #eyas-main    select {
+    background: var(--_surface) !important;
+    border: 1px solid var(--_border) !important;
+    border-radius: 6px !important;
+}
+#eyas-sidebar input:focus, #eyas-sidebar textarea:focus,
+#eyas-main    input:focus, #eyas-main    textarea:focus {
+    border-color: var(--_accent) !important;
+    outline: none !important;
+}
+
+/* Panel header strip */
+.eyas-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--_muted);
+    background: var(--_surface);
+    border-bottom: 1px solid var(--_border);
+    padding: 10px 16px;
+}
+.eyas-panel-header .ph-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--_accent);
+    flex-shrink: 0;
+    box-shadow: 0 0 5px var(--_accent);
+}
+.eyas-panel-header .ph-label { color: var(--_text); }
+
+/* ── Material Design 3 buttons ───────────────────────────────────────── */
+/* All primary buttons: filled pill */
+button.primary, button[data-testid="primary"] {
+    border-radius: 20px !important;
+}
+/* All secondary buttons: outlined pill */
+button.secondary, button[data-testid="secondary"] {
+    border-radius: 20px !important;
+}
+
+/* Analyze button: full-width pill, Material icon, physical press */
+div:has(> #analyze-btn) {
+    padding: 0 16px !important;
+    box-sizing: border-box !important;
+}
+#analyze-btn {
+    font-family: var(--font-mono) !important;
+    font-size: 0.88rem !important;
+    letter-spacing: 0.1em !important;
+    text-transform: uppercase !important;
+    border-radius: 20px !important;
+    width: 100% !important;
+    margin: 0 !important;
+    transition: transform 0.08s ease, box-shadow 0.08s ease !important;
+    box-shadow: 0 4px 0 rgba(0,0,0,.5), 0 1px 3px rgba(0,0,0,.3) !important;
+    transform: translateY(0) !important;
+    text-decoration: none !important;
+}
+#analyze-btn::before {
+    content: "play_arrow";
+    font-family: 'Material Symbols Outlined' !important;
+    font-style: normal !important;
+    font-size: 19px !important;
+    line-height: 1 !important;
+    margin-right: 8px !important;
+    vertical-align: middle !important;
+    font-weight: 400 !important;
+}
+#analyze-btn:hover {
+    transform: translateY(-3px) !important;
+    box-shadow: 0 7px 0 rgba(0,0,0,.5), 0 2px 8px rgba(0,0,0,.3) !important;
+}
+#analyze-btn:active {
+    transform: translateY(2px) !important;
+    box-shadow: 0 1px 0 rgba(0,0,0,.5) !important;
+}
+
+/* ── Sidebar navigation tabs ─────────────────────────────────────────── */
+
+/* Outer container: horizontal flex — nav left, content right */
+.tabs {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: stretch !important;
+    gap: 0 !important;
+    background: var(--_panel) !important;
+    border: 1px solid var(--_border) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,.3) !important;
+    overflow: hidden !important;
+}
+
+/* Left sidebar strip that wraps .tab-container */
+.tab-wrapper {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 200px !important;
+    min-width: 200px !important;
+    flex-shrink: 0 !important;
+    border-right: 1px solid var(--_border) !important;
+    background: transparent !important;
+    align-self: stretch !important;
+    padding: 8px 0 !important;
+}
+
+/* Hide Gradio's horizontal-scroll duplicate + overflow "…" button */
+.tab-container.visually-hidden { display: none !important; }
+.overflow-menu { display: none !important; }
+
+/* The actual list of nav buttons */
+.tab-container {
+    display: flex !important;
+    flex-direction: column !important;
+    height: auto !important;
+    overflow: visible !important;
+    gap: 1px !important;
+    border: none !important;
+    width: 100% !important;
+}
+
+/* Nav buttons — MD3 navigation rail/drawer style */
+.tab-container button {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 10px 14px 10px 12px !important;
+    margin: 1px 6px !important;
+    width: calc(100% - 12px) !important;
+    text-align: left !important;
+    justify-content: flex-start !important;
+    font-size: 0.83rem !important;
+    font-weight: 500 !important;
+    letter-spacing: 0.01em !important;
+    text-transform: none !important;
+    text-decoration: none !important;
+    color: var(--_muted) !important;
+    background: transparent !important;
+    border: none !important;
+    border-bottom: none !important;
+    outline: none !important;
+    border-radius: 28px !important;
+    box-shadow: none !important;
+    transition: background 0.13s, color 0.13s !important;
+    cursor: pointer !important;
+}
+.tab-container button:hover {
+    background: var(--_accent-a08) !important;
+    color: var(--_text) !important;
+}
+.tab-container button.selected,
+.tab-container button[aria-selected="true"] {
+    color: var(--_accent) !important;
+    background: var(--_accent-a12) !important;
+    font-weight: 600 !important;
+    text-decoration: none !important;
+    border: none !important;
+    border-bottom: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+.tab-container button::after,
+.tab-container button.selected::after,
+.tab-container button[aria-selected="true"]::after {
+    display: none !important;
+    content: none !important;
+}
+.tab-container button:focus, .tab-container button:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+/* Material Symbol icons via ::before */
+.tab-container button::before {
+    font-family: 'Material Symbols Outlined' !important;
+    font-style: normal !important;
+    font-size: 18px !important;
+    line-height: 1 !important;
+    display: inline-block !important;
+    flex-shrink: 0 !important;
+    color: inherit !important;
+    opacity: 0.75;
+}
+.tab-container button:nth-child(1)::before { content: "timeline"; }
+.tab-container button:nth-child(2)::before { content: "notifications_active"; }
+.tab-container button:nth-child(3)::before { content: "forum"; }
+.tab-container button:nth-child(4)::before { content: "monitoring"; }
+.tab-container button:nth-child(5)::before { content: "volume_up"; }
+.tab-container button:nth-child(6)::before { content: "videocam"; }
+.tab-container button:nth-child(7)::before { content: "video_library"; }
+.tab-container button:nth-child(8)::before { content: "tune"; }
+
+/* Tab content panel fills remaining width */
+.tabitem {
+    flex: 1 !important;
+    min-width: 0 !important;
+    padding: 20px 24px !important;
+}
+
+/* ── Pipeline steps ───────────────────────────────────────────────────── */
+.pipeline-steps { display: flex; flex-direction: column; gap: 5px; padding: 2px 0; }
 .pipeline-step {
     display: flex; align-items: center; gap: 10px;
-    padding: 8px 14px; border-radius: 6px;
+    padding: 9px 14px; border-radius: 7px;
     border: 1px solid var(--_border); background: var(--_panel);
-    font-size: 0.82rem; transition: border-color .2s, opacity .2s;
+    font-size: 0.82rem; transition: border-color .2s, opacity .2s, background .2s;
 }
-.pipeline-step.pending  { opacity: .45; }
-.pipeline-step.running  { border-color: var(--_accent); }
+.pipeline-step.pending  { opacity: .4; }
+.pipeline-step.running  { border-color: var(--_accent); background: var(--_panel); }
 .pipeline-step.done     { border-color: var(--_border); }
 .pipeline-step.error    { border-color: var(--_danger); }
 .ps-icon   { font-size: 1rem; width: 20px; text-align: center; flex-shrink: 0; }
@@ -236,12 +481,35 @@ body.has-feed .eyas-rec { display: inline; }
 .ps-name   { flex: 1; color: var(--_text); font-weight: 500; }
 .ps-detail { color: var(--_muted); font-size: 0.75rem; }
 
-/* DataFrame */
-table { background-color: var(--_panel) !important; }
-thead, thead tr { background-color: var(--_surface) !important; }
-th { color: var(--_accent) !important; font-size: .68rem !important; text-transform: uppercase !important; letter-spacing: .1em !important; border-color: var(--_border) !important; }
-td { color: var(--_text) !important; border-color: var(--_border) !important; }
-tr:hover td { background-color: var(--_surface) !important; }
+/* ── DataFrame / Event Table ─────────────────────────────────────────── */
+table { background: var(--_panel) !important; border-collapse: collapse !important; }
+thead tr { background: var(--_surface) !important; border-bottom: 1px solid var(--_border) !important; }
+th {
+    background: var(--_surface) !important;
+    color: var(--_accent) !important;
+    font-size: 0.64rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.12em !important;
+    padding: 11px 16px !important;
+    border: none !important;
+    white-space: nowrap !important;
+}
+td {
+    color: var(--_text) !important;
+    font-size: 0.8rem !important;
+    padding: 10px 16px !important;
+    border: none !important;
+    border-bottom: 1px solid var(--_border) !important;
+}
+tbody tr:last-child td { border-bottom: none !important; }
+tbody tr:nth-child(even) td { background: rgba(255,255,255,.018) !important; }
+tr:hover td { background: var(--_surface) !important; cursor: pointer !important; }
+/* index + time columns: monospace muted */
+td:nth-child(1) { font-family: var(--font-mono) !important; font-size: 0.72rem !important; color: var(--_muted) !important; }
+td:nth-child(3), td:nth-child(4) { font-family: var(--font-mono) !important; font-size: 0.75rem !important; color: var(--_muted) !important; }
+td:nth-child(2) { font-weight: 500 !important; }
+td:nth-child(6) { font-family: var(--font-mono) !important; font-size: 0.75rem !important; color: var(--_accent) !important; font-weight: 600 !important; }
 
 /* Zone count numbers */
 #count-entrance input, #count-counter input,
@@ -251,7 +519,7 @@ tr:hover td { background-color: var(--_surface) !important; }
 }
 
 /* Status output */
-#status-box textarea { color: var(--_accent) !important; }
+#status-box textarea { color: var(--_accent) !important; font-family: var(--font-mono) !important; font-size: 0.78rem !important; }
 
 /* Section headings */
 .block h3 {
@@ -265,7 +533,7 @@ tr:hover td { background-color: var(--_surface) !important; }
 .message.user .bubble-wrap { background: var(--_panel)   !important; border-radius: 8px 8px 2px 8px !important; }
 .message.bot  .bubble-wrap { background: var(--_surface) !important; border-radius: 8px 8px 8px 2px !important; }
 
-/* Code blocks — always use theme surface/text, never the browser default black */
+/* Code blocks */
 code, pre,
 .prose code, .prose pre,
 .message code, .message pre {
@@ -283,44 +551,240 @@ pre code { background-color: transparent !important; border: none !important; pa
 ::-webkit-scrollbar-track { background: var(--_panel); }
 ::-webkit-scrollbar-thumb { background: var(--_border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--_muted); }
+
+/* ── Startup splash screen ───────────────────────────────────────────── */
+#eyas-splash {
+    position: fixed; inset: 0; z-index: 10000;
+    background: var(--_bg, #0a0e17);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 28px;
+}
+#eyas-splash.splash-fading {
+    animation: splash-fade-out 0.65s ease forwards;
+    pointer-events: none;
+}
+@keyframes splash-fade-out { to { opacity: 0; } }
+
+.splash-logo-row {
+    display: flex; align-items: center; gap: 12px;
+}
+.splash-logo-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--_accent); box-shadow: 0 0 12px var(--_accent);
+    animation: splash-pulse 1.8s ease-in-out infinite;
+}
+@keyframes splash-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+}
+.splash-wordmark {
+    font-family: var(--font-mono); font-size: 2.4rem; font-weight: 700;
+    letter-spacing: 0.18em; color: var(--_accent);
+}
+.splash-subtitle {
+    font-size: 0.78rem; color: var(--_muted); letter-spacing: 0.1em;
+    text-transform: uppercase; margin-top: -20px;
+}
+.splash-card {
+    background: var(--_panel);
+    border: 1px solid var(--_border);
+    border-radius: 16px;
+    padding: 0;
+    min-width: 320px;
+    overflow: hidden;
+}
+.splash-card-header {
+    font-family: var(--font-mono); font-size: 0.58rem; font-weight: 700;
+    letter-spacing: 0.2em; text-transform: uppercase; color: var(--_muted);
+    background: var(--_surface); border-bottom: 1px solid var(--_border);
+    padding: 9px 18px;
+}
+.splash-item {
+    display: flex; align-items: center; gap: 14px;
+    padding: 13px 18px;
+    border-bottom: 1px solid var(--_border);
+}
+.splash-item:last-child { border-bottom: none; }
+.splash-item-icon {
+    font-family: 'Material Symbols Outlined'; font-style: normal;
+    font-size: 20px; line-height: 1; flex-shrink: 0;
+    color: var(--_muted);
+}
+.splash-item-icon.si-loading {
+    color: var(--_accent);
+    animation: splash-spin 1.2s linear infinite;
+}
+.splash-item-icon.si-ready   { color: #10b981; }
+.splash-item-icon.si-error   { color: var(--_danger); }
+.splash-item-icon.si-skipped { color: #f59e0b; }
+@keyframes splash-spin { to { transform: rotate(360deg); } }
+.splash-item-body { display: flex; flex-direction: column; gap: 2px; }
+.splash-item-label { font-size: 0.85rem; font-weight: 500; color: var(--_text); }
+.splash-item-detail { font-size: 0.72rem; color: var(--_muted); font-family: var(--font-mono); }
+.splash-progress-wrap {
+    height: 3px; background: var(--_border); margin: 0;
+    border-radius: 0 0 16px 16px; overflow: hidden;
+}
+.splash-progress-bar {
+    height: 100%; background: var(--_accent);
+    transition: width 0.5s ease;
+    box-shadow: 0 0 6px var(--_accent);
+}
 """
 
 
-def _build_css(p: dict) -> str:
+# Per-theme personality overrides — appended after _STRUCTURAL_CSS at build time.
+# Only the active theme's block is included; no runtime selectors needed.
+_PER_THEME_CSS: Dict[str, str] = {
+    "night": """
+/* Night Vision: terminal green glow */
+thead tr { border-bottom-color: var(--_accent) !important; }
+th { text-shadow: 0 0 10px rgba(16,185,129,.35) !important; }
+.tab-container button.selected { background: rgba(16,185,129,.07) !important; }
+.eyas-panel-header .ph-label { letter-spacing: 0.22em !important; }
+""",
+    "amber": """
+/* Amber CRT: warm retro terminal */
+table { font-family: var(--font-mono) !important; }
+th { letter-spacing: 0.18em !important; }
+.tabs, #eyas-sidebar, #eyas-main { border-radius: 6px !important; }
+tbody tr:nth-child(even) td { background: rgba(245,158,11,.05) !important; }
+.eyas-panel-header { letter-spacing: 0.25em !important; }
+""",
+    "cyber": """
+/* Cyberpunk: neon glow */
+th { text-shadow: 0 0 14px var(--_accent) !important; }
+thead tr { border-bottom-color: var(--_accent) !important; box-shadow: 0 2px 14px rgba(168,85,247,.25) !important; }
+.tab-container button.selected { text-shadow: 0 0 8px var(--_accent) !important; }
+.tabs, #eyas-sidebar, #eyas-main { border-radius: 4px !important; }
+.pipeline-step.running { box-shadow: 0 0 12px rgba(168,85,247,.4) !important; }
+tbody tr:nth-child(even) td { background: rgba(168,85,247,.04) !important; }
+""",
+    "sentinel": """
+/* Sentinel: clean enterprise blue */
+thead tr { border-bottom: 2px solid var(--_accent) !important; }
+.tab-container button.selected { font-weight: 600 !important; }
+#analyze-btn { border-radius: 4px !important; }
+tbody tr:nth-child(even) td { background: rgba(59,130,246,.04) !important; }
+""",
+    "voltagent": """
+/* VoltAgent: minimal green terminal */
+th { text-shadow: 0 0 8px rgba(0,217,146,.25) !important; }
+thead tr { border-bottom-color: var(--_accent) !important; }
+.tab-container button.selected { background: rgba(0,217,146,.05) !important; }
+""",
+    "xai": """
+/* xAI: bold orange-tech */
+thead tr { border-bottom: 2px solid var(--_accent) !important; }
+th { font-weight: 800 !important; font-size: 0.68rem !important; }
+.tabs, #eyas-sidebar, #eyas-main { border-radius: 6px !important; }
+""",
+    "warp": """
+/* Warp: warm rounded terminal */
+.tabs, #eyas-sidebar, #eyas-main { border-radius: 10px !important; }
+th { letter-spacing: 0.08em !important; font-weight: 600 !important; color: var(--_text) !important; text-transform: none !important; }
+thead tr { background: rgba(247,245,240,.05) !important; }
+tbody tr:nth-child(even) td { background: rgba(247,245,240,.025) !important; }
+""",
+    "linear": """
+/* Linear: ultra minimal */
+.tabs, #eyas-sidebar, #eyas-main { box-shadow: none !important; }
+th { font-weight: 500 !important; color: var(--_muted) !important; letter-spacing: 0.06em !important; }
+thead tr { background: transparent !important; }
+.tab-container button { font-size: 0.8rem !important; }
+""",
+    "sentry": """
+/* Sentry: lime-on-purple drama */
+th { text-shadow: 0 0 10px rgba(194,239,78,.3) !important; }
+thead tr { border-bottom-color: var(--_accent) !important; }
+.tab-container button.selected { background: rgba(194,239,78,.07) !important; }
+tbody tr:nth-child(even) td { background: rgba(194,239,78,.03) !important; }
+""",
+    "stripe": """
+/* Stripe: gradient-header indigo */
+thead tr { background: linear-gradient(135deg, var(--_surface) 0%, rgba(83,58,253,.18) 100%) !important; border-bottom: 1px solid var(--_accent) !important; }
+th { font-weight: 700 !important; }
+.tabs, #eyas-sidebar, #eyas-main { border-radius: 8px !important; }
+""",
+    "supabase": """
+/* Supabase: clean dark green */
+thead tr { border-bottom: 1px solid var(--_accent) !important; }
+th { font-size: 0.64rem !important; letter-spacing: 0.13em !important; }
+tbody tr:nth-child(even) td { background: rgba(62,207,142,.03) !important; }
+""",
+    "vercel": """
+/* Vercel: pure minimal black */
+.tabs, #eyas-sidebar, #eyas-main { border-radius: 0 !important; border-color: #333 !important; }
+th { color: var(--_accent) !important; font-weight: 600 !important; font-size: 0.65rem !important; letter-spacing: 0.06em !important; }
+thead tr { border-bottom: 1px solid #333 !important; }
+.tab-container button.selected { background: rgba(0,112,243,.06) !important; }
+tbody tr:nth-child(even) td { background: rgba(255,255,255,.03) !important; }
+""",
+    "cursor": """
+/* Cursor: mac-like warm light */
+.tabs, #eyas-sidebar, #eyas-main { border-radius: 10px !important; box-shadow: 0 2px 8px rgba(0,0,0,.07) !important; }
+th { color: var(--_muted) !important; font-weight: 600 !important; font-size: 0.64rem !important; }
+thead tr { border-bottom: 1px solid var(--_border) !important; }
+tbody tr:nth-child(even) td { background: rgba(0,0,0,.02) !important; }
+""",
+    "runway": """
+/* Runway: typographic serif elegance */
+th { font-family: var(--font) !important; font-style: italic !important; color: var(--_muted) !important; font-size: 0.76rem !important; letter-spacing: 0.02em !important; text-transform: none !important; }
+.tabs, #eyas-sidebar, #eyas-main { border-radius: 2px !important; box-shadow: none !important; }
+.tab-container button { letter-spacing: 0.02em !important; }
+""",
+}
+
+
+def _build_css(p: dict, theme_key: str = "night") -> str:
+    imports = (
+        "@import url('https://fonts.googleapis.com/css2?"
+        "family=Google+Sans:ital,wght@0,400;0,500;0,700;1,400"
+        "&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400"
+        "&display=swap');\n"
+        "@import url('https://fonts.googleapis.com/css2?"
+        "family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0');\n"
+    )
+    r, g, b = int(p["accent"][1:3], 16), int(p["accent"][3:5], 16), int(p["accent"][5:7], 16)
     root = (
         ":root {\n"
-        f"    --_accent:  {p['accent']};\n"
-        f"    --_panel:   {p['panel']};\n"
-        f"    --_surface: {p['surface']};\n"
-        f"    --_border:  {p['border']};\n"
-        f"    --_text:    {p['text']};\n"
-        f"    --_muted:   {p['muted']};\n"
-        f"    --_danger:  {p['danger']};\n"
+        f"    --_accent:     {p['accent']};\n"
+        f"    --_accent-a12: rgba({r},{g},{b},0.12);\n"
+        f"    --_accent-a08: rgba({r},{g},{b},0.08);\n"
+        f"    --_panel:      {p['panel']};\n"
+        f"    --_surface:    {p['surface']};\n"
+        f"    --_bg:         {p['bg']};\n"
+        f"    --_border:     {p['border']};\n"
+        f"    --_text:       {p['text']};\n"
+        f"    --_muted:      {p['muted']};\n"
+        f"    --_danger:     {p['danger']};\n"
         "}\n"
     )
-    return root + _STRUCTURAL_CSS
+    return imports + root + _STRUCTURAL_CSS + _PER_THEME_CSS.get(theme_key, "")
 
 
 # ---------------------------------------------------------------------------
 # Per-theme font stacks
 # ---------------------------------------------------------------------------
 
+_GS = [fonts.GoogleFont("Google Sans"), fonts.GoogleFont("DM Sans"), fonts.Font("system-ui"), fonts.Font("sans-serif")]
+
 _FONTS: Dict[str, list] = {
-    # Simple themes — clean sans-serif
-    "night":    [fonts.GoogleFont("Inter"), fonts.Font("system-ui"), fonts.Font("sans-serif")],
-    "amber":    [fonts.GoogleFont("Inter"), fonts.Font("system-ui"), fonts.Font("sans-serif")],
-    "cyber":    [fonts.GoogleFont("Inter"), fonts.Font("system-ui"), fonts.Font("sans-serif")],
-    "sentinel": [fonts.GoogleFont("Inter"), fonts.Font("system-ui"), fonts.Font("sans-serif")],
+    # Simple themes
+    "night":    _GS,
+    "amber":    _GS,
+    "cyber":    _GS,
+    "sentinel": _GS,
     # Advanced themes
-    "voltagent": [fonts.GoogleFont("Inter"), fonts.Font("system-ui"), fonts.Font("sans-serif")],
-    "xai":       [fonts.GoogleFont("Inter"), fonts.Font("system-ui"), fonts.Font("sans-serif")],
-    "warp":      [fonts.GoogleFont("Inter"), fonts.Font("system-ui"), fonts.Font("sans-serif")],
-    "linear":    [fonts.GoogleFont("Inter"), fonts.Font("system-ui"), fonts.Font("sans-serif")],
-    "sentry":    [fonts.GoogleFont("Rubik"), fonts.Font("system-ui"), fonts.Font("sans-serif")],
-    "stripe":    [fonts.GoogleFont("Inter"), fonts.Font("system-ui"), fonts.Font("sans-serif")],
-    "supabase":  [fonts.GoogleFont("Inter"), fonts.Font("system-ui"), fonts.Font("sans-serif")],
-    "vercel":    [fonts.GoogleFont("Geist"), fonts.GoogleFont("Inter"), fonts.Font("system-ui"), fonts.Font("sans-serif")],
-    "cursor":    [fonts.Font("system-ui"), fonts.Font("Helvetica Neue"), fonts.Font("Arial"), fonts.Font("sans-serif")],
+    "voltagent": _GS,
+    "xai":       _GS,
+    "warp":      _GS,
+    "linear":    _GS,
+    "sentry":    [fonts.GoogleFont("Google Sans"), fonts.GoogleFont("Rubik"), fonts.Font("system-ui"), fonts.Font("sans-serif")],
+    "stripe":    _GS,
+    "supabase":  _GS,
+    "vercel":    [fonts.GoogleFont("Google Sans"), fonts.GoogleFont("Geist"), fonts.Font("system-ui"), fonts.Font("sans-serif")],
+    "cursor":    [fonts.GoogleFont("Google Sans"), fonts.Font("system-ui"), fonts.Font("Helvetica Neue"), fonts.Font("sans-serif")],
     "runway":    [fonts.GoogleFont("Instrument Serif"), fonts.Font("Georgia"), fonts.Font("serif")],
 }
 
@@ -387,7 +851,7 @@ class EyasTheme(Base):
             color_accent_soft=f"rgba({int(p['accent'][1:3],16)},{int(p['accent'][3:5],16)},{int(p['accent'][5:7],16)},.18)",
         )
         self.name = f"eyas-{advanced or color}-{'adv' if advanced else ('dark' if dark else 'light')}"
-        self.custom_css = _build_css(p)
+        self.custom_css = _build_css(p, _fkey)
 
 
 # ---------------------------------------------------------------------------
@@ -400,15 +864,15 @@ _REC_JS = "(v) => { if (v) document.body.classList.add('has-feed'); else documen
 # Static HTML
 # ---------------------------------------------------------------------------
 
-_HEADER_HTML = """
+def _header_html(S: Strings) -> str:
+    return f"""
 <div class="eyas-title-row">
     <span class="eyas-rec">&#9679;&nbsp;REC</span>
     <span class="eyas-title">Eyas</span>
 </div>
-<div class="eyas-tagline">AI Security Camera Agent</div>
+<div class="eyas-tagline">{S.t("header.tagline")}</div>
 <p class="eyas-subtitle">
-    Offline AI-powered CCTV analysis &mdash; structured event log,
-    security summaries &amp; natural-language queries.
+    {S.t("header.subtitle")}
 </p>
 <div class="eyas-divider"></div>
 """
@@ -438,23 +902,16 @@ _SAMPLE_PATHS: Dict[str, str] = {
 
 _STEP_ICONS = {"pending": "○", "running": "●", "done": "✓", "error": "✗"}
 
-_PIPELINE_STEPS_DEFAULT = [
-    ("Load video",                  "pending", ""),
-    ("Object detection (YOLO)",     "pending", ""),
-    ("Semantic analysis (VLM)",     "pending", ""),
-    ("LLM summarization",           "pending", ""),
-]
 
-
-def _steps_html(steps: list) -> str:
+def _steps_html(S: Strings, steps: list) -> str:
     rows = []
-    for name, state, detail in steps:
+    for step_id, state, detail in steps:
         icon = _STEP_ICONS.get(state, "○")
         detail_span = f'<span class="ps-detail">{detail}</span>' if detail else ""
         rows.append(
             f'<div class="pipeline-step {state}">'
             f'<span class="ps-icon">{icon}</span>'
-            f'<span class="ps-name">{name}</span>'
+            f'<span class="ps-name">{S.pipeline_step_label(step_id)}</span>'
             f'{detail_span}'
             f'</div>'
         )
@@ -486,190 +943,307 @@ def _annotate_elapsed(steps: list, start_times: dict) -> list:
 
 
 # ---------------------------------------------------------------------------
+# Splash screen
+# ---------------------------------------------------------------------------
+
+def _splash_model_label(S: Strings, key: str, default: str) -> str:
+    msg_key = SPLASH_MODEL_KEYS.get(key)
+    return S.t(msg_key) if msg_key else default
+
+
+def _splash_html(S: Strings, states: list | None = None, fading: bool = False) -> str:
+    _icon_class = {
+        "waiting": ("hourglass_empty", ""),
+        "loading": ("sync",            "si-loading"),
+        "ready":   ("check_circle",    "si-ready"),
+        "error":   ("error",           "si-error"),
+        "skipped": ("warning",         "si-skipped"),
+    }
+    _detail_text = {
+        "waiting": S.t("splash.waiting"),
+        "loading": S.t("splash.loading"),
+        "ready":   S.t("splash.ready"),
+        "error":   S.t("splash.failed"),
+        "skipped": S.t("splash.skipped"),
+    }
+    if states is None:
+        from model_registry import get_states
+        states = get_states()
+
+    _registry_keys = ["yolo", "vlm", "llm"]
+
+    total = len(states)
+    done_count = sum(1 for s in states if s.status in {"ready", "error", "skipped"})
+    progress_pct = int(done_count / total * 100) if total else 0
+
+    items_html = ""
+    for i, s in enumerate(states):
+        icon, cls = _icon_class.get(s.status, ("hourglass_empty", ""))
+        detail = s.detail if s.detail else _detail_text.get(s.status, "")
+        reg_key = _registry_keys[i] if i < len(_registry_keys) else ""
+        label = _splash_model_label(S, reg_key, s.label)
+        items_html += (
+            f'<div class="splash-item">'
+            f'<span class="splash-item-icon material-symbols-outlined {cls}">{icon}</span>'
+            f'<div class="splash-item-body">'
+            f'<span class="splash-item-label">{label}</span>'
+            f'<span class="splash-item-detail">{detail}</span>'
+            f'</div></div>'
+        )
+
+    fading_class = " splash-fading" if fading else ""
+    return (
+        f'<div id="eyas-splash" class="eyas-splash{fading_class}">'
+        f'<div class="splash-logo-row">'
+        f'<span class="splash-logo-dot"></span>'
+        f'<span class="splash-wordmark">Eyas</span>'
+        f'</div>'
+        f'<div class="splash-subtitle">{S.t("header.tagline")}</div>'
+        f'<div class="splash-card">'
+        f'<div class="splash-card-header">{S.t("splash.initializing")}</div>'
+        f'{items_html}'
+        f'<div class="splash-progress-wrap">'
+        f'<div class="splash-progress-bar" style="width:{progress_pct}%"></div>'
+        f'</div>'
+        f'</div>'
+        f'</div>'
+    )
+
+
+# ---------------------------------------------------------------------------
 # App
 # ---------------------------------------------------------------------------
+
+def _load_prefs_file(prefs_path: Optional[Path]) -> dict:
+    if prefs_path is None:
+        return {}
+    try:
+        return json.loads(prefs_path.read_text())
+    except Exception:
+        return {}
+
+
+def _save_prefs_file(prefs_path: Optional[Path], updates: dict) -> None:
+    if prefs_path is None:
+        return
+    merged = {**_load_prefs_file(prefs_path), **updates}
+    prefs_path.write_text(json.dumps(merged, indent=2))
+
 
 def build_app(
     color: str = "night",
     dark: bool = True,
     advanced: Optional[str] = None,
+    language: str = "en",
     prefs_path: Optional[Path] = None,
 ) -> gr.Blocks:
 
+    S = Strings(language)
     current_label = (
         _ADVANCED_NAMES.get(advanced, advanced)
         if advanced else _theme_label(color, dark)
     )
     _theme = EyasTheme(color=color, dark=dark, advanced=advanced)
 
-    with gr.Blocks(title="AI Security Camera Agent") as demo:
+    with gr.Blocks(title=S.t("app.title")) as demo:
+
+        # ── Startup splash (ComfyUI-style model loading screen) ──────────────
+        splash_html  = gr.HTML(value=_splash_html(S), elem_id="splash-wrapper")
+        splash_timer = gr.Timer(value=0.9, active=True)
 
         # ── Header ──────────────────────────────────────────────────────────
         with gr.Row():
             with gr.Column(scale=5, elem_id="eyas-header"):
-                gr.HTML(_HEADER_HTML)
+                gr.HTML(_header_html(S))
             with gr.Column(scale=1, min_width=160, elem_id="theme-col"):
-                gr.HTML(f'<div class="eyas-theme-badge">Theme: <strong>{current_label}</strong></div>')
+                gr.HTML(
+                    f'<div class="eyas-theme-badge">'
+                    f'{S.t("badge.theme", theme=current_label)}<br>'
+                    f'{S.t("badge.language", language=LANGUAGE_LABELS.get(language, language))}'
+                    f'</div>'
+                )
 
         event_log_state: gr.State = gr.State([])
 
-        # ── Input row ───────────────────────────────────────────────────────
+        # ── Main layout: sidebar + analysis panel ────────────────────────────
         with gr.Row():
-            with gr.Column(scale=3):
-                with gr.Row():
-                    sample_dd = gr.Dropdown(
-                        choices=list(_SAMPLE_PATHS.keys()),
-                        label="Sample clips",
-                        interactive=True,
-                        scale=4,
-                    )
-                    load_sample_btn = gr.Button("Load", variant="secondary", scale=1, size="sm")
-                video_input = gr.Video(label="Upload CCTV clip (.mp4)", sources=["upload"])
-            with gr.Column(scale=1):
-                analyze_btn  = gr.Button("Analyze", variant="primary", size="lg")
-                status_box   = gr.Textbox(label="Status", interactive=False, lines=3, elem_id="status-box")
-                upload_status = gr.Textbox(label="Storage", interactive=False, lines=1, visible=True)
+
+            # — Left sidebar: input ──────────────────────────────────────────
+            with gr.Column(scale=1, min_width=260, elem_id="eyas-sidebar"):
+                gr.HTML(
+                    '<div class="eyas-panel-header">'
+                    '<span class="ph-dot"></span>'
+                    f'<span class="ph-label">{S.t("header.footage")}</span>'
+                    '</div>'
+                )
+                sample_dd = gr.Dropdown(
+                    choices=list(_SAMPLE_PATHS.keys()),
+                    label=S.t("labels.sample_clips"),
+                    interactive=True,
+                )
+                load_sample_btn = gr.Button(S.t("buttons.load_sample"), variant="secondary", size="sm")
+                video_input = gr.Video(label=S.t("labels.original_video"), sources=["upload"])
+                upload_status = gr.Textbox(label=S.t("labels.storage"), interactive=False, lines=1)
+
+            # — Right panel: analysis + output ───────────────────────────────
+            with gr.Column(scale=2, elem_id="eyas-main"):
+                gr.HTML(
+                    '<div class="eyas-panel-header">'
+                    '<span class="ph-dot"></span>'
+                    f'<span class="ph-label">{S.t("header.analysis")}</span>'
+                    '</div>'
+                )
+                analyze_btn = gr.Button(
+                    S.t("buttons.analyze"), variant="primary", size="lg", elem_id="analyze-btn",
+                )
+                status_box = gr.Textbox(
+                    label=S.t("labels.status"), interactive=False, lines=1,
+                    elem_id="status-box",
+                )
+                pipeline_html = gr.HTML(_steps_html(S, pipeline_steps_default()))
+                annotated_img = gr.Image(label=S.t("labels.annotated_live"), interactive=False)
+                annotated_vid = gr.Video(label=S.t("labels.annotated_video"), interactive=False, visible=False)
 
         video_input.change(fn=None, inputs=[video_input], js=_REC_JS)
-
-        # ── Pipeline progress ────────────────────────────────────────────────
-        pipeline_html = gr.HTML(_steps_html(_PIPELINE_STEPS_DEFAULT))
 
         # ── Tabs ────────────────────────────────────────────────────────────
         with gr.Tabs():
 
-            with gr.TabItem("Event Timeline"):
-                _section_title("Detected Events")
+            with gr.TabItem(S.t("tabs.event_timeline")):
+                _section_title(S.t("labels.detected_events"))
                 event_table = gr.DataFrame(
-                    headers=["#", "Type", "Start", "End", "Zone", "Confidence", "Clip"],
-                    label="Event Log", interactive=False, wrap=True,
+                    headers=S.table_headers(),
+                    label=S.t("labels.event_log"), interactive=False, wrap=True,
                 )
                 with gr.Row():
                     with gr.Column(scale=2):
-                        clip_selector = gr.Dropdown(label="Select clip to preview", choices=[], interactive=True)
+                        clip_selector = gr.Dropdown(label=S.t("labels.select_clip"), choices=[], interactive=True)
                     with gr.Column(scale=3):
-                        _clip_video("Clip Preview")
+                        _clip_video(S.t("labels.clip_preview"))
 
-            with gr.TabItem("Summary & Alerts"):
+            with gr.TabItem(S.t("tabs.summary_alerts")):
                 with gr.Row():
                     with gr.Column():
-                        _section_title("AI Security Summary")
-                        summary_box = gr.Textbox(label="Overnight Summary", lines=6, interactive=False)
-                        risk_badge  = gr.Label(label="Risk Level")
-                    with gr.Column():
-                        _section_title("Flagged Items")
-                        flags_box = gr.JSON(label="Flags")
-                        suspicious_clips_dd = gr.Dropdown(
-                            label="Suspicious clips — select to preview", choices=[], interactive=True,
+                        _section_title(S.t("labels.ai_summary"))
+                        summary_box = gr.Textbox(label=S.t("labels.overnight_summary"), lines=6, interactive=False)
+                        summary_translation_time = gr.Textbox(
+                            label=S.t("labels.translation_time"), interactive=False, lines=1,
                         )
-                        _clip_video("Flagged Clip Preview")
+                        risk_badge  = gr.Label(label=S.t("labels.risk_level"))
+                    with gr.Column():
+                        _section_title(S.t("labels.flagged_items"))
+                        flags_box = gr.JSON(label=S.t("labels.flags"))
+                        suspicious_clips_dd = gr.Dropdown(
+                            label=S.t("labels.suspicious_clips"), choices=[], interactive=True,
+                        )
+                        _clip_video(S.t("labels.flagged_clip_preview"))
 
-            with gr.TabItem("Ask Footage"):
-                _section_title("Ask a question about the footage")
-                gr.Markdown(
-                    "*e.g. 'Anything unusual overnight?', "
-                    "'Show back door activity', "
-                    "'What happened between 2–4 AM?'*"
+            with gr.TabItem(S.t("tabs.ask_footage")):
+                _section_title(S.t("labels.ask_question"))
+                gr.Markdown(S.t("labels.ask_examples"))
+                chatbot = gr.Chatbot(label=S.t("labels.footage_qa"), height=420)
+                qa_translation_time = gr.Textbox(
+                    label=S.t("labels.translation_time"), interactive=False, lines=1,
                 )
-                chatbot = gr.Chatbot(label="Footage Q&A", height=420)
                 with gr.Row():
                     query_input = gr.Textbox(
-                        placeholder="Ask about the footage...", label="Your question", scale=5, lines=1,
+                        placeholder=S.t("labels.question_placeholder"),
+                        label=S.t("labels.your_question"), scale=5, lines=1,
                     )
-                    ask_btn = gr.Button("Ask", variant="primary", scale=1)
-                clear_btn = gr.Button("Clear chat", variant="secondary", size="sm")
+                    ask_btn = gr.Button(S.t("buttons.ask"), variant="primary", scale=1)
+                clear_btn = gr.Button(S.t("buttons.clear_chat"), variant="secondary", size="sm")
 
-            with gr.TabItem("Detection Metrics"):
-                _section_title("Per-Zone Object Counts")
+            with gr.TabItem(S.t("tabs.detection_metrics")):
+                _section_title(S.t("labels.zone_counts"))
                 with gr.Row():
-                    count_entrance  = _zone_number("Entrance",  "count-entrance")
-                    count_counter   = _zone_number("Counter",   "count-counter")
-                    count_back_door = _zone_number("Back Door", "count-back-door")
-                    count_aisles    = _zone_number("Aisles",    "count-aisles")
-                metrics_json = gr.JSON(label="Raw detection counts by zone")
+                    count_entrance  = _zone_number(S.zone_label("entrance"),  "count-entrance")
+                    count_counter   = _zone_number(S.zone_label("counter"),   "count-counter")
+                    count_back_door = _zone_number(S.zone_label("back_door"), "count-back-door")
+                    count_aisles    = _zone_number(S.zone_label("aisles"),    "count-aisles")
+                metrics_json = gr.JSON(label=S.t("labels.raw_counts"))
 
-            with gr.TabItem("Audio Report"):
-                _section_title("Spoken Security Report")
-                gr.Markdown(
-                    "Generates a spoken playback of the AI security summary using VoxCPM2 TTS. "
-                    "Run **Analyze** first, then click the button below."
-                )
-                audio_output      = gr.Audio(label="TTS Report", interactive=False)
-                generate_audio_btn = gr.Button("Generate Audio Report", variant="secondary")
+            with gr.TabItem(S.t("tabs.audio_report")):
+                _section_title(S.t("labels.spoken_report"))
+                gr.Markdown(S.t("labels.audio_help"))
+                audio_output      = gr.Audio(label=S.t("labels.tts_report"), interactive=False)
+                generate_audio_btn = gr.Button(S.t("buttons.generate_audio"), variant="secondary")
 
             # ── Live Feed ────────────────────────────────────────────────────
-            with gr.TabItem("Live Feed"):
-                _section_title("Camera Stream")
-                gr.Markdown(
-                    "*Enter an RTSP URL, a file path, or `0` for the default webcam. "
-                    "Click **Start** to connect.*"
-                )
+            with gr.TabItem(S.t("tabs.live_feed")):
+                _section_title(S.t("labels.camera_stream"))
+                gr.Markdown(S.t("labels.live_feed_help"))
                 with gr.Row():
                     stream_src = gr.Textbox(
-                        placeholder="rtsp://192.168.1.x:554/stream  or  0",
-                        label="Source", scale=4, lines=1,
+                        placeholder=S.t("labels.source_placeholder"),
+                        label=S.t("labels.source"), scale=4, lines=1,
                     )
-                    start_stream_btn = gr.Button("Start", variant="primary", scale=1)
-                    stop_stream_btn  = gr.Button("Stop",  variant="secondary", scale=1)
+                    start_stream_btn = gr.Button(S.t("buttons.start"), variant="primary", scale=1)
+                    stop_stream_btn  = gr.Button(S.t("buttons.stop"),  variant="secondary", scale=1)
 
-                stream_status = gr.Textbox(label="Stream status", interactive=False, lines=1)
-                live_image    = gr.Image(label="Live Feed", interactive=False, height=420)
+                stream_status = gr.Textbox(label=S.t("labels.stream_status"), interactive=False, lines=1)
+                live_image    = gr.Image(label=S.t("labels.live_feed"), interactive=False, height=420)
                 feed_timer    = gr.Timer(value=0.1, active=False)
 
                 with gr.Row():
-                    start_rec_btn = gr.Button("Start Recording", variant="primary")
-                    stop_rec_btn  = gr.Button("Stop Recording",  variant="secondary")
-                rec_status = gr.Textbox(label="Recording", interactive=False, lines=1)
+                    start_rec_btn = gr.Button(S.t("buttons.start_recording"), variant="primary")
+                    stop_rec_btn  = gr.Button(S.t("buttons.stop_recording"),  variant="secondary")
+                rec_status = gr.Textbox(label=S.t("labels.recording"), interactive=False, lines=1)
 
             # ── Clip Library ─────────────────────────────────────────────────
-            with gr.TabItem("Clip Library"):
-                _section_title("Stored Clips")
+            with gr.TabItem(S.t("tabs.clip_library")):
+                _section_title(S.t("labels.stored_clips"))
                 with gr.Row():
-                    refresh_lib_btn = gr.Button("Refresh", size="sm", variant="secondary")
+                    refresh_lib_btn = gr.Button(S.t("buttons.refresh"), size="sm", variant="secondary")
                     lib_dd = gr.Dropdown(
-                        label="Clips", choices=storage.choices(), interactive=True, scale=4,
+                        label=S.t("labels.clips"), choices=storage.choices(language), interactive=True, scale=4,
                     )
-                    load_clip_btn   = gr.Button("Load for Analysis", variant="primary", scale=1)
-                    delete_clip_btn = gr.Button("Delete", variant="stop", scale=1)
+                    load_clip_btn   = gr.Button(S.t("buttons.load_for_analysis"), variant="primary", scale=1)
+                    delete_clip_btn = gr.Button(S.t("buttons.delete"), variant="stop", scale=1)
 
-                lib_status   = gr.Textbox(label="Status", interactive=False, lines=1)
-                lib_preview  = gr.Video(label="Preview", interactive=False)
+                lib_status   = gr.Textbox(label=S.t("labels.status"), interactive=False, lines=1)
+                lib_preview  = gr.Video(label=S.t("labels.preview"), interactive=False)
 
-            with gr.TabItem("Settings"):
-                _section_title("Simple Theme")
-                gr.Markdown(
-                    "Pick a color and mode, then click **Save**. "
-                    "Restart the server to apply."
+            with gr.TabItem(S.t("tabs.settings")):
+                _section_title(S.t("labels.language"))
+                gr.Markdown(S.t("labels.language_help"))
+                language_dd = gr.Dropdown(
+                    choices=list(LANGUAGE_LABELS.values()),
+                    value=LANGUAGE_LABELS.get(language, LANGUAGE_LABELS["en"]),
+                    label=S.t("labels.language"),
+                    interactive=True,
                 )
+                save_lang_btn = gr.Button(S.t("buttons.save_language"), variant="secondary", size="sm")
+                lang_status = gr.Markdown("")
+
+                gr.HTML("<hr style='border-color:var(--_border);margin:18px 0;'>")
+                _section_title(S.t("labels.simple_theme"))
+                gr.Markdown(S.t("labels.theme_help"))
                 with gr.Row():
                     color_dd = gr.Dropdown(
                         choices=list(_COLOR_NAMES.values()),
                         value=_COLOR_NAMES[color],
-                        label="Color",
+                        label=S.t("labels.color"),
                         interactive=True,
                     )
                     mode_dd = gr.Dropdown(
-                        choices=["Dark", "Light"],
-                        value="Dark" if dark else "Light",
-                        label="Mode",
+                        choices=[S.t("modes.dark"), S.t("modes.light")],
+                        value=S.t("modes.dark") if dark else S.t("modes.light"),
+                        label=S.t("labels.mode"),
                         interactive=True,
                     )
-                save_btn     = gr.Button("Save theme", variant="secondary", size="sm")
+                save_btn     = gr.Button(S.t("buttons.save_theme"), variant="secondary", size="sm")
                 theme_status = gr.Markdown("")
 
                 gr.HTML("<hr style='border-color:var(--_border);margin:18px 0;'>")
-                _section_title("Advanced Theme")
-                gr.Markdown(
-                    "DESIGN.md-sourced palettes from real production websites. "
-                    "See `designs/` for the source files."
-                )
+                _section_title(S.t("labels.advanced_theme"))
+                gr.Markdown(S.t("labels.advanced_theme_help"))
                 advanced_dd = gr.Dropdown(
                     choices=list(_ADVANCED_NAMES.values()),
                     value=_ADVANCED_NAMES.get(advanced) if advanced else None,
-                    label="Advanced Theme",
+                    label=S.t("labels.advanced_theme"),
                     interactive=True,
                 )
-                save_adv_btn    = gr.Button("Save advanced theme", variant="secondary", size="sm")
+                save_adv_btn    = gr.Button(S.t("buttons.save_advanced_theme"), variant="secondary", size="sm")
                 adv_theme_status = gr.Markdown("")
 
         # ── Callbacks ───────────────────────────────────────────────────────
@@ -684,14 +1258,14 @@ def build_app(
                 return ""
             norm = video_path.replace("\\", "/")
             if _CLIPS_DIR.replace("\\", "/") in norm:
-                return "Clip from library — already stored."
+                return S.t("status.clip_from_library")
             if _INPUTS_DIR.replace("\\", "/") in norm:
-                return "Sample clip — not stored."
+                return S.t("status.sample_not_stored")
             try:
                 entry = storage.store(video_path, source="upload")
-                return f"Stored: {entry['filename']}  ({entry['size_mb']} MB)"
+                return S.t("status.stored", filename=entry["filename"], size_mb=entry["size_mb"])
             except Exception as exc:
-                return f"Storage error: {exc}"
+                return S.t("status.storage_error", error=exc)
 
         video_input.change(on_upload, inputs=[video_input], outputs=[upload_status])
 
@@ -700,43 +1274,64 @@ def build_app(
 
         load_sample_btn.click(load_sample, inputs=[sample_dd], outputs=[video_input])
 
+        # ── Splash timer — polls model registry, fades splash when ready ──────
+        def _poll_splash():
+            done = _mreg.all_done()
+            return _splash_html(S, fading=done), gr.update(active=not done)
+
+        splash_timer.tick(_poll_splash, outputs=[splash_html, splash_timer])
+
         def run_pipeline(video_path):
             import tempfile
             import time as _time
+            import cv2 as _cv2
             from visual_pipeline import run_visual_pipeline
-            from llm.reasoner import summarize_events as _summarize
 
-            steps = list(_PIPELINE_STEPS_DEFAULT)  # mutable copy
+            _preloaded_reasoner = _mreg.get("llm")
+            def _summarize(events):
+                if _preloaded_reasoner is not None:
+                    return _preloaded_reasoner.summarize_events(events)
+                from llm.reasoner import summarize_events as _fallback
+                return _fallback(events)
+
+            steps = pipeline_steps_default()  # mutable copy
             step_start: dict = {}
-
-            def _blank():
-                return ([], [], gr.update(choices=[]), "", {"none": 1.0},
-                        [], gr.update(choices=[]), {}, 0, 0, 0, 0)
+            _last_frame: list = [None]  # latest annotated frame (RGB numpy array)
+            activity_stats = None
 
             def emit(status):
-                return (_steps_html(_annotate_elapsed(steps, step_start)), status) + _blank()
+                f = _last_frame[0]
+                ann = gr.update(value=f, visible=f is not None) if f is not None else gr.update(visible=False)
+                return (
+                    _steps_html(S, _annotate_elapsed(steps, step_start)), status,
+                    [], [], gr.update(choices=[]), "", "",
+                    {S.risk_label("none"): 1.0},
+                    [], gr.update(choices=[]), {}, 0, 0, 0, 0,
+                    ann,
+                    gr.update(visible=False),
+                )
 
-            def _start_step(idx: int, name: str, detail: str = "") -> None:
+            def _start_step(idx: int, step_id: str, detail: str = "") -> None:
                 step_start[idx] = _time.time()
-                steps[idx] = (name, "running", detail)
+                steps[idx] = (step_id, "running", detail)
 
-            def _finish_step(idx: int, name: str, detail: str = "") -> None:
+            def _finish_step(idx: int, step_id: str, detail: str = "") -> None:
                 step_start.pop(idx, None)
-                steps[idx] = (name, "done", detail)
+                steps[idx] = (step_id, "done", detail)
 
             if video_path is None:
-                steps[0] = ("Load video", "error", "No video selected")
-                yield emit("No video uploaded.")
+                steps[0] = ("load_video", "error", S.t("status.no_video_selected"))
+                yield emit(S.t("status.no_video"))
                 return
 
             # ── Step 1: load ────────────────────────────────────────────────
-            _start_step(0, "Load video")
-            yield emit("Loading video…")
+            _start_step(0, "load_video")
+            yield emit(S.t("status.loading_video"))
 
-            _finish_step(0, "Load video", Path(video_path).name)
-            _start_step(1, "Object detection (YOLO)", "starting…")
-            steps[2] = ("Semantic analysis (VLM)", "pending", "")
-            yield emit("Running YOLO + event structuring…")
+            _finish_step(0, "load_video", Path(video_path).name)
+            _start_step(1, "yolo", S.t("pipeline.starting"))
+            steps[2] = ("vlm", "pending", "")
+            yield emit(S.t("status.running_yolo"))
 
             # ── Step 2: visual pipeline (threaded so progress yields work) ───
             import queue as _queue
@@ -746,10 +1341,18 @@ def build_app(
             _q: _queue.Queue = _queue.Queue()
 
             _last_progress_t = [0.0]
-            def _on_progress(done: int, total: int, track_count: int, vlm_fired: bool) -> None:
+            def _on_progress(done: int, total: int, track_count: int, vlm_fired: bool, annotated_frame=None) -> None:
                 now = _time.time()
                 if vlm_fired or now - _last_progress_t[0] >= 0.2:
-                    _q.put(("progress", done, total, track_count, vlm_fired))
+                    display_frame = None
+                    if annotated_frame is not None:
+                        h, w = annotated_frame.shape[:2]
+                        if w > 640:
+                            display_frame = _cv2.resize(annotated_frame, (640, int(h * 640 / w)))
+                        else:
+                            display_frame = annotated_frame.copy()
+                        display_frame = _cv2.cvtColor(display_frame, _cv2.COLOR_BGR2RGB)
+                    _q.put(("progress", done, total, track_count, vlm_fired, display_frame))
                     _last_progress_t[0] = now
 
             def _run() -> None:
@@ -757,8 +1360,11 @@ def build_app(
                     result = run_visual_pipeline(
                         video_path=video_path,
                         output_dir=output_dir,
-                        write_annotated_video=False,
+                        write_annotated_video=True,
                         progress=_on_progress,
+                        preloaded_tracker=_mreg.get("yolo"),
+                        preloaded_vlm=_mreg.get("vlm"),
+                        locale=language,
                     )
                     _q.put(("done", result))
                 except Exception as exc:
@@ -774,12 +1380,12 @@ def build_app(
                 except _queue.Empty:
                     # Still in model-load phase — pulse the detail so the user knows
                     if not _model_loaded:
-                        steps[1] = ("Object detection (YOLO)", "running", "loading model weights…")
-                        steps[2] = ("Semantic analysis (VLM)", "running", "loading model weights…")
-                        yield emit("Loading YOLO + VLM weights…")
+                        steps[1] = ("yolo", "running", S.t("pipeline.loading_weights"))
+                        steps[2] = ("vlm", "running", S.t("pipeline.loading_weights"))
+                        yield emit(S.t("status.loading_models"))
                     else:
                         # Already processing — re-yield to refresh elapsed timers
-                        yield emit(f"Processing…")
+                        yield emit(S.t("status.processing"))
                     continue
 
                 kind = msg[0]
@@ -787,38 +1393,53 @@ def build_app(
                     if not _model_loaded:
                         _model_loaded = True
                         step_start[1] = _time.time()
-                    _, done, total, track_count, vlm_fired = msg
+                    _, done, total, track_count, vlm_fired, display_frame = msg
+                    if display_frame is not None:
+                        _last_frame[0] = display_frame
                     pct = f"{done}/{total}" if total else str(done)
-                    person_s = f"{track_count} person{'s' if track_count != 1 else ''}"
-                    steps[1] = ("Object detection (YOLO)", "running", f"frame {pct} · {person_s}")
+                    person_key = "pipeline.persons" if track_count == 1 else "pipeline.persons_plural"
+                    person_s = S.t(person_key, count=track_count)
+                    steps[1] = ("yolo", "running", f"{S.t('pipeline.frame', pct=pct)} · {person_s}")
                     if vlm_fired:
                         if 2 not in step_start:
                             step_start[2] = _time.time()
-                        steps[2] = ("Semantic analysis (VLM)", "running", f"frame {pct}")
-                    yield emit(f"Processing frame {pct}…")
+                        steps[2] = ("vlm", "running", S.t("pipeline.frame", pct=pct))
+                    yield emit(S.t("status.processing_frame", pct=pct))
                 elif kind == "done":
                     vp = msg[1]
                     break
                 else:
-                    steps[1] = ("Object detection (YOLO)", "error", str(msg[1])[:80])
-                    steps[2] = ("Semantic analysis (VLM)", "error", "")
-                    yield emit(f"Pipeline error: {msg[1]}")
+                    steps[1] = ("yolo", "error", str(msg[1])[:80])
+                    steps[2] = ("vlm", "error", "")
+                    yield emit(S.t("status.pipeline_error", error=msg[1]))
                     return
 
             events: List[Dict] = vp.events
-            _finish_step(1, "Object detection (YOLO)",
-                         f"{vp.frames_processed} frames · {vp.unique_tracks} tracks")
-            _finish_step(2, "Semantic analysis (VLM)", f"{len(events)} events")
-            _start_step(3, "LLM summarization")
+            _finish_step(1, "yolo",
+                         S.t("pipeline.frames_tracks", frames=vp.frames_processed, tracks=vp.unique_tracks))
+            _finish_step(2, "vlm", S.t("pipeline.events_count", count=len(events)))
+            _start_step(3, "llm_summarize")
+
+            freeform_activities: set[str] = set()
+            for ev in events:
+                activity = "pickup" if ev.get("pickup_confirmed") else ev.get("activity", "")
+                if activity and not is_known_activity(activity):
+                    freeform_activities.add(activity)
+            activity_translations, activity_stats = batch_translate_freeform(freeform_activities, language)
 
             rows = []
             for i, ev in enumerate(events):
-                activity = "pickup" if ev.get("pickup_confirmed") else ev.get("activity", "")
+                raw_activity = "pickup" if ev.get("pickup_confirmed") else ev.get("activity", "")
+                if is_known_activity(raw_activity):
+                    activity = S.activity_label(raw_activity)
+                else:
+                    activity = activity_translations.get(raw_activity, raw_activity)
+                zone_raw = ev.get("zone", "")
                 rows.append([
                     i, activity,
                     _fmt_time(ev.get("timestamp")),
                     _fmt_time(ev.get("confirmation_timestamp")),
-                    ev.get("zone", ""),
+                    S.zone_label(zone_raw),
                     round(float(ev.get("confidence", 0)), 2),
                     "",
                 ])
@@ -828,35 +1449,60 @@ def build_app(
                 if z in zone_counts:
                     zone_counts[z] += 1
 
+            f = _last_frame[0]
             yield (
-                _steps_html(_annotate_elapsed(steps, step_start)), "Running LLM summarization…",
+                _steps_html(S, _annotate_elapsed(steps, step_start)), S.t("status.running_llm"),
                 events, rows, gr.update(choices=[]),
-                "", {"none": 1.0}, [], gr.update(choices=[]),
+                "", "", {S.risk_label("none"): 1.0}, [], gr.update(choices=[]),
                 zone_counts,
                 zone_counts["entrance"], zone_counts["counter"],
                 zone_counts["back_door"], zone_counts["aisles"],
+                gr.update(value=f, visible=f is not None) if f is not None else gr.update(visible=False),
+                gr.update(visible=False),
             )
 
             # ── Step 3: LLM ─────────────────────────────────────────────────
             try:
                 llm = _summarize(events)
             except Exception:
-                llm = {"summary": "LLM unavailable — no model loaded.",
+                llm = {"summary": S.t("status.llm_unavailable"),
                        "flags": [], "suspicious_clips": [], "risk_level": "none"}
 
-            _finish_step(3, "LLM summarization", f"risk: {llm['risk_level']}")
-            status = (
-                f"Done. {vp.frames_processed} frames · "
-                f"{vp.unique_tracks} tracks · {len(events)} events."
+            llm_display, llm_stats = localize_llm_result(llm, language)
+            from postprocessing.translate_tts import TranslateStats
+
+            combined_stats = TranslateStats()
+            if activity_stats:
+                combined_stats = combined_stats.merge(activity_stats)
+            if llm_stats:
+                combined_stats = combined_stats.merge(llm_stats)
+            translation_time_str = format_translation_time(
+                S,
+                combined_stats if (combined_stats.cache_hits or combined_stats.cache_misses) else None,
             )
+
+            risk_key = llm.get("risk_level", "none")
+            _finish_step(3, "llm_summarize", S.t("pipeline.risk", level=S.risk_label(risk_key)))
+            status = S.t(
+                "status.done",
+                frames=vp.frames_processed,
+                tracks=vp.unique_tracks,
+                events=len(events),
+            )
+            if translation_time_str:
+                status = f"{status}  ·  {translation_time_str}"
+            ann_vid_path = vp.annotated_video_path
             yield (
-                _steps_html(_annotate_elapsed(steps, step_start)), status,
+                _steps_html(S, _annotate_elapsed(steps, step_start)), status,
                 events, rows, gr.update(choices=[]),
-                llm["summary"], {llm["risk_level"]: 1.0},
-                llm["flags"], gr.update(choices=llm["suspicious_clips"]),
+                llm_display["summary"], translation_time_str,
+                {S.risk_label(risk_key): 1.0},
+                llm_display["flags"], gr.update(choices=llm["suspicious_clips"]),
                 zone_counts,
                 zone_counts["entrance"], zone_counts["counter"],
                 zone_counts["back_door"], zone_counts["aisles"],
+                gr.update(visible=False),
+                gr.update(value=ann_vid_path, visible=ann_vid_path is not None),
             )
 
         analyze_btn.click(
@@ -865,88 +1511,113 @@ def build_app(
             outputs=[
                 pipeline_html, status_box,
                 event_log_state, event_table, clip_selector,
-                summary_box, risk_badge, flags_box, suspicious_clips_dd,
+                summary_box, summary_translation_time, risk_badge, flags_box, suspicious_clips_dd,
                 metrics_json, count_entrance, count_counter, count_back_door, count_aisles,
+                annotated_img, annotated_vid,
             ],
         )
 
         def ask_footage(message: str, history: list, events: List[Dict]):
             if not message.strip():
-                return history, ""
+                return history, "", ""
             if not events:
-                reply = "No events loaded yet — please upload and analyze a video first."
-            else:
-                from llm.reasoner import answer_query as _answer
-                try:
+                reply = S.t("status.no_events_qa")
+                return history + [(message, reply)], "", ""
+            try:
+                _r = _mreg.get("llm")
+                if _r is not None:
+                    result = _r.answer_query(events, message)
+                else:
+                    from llm.reasoner import answer_query as _answer
                     result = _answer(events, message)
-                    reply  = result["answer"]
-                    if result.get("clips"):
-                        reply += "\n\nRelated clips: " + ", ".join(result["clips"])
-                except Exception as exc:
-                    reply = f"LLM error: {exc}"
-            return history + [(message, reply)], ""
+                reply = result["answer"]
+                reply, stats = localize_text(reply, language)
+                if result.get("clips"):
+                    reply += "\n\n" + S.t("status.related_clips", clips=", ".join(result["clips"]))
+                timing = format_translation_time(S, stats)
+            except Exception as exc:
+                reply = S.t("status.llm_error", error=exc)
+                timing = ""
+            return history + [(message, reply)], "", timing
 
-        ask_btn.click(ask_footage, inputs=[query_input, chatbot, event_log_state], outputs=[chatbot, query_input])
-        query_input.submit(ask_footage, inputs=[query_input, chatbot, event_log_state], outputs=[chatbot, query_input])
-        clear_btn.click(lambda: ([], ""), outputs=[chatbot, query_input])
+        ask_btn.click(
+            ask_footage,
+            inputs=[query_input, chatbot, event_log_state],
+            outputs=[chatbot, query_input, qa_translation_time],
+        )
+        query_input.submit(
+            ask_footage,
+            inputs=[query_input, chatbot, event_log_state],
+            outputs=[chatbot, query_input, qa_translation_time],
+        )
+        clear_btn.click(lambda: ([], "", ""), outputs=[chatbot, query_input, qa_translation_time])
 
         def generate_audio(events: List[Dict]):
             if not events:
-                return None
+                return None, ""
             try:
-                from llm.reasoner import summarize_events as _summarize
-                llm = _summarize(events)
+                _r = _mreg.get("llm")
+                if _r is not None:
+                    llm = _r.summarize_events(events)
+                else:
+                    from llm.reasoner import summarize_events as _summarize
+                    llm = _summarize(events)
                 text = llm.get("summary", "").strip()
                 if not text:
-                    return None
+                    return None, ""
+                text, stats = localize_text(text, language)
                 from postprocessing.translate_tts import tts
                 import numpy as np
-                chunks = list(tts(text, target_lang="English"))
+                chunks = list(tts(text, target_lang=S.tts_lang))
                 if not chunks:
-                    return None
+                    return None, format_translation_time(S, stats)
                 sample_rate = chunks[0][0]
                 audio = np.concatenate([c[1] for c in chunks])
-                return sample_rate, audio
+                return (sample_rate, audio), format_translation_time(S, stats)
             except Exception:
-                return None
+                return None, ""
 
-        generate_audio_btn.click(generate_audio, inputs=[event_log_state], outputs=[audio_output])
+        generate_audio_btn.click(
+            generate_audio,
+            inputs=[event_log_state],
+            outputs=[audio_output, summary_translation_time],
+        )
 
         # ── Live Feed callbacks ──────────────────────────────────────────────
 
         def start_stream(src: str):
             src = src.strip()
             if not src:
-                return "No source specified.", gr.Timer(active=False)
+                return S.t("status.no_source"), gr.Timer(active=False)
             try:
                 source = int(src) if src.isdigit() else src
                 _stream.start(source)
-                return f"Connected: {src}", gr.Timer(active=True)
+                return S.t("status.connected", src=src), gr.Timer(active=True)
             except Exception as exc:
-                return f"Error: {exc}", gr.Timer(active=False)
+                return S.t("status.stream_error", error=exc), gr.Timer(active=False)
 
         def stop_stream():
             _stream.stop()
-            return "Stream stopped.", gr.Timer(active=False)
+            return S.t("status.stream_stopped"), gr.Timer(active=False)
 
         def poll_frame():
             return _stream.get_rgb()
 
         def start_recording():
             if not _stream.is_open():
-                return "No active stream."
+                return S.t("status.no_active_stream")
             path = _stream.start_recording()
-            return f"Recording → {path}"
+            return S.t("status.recording_to", path=path)
 
         def stop_recording():
             path = _stream.stop_recording()
             if path is None:
-                return "No recording in progress."
+                return S.t("status.no_recording")
             try:
                 entry = storage.store(path, source="stream")
-                return f"Saved: {entry['filename']}  ({entry['size_mb']} MB)"
+                return S.t("status.saved_recording", filename=entry["filename"], size_mb=entry["size_mb"])
             except Exception as exc:
-                return f"Saved to {path}. Storage error: {exc}"
+                return S.t("status.saved_path_error", path=path, error=exc)
 
         start_stream_btn.click(start_stream, inputs=[stream_src],  outputs=[stream_status, feed_timer])
         stop_stream_btn.click(stop_stream,   inputs=[],            outputs=[stream_status, feed_timer])
@@ -957,7 +1628,7 @@ def build_app(
         # ── Clip Library callbacks ───────────────────────────────────────────
 
         def refresh_library():
-            return gr.update(choices=storage.choices())
+            return gr.update(choices=storage.choices(language))
 
         def preview_clip(choice: str):
             path = storage.path_from_choice(choice) if choice else None
@@ -966,16 +1637,16 @@ def build_app(
         def load_for_analysis(choice: str):
             path = storage.path_from_choice(choice) if choice else None
             if path is None:
-                return None, "Clip not found."
-            return path, f"Loaded: {choice}"
+                return None, S.t("status.clip_not_found")
+            return path, S.t("status.loaded_clip", choice=choice)
 
         def delete_clip(choice: str):
             if not choice:
-                return "Nothing selected.", gr.update(choices=storage.choices())
+                return S.t("status.nothing_selected"), gr.update(choices=storage.choices(language))
             filename = choice.split(" — ", 1)[1].split("  ")[0].strip() if " — " in choice else ""
             ok = storage.delete(filename) if filename else False
-            msg = f"Deleted {filename}." if ok else "Delete failed."
-            return msg, gr.update(choices=storage.choices())
+            msg = S.t("status.deleted", filename=filename) if ok else S.t("status.delete_failed")
+            return msg, gr.update(choices=storage.choices(language))
 
         refresh_lib_btn.click(refresh_library, outputs=[lib_dd])
         lib_dd.change(preview_clip, inputs=[lib_dd], outputs=[lib_preview])
@@ -984,29 +1655,41 @@ def build_app(
 
         def save_theme(color_label: str, mode_label: str) -> str:
             if prefs_path is None:
-                return "No preferences file path set."
+                return S.t("status.no_prefs_path")
             c = _COLOR_KEY.get(color_label, "night")
-            d = mode_label == "Dark"
+            d = mode_label in {S.t("modes.dark"), "Dark"}
             try:
-                prefs_path.write_text(json.dumps({"theme": c, "dark": d}, indent=2))
-                return f"Saved **{color_label} · {mode_label}**. Restart the server to apply."
+                _save_prefs_file(prefs_path, {"theme": c, "dark": d})
+                return S.t("status.theme_saved", color=color_label, mode=mode_label)
             except Exception as exc:
-                return f"Error saving preferences: {exc}"
+                return S.t("status.theme_save_error", error=exc)
 
         save_btn.click(save_theme, inputs=[color_dd, mode_dd], outputs=[theme_status])
 
         def save_advanced_theme(adv_label: str) -> str:
             if prefs_path is None:
-                return "No preferences file path set."
+                return S.t("status.no_prefs_path")
             key = _ADVANCED_KEY.get(adv_label)
             if key is None:
-                return f"Unknown advanced theme: {adv_label}"
+                return S.t("status.unknown_theme", theme=adv_label)
             try:
-                prefs_path.write_text(json.dumps({"advanced": key}, indent=2))
-                return f"Saved **{adv_label}**. Restart the server to apply."
+                _save_prefs_file(prefs_path, {"advanced": key})
+                return S.t("status.advanced_saved", theme=adv_label)
             except Exception as exc:
-                return f"Error saving preferences: {exc}"
+                return S.t("status.theme_save_error", error=exc)
 
         save_adv_btn.click(save_advanced_theme, inputs=[advanced_dd], outputs=[adv_theme_status])
+
+        def save_language(lang_label: str) -> str:
+            if prefs_path is None:
+                return S.t("status.no_prefs_path")
+            lang_code = LANGUAGE_KEY.get(lang_label, "en")
+            try:
+                _save_prefs_file(prefs_path, {"language": lang_code})
+                return S.t("status.language_saved", language=lang_label)
+            except Exception as exc:
+                return S.t("status.theme_save_error", error=exc)
+
+        save_lang_btn.click(save_language, inputs=[language_dd], outputs=[lang_status])
 
     return demo, _theme

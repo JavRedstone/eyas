@@ -20,9 +20,24 @@ writer = create_video_writer("out.mp4", fps, w, h)      # mp4v VideoWriter
 
 ### `paths.py`
 ```python
-from utils.paths import models_dir
-weights = models_dir() / "yolo11n.pt"   # absolute Path to eyas/models/
+from utils.paths import models_dir, fonts_dir, default_overlay_font
+weights = models_dir() / "yolo11n.pt"              # absolute Path to eyas/models/
+font = default_overlay_font()                       # eyas/assets/fonts/NotoSansCJKkr-Regular.otf
 ```
+
+### `overlay_text.py`
+Pillow-based UTF-8 labels on annotated video frames (bundled Noto Sans CJK KR font).
+
+```python
+from utils.overlay_text import OverlayLabels, FrameTextOverlay, draw_text
+
+labels = OverlayLabels("ko")   # translates VLM text via translate_cached when locale is ko
+overlay = FrameTextOverlay(frame)
+overlay.draw(labels.person_label(1, "holding a bag"), (x, y), (0, 255, 0))
+overlay.apply()
+```
+
+Used by `visual_pipeline.draw_tracks()` — text is drawn first, then `cv2.rectangle` boxes on top.
 
 ## Top-level re-exports
 

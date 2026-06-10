@@ -5,8 +5,21 @@ Gradio web application — the main operator-facing interface.
 ## Entry point
 
 ```bash
-python ui/gradio_app.py
+python app.py
+python app.py --lang ko
 ```
+
+## Language
+
+UI language is English by default. Set Korean via:
+
+- **Settings** tab → Language → Save → restart the server
+- `preferences.json`: `"language": "ko"`
+- CLI: `python app.py --lang ko`
+
+String catalogs live in [`locale.py`](locale.py) (`en` / `ko`).
+
+When language is Korean, annotated video overlay labels (person descriptions, activities, pickup/holding text) are translated and rendered with the bundled Noto font via [`utils/overlay_text.py`](../utils/overlay_text.py).
 
 ## Tabs
 

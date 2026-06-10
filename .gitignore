@@ -1,4 +1,5 @@
-# Python artifacts
+# Local model artifacts that should stay out of git history
+eyas/models/*.gguf# Python artifacts
 __pycache__/
 *.py[cod]
 *$py.class

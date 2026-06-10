@@ -1,12 +1,13 @@
 """Launcher for the Eyas prototype.
 
-Theme is read from preferences.json at startup and can be overridden
+Theme and language are read from preferences.json at startup and can be overridden
 via CLI flags:
 
     python app.py                        # use preferences.json
     python app.py --theme amber          # Amber CRT (dark)
     python app.py --theme sentinel --light  # Sentinel light
     python app.py --advanced voltagent   # Advanced DESIGN.md theme
+    python app.py --lang ko              # Korean UI
 """
 
 import argparse
@@ -16,7 +17,7 @@ from pathlib import Path
 from ui.gradio_app import build_app
 
 _PREFS = Path(__file__).parent / "preferences.json"
-_DEFAULTS = {"theme": "night", "dark": True}
+_DEFAULTS = {"theme": "night", "dark": True, "language": "en"}
 
 
 def _load_prefs() -> dict:
@@ -42,6 +43,12 @@ def _parse_args(prefs: dict) -> dict:
         default=None,
         help="Advanced DESIGN.md theme key (overrides preferences.json)",
     )
+    parser.add_argument(
+        "--lang",
+        choices=["en", "ko"],
+        default=None,
+        help="UI language (overrides preferences.json)",
+    )
     args = parser.parse_args()
 
     result = dict(prefs)
@@ -52,6 +59,8 @@ def _parse_args(prefs: dict) -> dict:
         result["dark"] = args.dark
     if args.advanced is not None:
         result["advanced"] = args.advanced
+    if args.lang is not None:
+        result["language"] = args.lang
     return result
 
 
@@ -60,6 +69,7 @@ app, _theme = build_app(
     color=prefs.get("theme", "night"),
     dark=prefs.get("dark", True),
     advanced=prefs.get("advanced"),
+    language=prefs.get("language", "en"),
     prefs_path=_PREFS,
 )
 
