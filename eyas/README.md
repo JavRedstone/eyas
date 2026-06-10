@@ -25,9 +25,10 @@ video / camera
 | `streaming/` | Live camera capture with on-demand clip recording |
 | `storage/` | Clip index — store, list, delete uploaded/recorded footage |
 | `ui/` | Gradio web app |
-| `utils/` | Shared helpers: device selection, video I/O, path resolution |
+| `utils/` | Shared helpers: device selection, video I/O, path resolution, overlay text |
 | `scripts/` | CLI entry points and batch utilities |
 | `models/` | Local model weights (YOLO `.pt`, GGUF LLM) |
+| `assets/` | Bundled fonts for localized video overlay labels |
 | `input/` | Sample input videos |
 | `data/` | Static demo traces and reference data |
 | `tests/` | Test suite — unit / module / e2e |
@@ -38,6 +39,10 @@ video / camera
 # Full visual pipeline on a video file
 python scripts/run_visual_pipeline.py input/sample.mp4
 
+# Korean overlay labels on the annotated video
+python scripts/run_visual_pipeline.py input/sample.mp4 --language ko
+
 # Gradio UI
-python ui/gradio_app.py
+python app.py
+python app.py --lang ko
 ```

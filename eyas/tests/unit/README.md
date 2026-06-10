@@ -15,6 +15,8 @@ Fast, dependency-free unit tests. No video files, no model weights, no GPU neede
 | `test_storage.py` | Clip storage manager with `tmp_path` isolation |
 | `test_video_processing.py` | `process_clip()` return-type contract |
 | `test_translate_tts.py` | `translate()` / `tts()` — mocked validation, prompt/format, voice wiring (no GPU) |
+| `test_locale.py` | `ui/locale.py` — en/ko catalogs, display helpers, batch translate |
+| `test_overlay_text.py` | `utils/overlay_text.py` — localized label strings, Pillow text draw smoke test |
 
 ## Run
 

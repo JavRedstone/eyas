@@ -102,6 +102,12 @@ def build_parser() -> argparse.ArgumentParser:
         type=parse_zone,
         help="Repeatable zone definition: NAME:KIND:X1,Y1,X2,Y2",
     )
+    parser.add_argument(
+        "--language",
+        choices=["en", "ko"],
+        default="en",
+        help="Overlay label locale. Default: en.",
+    )
     return parser
 
 
@@ -140,6 +146,7 @@ def main() -> None:
         max_frames=args.max_frames,
         write_annotated_video=not args.no_annotated_video,
         progress=show_progress,
+        locale=args.language,
     )
     print(result.summary())
     print(f"events: {result.events_path}")
