@@ -1613,11 +1613,17 @@ def build_app(
         suspicious_clips_dd.change(_load_clip, inputs=[suspicious_clips_dd, output_dir_state], outputs=[flagged_clip_preview])
 
         def ask_footage(message: str, history: list, events: List[Dict]):
+            def _append_turn(hist: list, user_msg: str, assistant_msg: str) -> list:
+                return hist + [
+                    {"role": "user", "content": user_msg},
+                    {"role": "assistant", "content": assistant_msg},
+                ]
+
             if not message.strip():
                 return history, "", ""
             if not events:
                 reply = S.t("status.no_events_qa")
-                return history + [(message, reply)], "", ""
+                return _append_turn(history, message, reply), "", ""
             try:
                 _r = _mreg.get("llm")
                 if _r is not None:
@@ -1633,7 +1639,7 @@ def build_app(
             except Exception as exc:
                 reply = S.t("status.llm_error", error=exc)
                 timing = ""
-            return history + [(message, reply)], "", timing
+            return _append_turn(history, message, reply), "", timing
 
         ask_btn.click(
             ask_footage,
