@@ -6,6 +6,7 @@ the Gradio theme object.  No runtime CSS class-toggling; restart to change.
 
 import json
 import sys
+import traceback
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -315,7 +316,8 @@ button.secondary, button[data-testid="secondary"] {
 }
 
 /* Analyze button: full-width pill, Material icon, physical press */
-div:has(> #analyze-btn) {
+div:has(> #analyze-btn),
+div:has(> #load-sample-btn) {
     padding: 0 16px !important;
     box-sizing: border-box !important;
 }
@@ -484,42 +486,84 @@ div:has(> #analyze-btn) {
 .pipeline-step.running  { border-color: var(--_accent); background: var(--_panel); }
 .pipeline-step.done     { border-color: var(--_border); }
 .pipeline-step.error    { border-color: var(--_danger); }
-.ps-icon   { font-size: 1rem; width: 20px; text-align: center; flex-shrink: 0; }
-.pipeline-step.running  .ps-icon { color: var(--_accent); animation: blink .9s step-start infinite; }
+.ps-icon {
+    font-family: 'Material Symbols Outlined'; font-style: normal;
+    font-size: 18px; line-height: 1;
+    width: 20px; text-align: center; flex-shrink: 0;
+    color: var(--_muted);
+}
+.pipeline-step.pending  .ps-icon { color: var(--_muted); opacity: .5; }
+.pipeline-step.running  .ps-icon { color: var(--_accent); animation: splash-spin 1.2s linear infinite; }
 .pipeline-step.done     .ps-icon { color: var(--_accent); }
 .pipeline-step.error    .ps-icon { color: var(--_danger); }
 .ps-name   { flex: 1; color: var(--_text); font-weight: 500; }
 .ps-detail { color: var(--_muted); font-size: 0.75rem; }
 
-/* ── DataFrame / Event Table ─────────────────────────────────────────── */
-table { background: var(--_panel) !important; border-collapse: collapse !important; }
-thead tr { background: var(--_surface) !important; border-bottom: 1px solid var(--_border) !important; }
-th {
-    background: var(--_surface) !important;
-    color: var(--_accent) !important;
-    font-size: 0.64rem !important;
-    font-weight: 700 !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.12em !important;
-    padding: 11px 16px !important;
-    border: none !important;
-    white-space: nowrap !important;
+/* ── Refresh events icon button ──────────────────────────────────────── */
+#refresh-events-btn {
+    padding: 5px 8px !important;
+    min-width: 34px !important;
+    max-width: 34px !important;
+    border-radius: 8px !important;
 }
-td {
-    color: var(--_text) !important;
-    font-size: 0.8rem !important;
-    padding: 10px 16px !important;
-    border: none !important;
+#refresh-events-btn::before {
+    content: "refresh";
+    font-family: 'Material Symbols Outlined' !important;
+    font-style: normal !important;
+    font-size: 18px !important;
+    line-height: 1 !important;
+    font-weight: 400 !important;
+    vertical-align: middle !important;
+}
+
+
+/* ── DataFrame / Event Table ─────────────────────────────────────────── */
+#event-table table {
+    background: var(--_panel) !important;
+    border-collapse: collapse !important;
+    border: 1px solid var(--_border) !important;
+    border-radius: 10px !important;
+    overflow: hidden !important;
+}
+#event-table thead tr {
+    background: rgba(255,255,255,.03) !important;
     border-bottom: 1px solid var(--_border) !important;
 }
-tbody tr:last-child td { border-bottom: none !important; }
-tbody tr:nth-child(even) td { background: rgba(255,255,255,.018) !important; }
-tr:hover td { background: var(--_surface) !important; cursor: pointer !important; }
+#event-table th {
+    background: transparent !important;
+    color: var(--_muted) !important;
+    font-size: 0.6rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.08em !important;
+    padding: 6px 10px !important;
+    line-height: 1.1 !important;
+    border: none !important;
+    white-space: nowrap !important;
+    vertical-align: middle !important;
+}
+#event-table td {
+    color: var(--_text) !important;
+    font-size: 0.78rem !important;
+    padding: 8px 10px !important;
+    border: none !important;
+    border-bottom: 1px solid var(--_border) !important;
+    vertical-align: top !important;
+}
+#event-table tbody tr:last-child td { border-bottom: none !important; }
+#event-table tbody tr:nth-child(even) td { background: rgba(255,255,255,.018) !important; }
+#event-table tr:hover td { background: var(--_surface) !important; cursor: pointer !important; }
 /* index + time columns: monospace muted */
-td:nth-child(1) { font-family: var(--font-mono) !important; font-size: 0.72rem !important; color: var(--_muted) !important; }
-td:nth-child(3), td:nth-child(4) { font-family: var(--font-mono) !important; font-size: 0.75rem !important; color: var(--_muted) !important; }
-td:nth-child(2) { font-weight: 500 !important; }
-td:nth-child(6) { font-family: var(--font-mono) !important; font-size: 0.75rem !important; color: var(--_accent) !important; font-weight: 600 !important; }
+#event-table td:nth-child(1) { font-family: var(--font-mono) !important; font-size: 0.72rem !important; color: var(--_muted) !important; }
+#event-table td:nth-child(4),
+#event-table td:nth-child(5) { font-family: var(--font-mono) !important; font-size: 0.74rem !important; color: var(--_muted) !important; }
+#event-table td:nth-child(2) { font-weight: 700 !important; color: var(--_accent) !important; }
+#event-table td:nth-child(3) {
+    max-width: 520px !important;
+    white-space: normal !important;
+    line-height: 1.35 !important;
+}
+#event-table td:nth-child(7) { font-family: var(--font-mono) !important; font-size: 0.74rem !important; color: var(--_accent) !important; font-weight: 600 !important; }
 
 /* Zone count numbers */
 #count-entrance input, #count-counter input,
@@ -628,9 +672,10 @@ pre code { background-color: transparent !important; border: none !important; pa
 .splash-item-icon.si-error   { color: var(--_danger); }
 .splash-item-icon.si-skipped { color: #f59e0b; }
 @keyframes splash-spin { to { transform: rotate(360deg); } }
-.splash-item-body { display: flex; flex-direction: column; gap: 2px; }
-.splash-item-label { font-size: 0.85rem; font-weight: 500; color: var(--_text); }
-.splash-item-detail { font-size: 0.72rem; color: var(--_muted); font-family: var(--font-mono); }
+.splash-item-body { display: flex; flex-direction: column; gap: 1px; }
+.splash-item-label { font-size: 0.8rem; font-weight: 600; color: var(--_muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.splash-item-model { font-size: 0.9rem; font-weight: 500; color: var(--_text); }
+.splash-item-detail { font-size: 0.72rem; color: var(--_muted); font-family: var(--font-mono); margin-top: 1px; }
 .splash-progress-wrap {
     height: 3px; background: var(--_border); margin: 0;
     border-radius: 0 0 16px 16px; overflow: hidden;
@@ -910,7 +955,12 @@ _SAMPLE_PATHS: Dict[str, str] = {
 }
 
 
-_STEP_ICONS = {"pending": "○", "running": "●", "done": "✓", "error": "✗"}
+_STEP_ICONS = {"pending": "radio_button_unchecked", "running": "sync", "done": "check_circle", "error": "error"}
+
+
+def _splash_model_label(S: Strings, key: str, default: str) -> str:
+    msg_key = SPLASH_MODEL_KEYS.get(key)
+    return S.t(msg_key) if msg_key else default
 
 
 def _steps_html(S: Strings, steps: list) -> str:
@@ -956,12 +1006,9 @@ def _annotate_elapsed(steps: list, start_times: dict) -> list:
 # Splash screen
 # ---------------------------------------------------------------------------
 
-def _splash_model_label(S: Strings, key: str, default: str) -> str:
-    msg_key = SPLASH_MODEL_KEYS.get(key)
-    return S.t(msg_key) if msg_key else default
-
-
-def _splash_html(S: Strings, states: list | None = None, fading: bool = False) -> str:
+def _splash_html(S: "Strings | None" = None, states: list | None = None, fading: bool = False) -> str:
+    if S is None:
+        S = Strings("en")
     _icon_class = {
         "waiting": ("hourglass_empty", ""),
         "loading": ("sync",            "si-loading"),
@@ -980,7 +1027,7 @@ def _splash_html(S: Strings, states: list | None = None, fading: bool = False) -
         from model_registry import get_states
         states = get_states()
 
-    _registry_keys = ["yolo", "vlm", "llm"]
+    _registry_keys = ["yolo", "vlm", "llm", "tinyaya"]
 
     total = len(states)
     done_count = sum(1 for s in states if s.status in {"ready", "error", "skipped"})
@@ -992,11 +1039,13 @@ def _splash_html(S: Strings, states: list | None = None, fading: bool = False) -
         detail = s.detail if s.detail else _detail_text.get(s.status, "")
         reg_key = _registry_keys[i] if i < len(_registry_keys) else ""
         label = _splash_model_label(S, reg_key, s.label)
+        model_name = s.model_name or ""
         items_html += (
             f'<div class="splash-item">'
             f'<span class="splash-item-icon material-symbols-outlined {cls}">{icon}</span>'
             f'<div class="splash-item-body">'
             f'<span class="splash-item-label">{label}</span>'
+            f'<span class="splash-item-model">{model_name}</span>'
             f'<span class="splash-item-detail">{detail}</span>'
             f'</div></div>'
         )
@@ -1074,6 +1123,7 @@ def build_app(
                 )
 
         event_log_state: gr.State = gr.State([])
+        output_dir_state: gr.State = gr.State("")
 
         # ── Main layout: sidebar + analysis panel ────────────────────────────
         with gr.Row():
@@ -1091,7 +1141,7 @@ def build_app(
                     label=S.t("labels.sample_clips"),
                     interactive=True,
                 )
-                load_sample_btn = gr.Button(S.t("buttons.load_sample"), variant="secondary", size="sm")
+                load_sample_btn = gr.Button(S.t("buttons.load_sample"), variant="secondary", size="sm", elem_id="load-sample-btn")
                 video_input = gr.Video(label=S.t("labels.original_video"), sources=["upload"])
                 upload_status = gr.Textbox(label=S.t("labels.storage"), interactive=False, lines=1)
 
@@ -1117,19 +1167,24 @@ def build_app(
         video_input.change(fn=None, inputs=[video_input], js=_REC_JS)
 
         # ── Tabs ────────────────────────────────────────────────────────────
-        with gr.Tabs():
+        with gr.Tabs(selected=0):
 
             with gr.TabItem(S.t("tabs.event_timeline")):
-                _section_title(S.t("labels.detected_events"))
+                with gr.Row():
+                    _section_title(S.t("labels.detected_events"))
+                    refresh_events_btn = gr.Button(
+                        "", variant="secondary", size="sm",
+                        elem_id="refresh-events-btn", scale=0, min_width=40,
+                    )
                 event_table = gr.DataFrame(
-                    headers=S.table_headers(),
-                    label=S.t("labels.event_log"), interactive=False, wrap=True,
+                    headers=["#", "Event", "Activity", "Start", "End", "Zone", "Confidence", "Clip"],
+                    label=S.t("labels.event_log"), interactive=False, wrap=True, elem_id="event-table",
                 )
                 with gr.Row():
                     with gr.Column(scale=2):
                         clip_selector = gr.Dropdown(label=S.t("labels.select_clip"), choices=[], interactive=True)
                     with gr.Column(scale=3):
-                        _clip_video(S.t("labels.clip_preview"))
+                        clip_preview = _clip_video(S.t("labels.clip_preview"))
 
             with gr.TabItem(S.t("tabs.summary_alerts")):
                 with gr.Row():
@@ -1146,7 +1201,7 @@ def build_app(
                         suspicious_clips_dd = gr.Dropdown(
                             label=S.t("labels.suspicious_clips"), choices=[], interactive=True,
                         )
-                        _clip_video(S.t("labels.flagged_clip_preview"))
+                        flagged_clip_preview = _clip_video(S.t("labels.flagged_clip_preview"))
 
             with gr.TabItem(S.t("tabs.ask_footage")):
                 _section_title(S.t("labels.ask_question"))
@@ -1207,8 +1262,8 @@ def build_app(
                     lib_dd = gr.Dropdown(
                         label=S.t("labels.clips"), choices=storage.choices(language), interactive=True, scale=4,
                     )
-                    load_clip_btn   = gr.Button(S.t("buttons.load_for_analysis"), variant="primary", scale=1)
-                    delete_clip_btn = gr.Button(S.t("buttons.delete"), variant="stop", scale=1)
+                    load_clip_btn   = gr.Button(S.t("buttons.load_for_analysis"), variant="primary", size="sm", scale=1)
+                    delete_clip_btn = gr.Button(S.t("buttons.delete"), variant="stop", size="sm", scale=1)
 
                 lib_status   = gr.Textbox(label=S.t("labels.status"), interactive=False, lines=1)
                 lib_preview  = gr.Video(label=S.t("labels.preview"), interactive=False)
@@ -1257,6 +1312,10 @@ def build_app(
                 adv_theme_status = gr.Markdown("")
 
         # ── Callbacks ───────────────────────────────────────────────────────
+
+        # Shared live-event state — written by the pipeline thread, read by the refresh button
+        _live_events: list = []
+        _live_rows: list = []
 
         _CLIPS_DIR = str(Path(__file__).parent.parent / "data" / "clips")
 
@@ -1308,17 +1367,19 @@ def build_app(
             step_start: dict = {}
             _last_frame: list = [None]  # latest annotated frame (RGB numpy array)
             activity_stats = None
+            _live_events.clear()
+            _live_rows.clear()
 
             def emit(status):
                 f = _last_frame[0]
                 ann = gr.update(value=f, visible=f is not None) if f is not None else gr.update(visible=False)
                 return (
                     _steps_html(S, _annotate_elapsed(steps, step_start)), status,
-                    [], [], gr.update(choices=[]), "", "",
-                    {S.risk_label("none"): 1.0},
+                    list(_live_events), list(_live_rows), gr.update(choices=[]), "", "", {"none": 1.0},
                     [], gr.update(choices=[]), {}, 0, 0, 0, 0,
                     ann,
                     gr.update(visible=False),
+                    "",
                 )
 
             def _start_step(idx: int, step_id: str, detail: str = "") -> None:
@@ -1365,6 +1426,31 @@ def build_app(
                     _q.put(("progress", done, total, track_count, vlm_fired, display_frame))
                     _last_progress_t[0] = now
 
+            def _on_new_events(evs: list) -> None:
+                for ev in evs:
+                    i = len(_live_events)
+                    ev_kind = "pickup" if ev.get("pickup_confirmed") else "observation"
+                    activity = (ev.get("activity") or "").strip() or "—"
+                    clip_name = "—"
+                    if ev.get("pickup_confirmed"):
+                        picked = ev.get("picked_up_items") or []
+                        if picked:
+                            clip_name = picked[0].get("name", "—") or "—"
+                    _live_events.append(ev)
+                    _live_rows.append([
+                        i, ev_kind, activity,
+                        _fmt_time(ev.get("timestamp")),
+                        _fmt_time(ev.get("confirmation_timestamp")) or "—",
+                        ev.get("zone", "") or "—",
+                        round(float(ev.get("confidence", 0)), 2),
+                        clip_name,
+                    ])
+                    print(
+                        f"[EVENT #{i}] {_fmt_time(ev.get('timestamp'))} | "
+                        f"{ev_kind.upper()} | zone={ev.get('zone') or '?'} | "
+                        f"{activity[:100]}"
+                    )
+
             def _run() -> None:
                 try:
                     result = run_visual_pipeline(
@@ -1372,13 +1458,14 @@ def build_app(
                         output_dir=output_dir,
                         write_annotated_video=True,
                         progress=_on_progress,
+                        on_event=_on_new_events,
                         preloaded_tracker=_mreg.get("yolo"),
                         preloaded_vlm=_mreg.get("vlm"),
                         locale=language,
                     )
                     _q.put(("done", result))
                 except Exception as exc:
-                    _q.put(("error", exc))
+                    _q.put(("error", f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}"))
 
             _threading.Thread(target=_run, daemon=True).start()
 
@@ -1435,6 +1522,7 @@ def build_app(
                 activity = "pickup" if ev.get("pickup_confirmed") else ev.get("activity", "")
                 if activity and not is_known_activity(activity):
                     freeform_activities.add(activity)
+            activity_stats, activity_translations = None, {}
             activity_translations, activity_stats = batch_translate_freeform(freeform_activities, language)
 
             rows = []
@@ -1443,15 +1531,21 @@ def build_app(
                 if is_known_activity(raw_activity):
                     activity = S.activity_label(raw_activity)
                 else:
-                    activity = activity_translations.get(raw_activity, raw_activity)
+                    activity = activity_translations.get(raw_activity, raw_activity) or "—"
                 zone_raw = ev.get("zone", "")
+                clip_name = "—"
+                if ev.get("pickup_confirmed"):
+                    picked_up_items = ev.get("picked_up_items") or []
+                    if picked_up_items:
+                        clip_name = picked_up_items[0].get("name", "—") or "—"
                 rows.append([
-                    i, activity,
+                    i, "pickup" if ev.get("pickup_confirmed") else "observation",
+                    activity,
                     _fmt_time(ev.get("timestamp")),
-                    _fmt_time(ev.get("confirmation_timestamp")),
-                    S.zone_label(zone_raw),
+                    _fmt_time(ev.get("confirmation_timestamp")) or "—",
+                    S.zone_label(zone_raw) if zone_raw else "—",
                     round(float(ev.get("confidence", 0)), 2),
-                    "",
+                    clip_name,
                 ])
             zone_counts = {"entrance": 0, "counter": 0, "back_door": 0, "aisles": 0}
             for ev in events:
@@ -1463,12 +1557,13 @@ def build_app(
             yield (
                 _steps_html(S, _annotate_elapsed(steps, step_start)), S.t("status.running_llm"),
                 events, rows, gr.update(choices=[]),
-                "", "", {S.risk_label("none"): 1.0}, [], gr.update(choices=[]),
+                "", "", {"none": 1.0}, [], gr.update(choices=[]),
                 zone_counts,
                 zone_counts["entrance"], zone_counts["counter"],
                 zone_counts["back_door"], zone_counts["aisles"],
                 gr.update(value=f, visible=f is not None) if f is not None else gr.update(visible=False),
                 gr.update(visible=False),
+                output_dir,
             )
 
             # ── Step 3: LLM ─────────────────────────────────────────────────
@@ -1513,6 +1608,7 @@ def build_app(
                 zone_counts["back_door"], zone_counts["aisles"],
                 gr.update(visible=False),
                 gr.update(value=ann_vid_path, visible=ann_vid_path is not None),
+                output_dir,
             )
 
         analyze_btn.click(
@@ -1524,8 +1620,29 @@ def build_app(
                 summary_box, summary_translation_time, risk_badge, flags_box, suspicious_clips_dd,
                 metrics_json, count_entrance, count_counter, count_back_door, count_aisles,
                 annotated_img, annotated_vid,
+                output_dir_state,
             ],
         )
+
+        def _load_clip(clip_name: str, out_dir: str):
+            if not clip_name or not out_dir:
+                return gr.update()
+            p = Path(out_dir) / clip_name
+            if p.is_file():
+                return gr.update(value=str(p), visible=True)
+            # Clip file not extracted — show annotated video as fallback
+            ann = Path(out_dir) / next(
+                (f for f in Path(out_dir).iterdir() if f.suffix == ".mp4"), Path()
+            )
+            return gr.update(value=str(ann) if ann.exists() else None, visible=ann.exists())
+
+        def _refresh_events():
+            return list(_live_events), list(_live_rows)
+
+        refresh_events_btn.click(_refresh_events, outputs=[event_log_state, event_table])
+
+        clip_selector.change(_load_clip, inputs=[clip_selector, output_dir_state], outputs=[clip_preview])
+        suspicious_clips_dd.change(_load_clip, inputs=[suspicious_clips_dd, output_dir_state], outputs=[flagged_clip_preview])
 
         def ask_footage(message: str, history: list, events: List[Dict]):
             if not message.strip():
@@ -1667,7 +1784,7 @@ def build_app(
             if prefs_path is None:
                 return S.t("status.no_prefs_path")
             c = _COLOR_KEY.get(color_label, "night")
-            d = mode_label in {S.t("modes.dark"), "Dark"}
+            d = mode_label == "Dark"
             try:
                 _save_prefs_file(prefs_path, {"theme": c, "dark": d})
                 return S.t("status.theme_saved", color=color_label, mode=mode_label)
@@ -1693,9 +1810,11 @@ def build_app(
         def save_language(lang_label: str) -> str:
             if prefs_path is None:
                 return S.t("status.no_prefs_path")
-            lang_code = LANGUAGE_KEY.get(lang_label, "en")
+            lang_key = next((k for k, v in LANGUAGE_LABELS.items() if v == lang_label), None)
+            if lang_key is None:
+                lang_key = lang_label if lang_label in LANGUAGE_LABELS else "en"
             try:
-                _save_prefs_file(prefs_path, {"language": lang_code})
+                _save_prefs_file(prefs_path, {"language": lang_key})
                 return S.t("status.language_saved", language=lang_label)
             except Exception as exc:
                 return S.t("status.theme_save_error", error=exc)
