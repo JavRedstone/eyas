@@ -175,6 +175,7 @@ def run_visual_pipeline(
     max_frames: Optional[int] = None,
     write_annotated_video: bool = True,
     progress: Optional[Callable[[int, int, int, bool], None]] = None,
+    on_event: Optional[Callable] = None,
     preloaded_tracker=None,
     preloaded_vlm=None,
 ) -> VisualPipelineResult:
@@ -244,7 +245,9 @@ def run_visual_pipeline(
             seen_tracks.update(track.track_id for track in tracks)
             frame_index += 1
             _frame_info[:] = [frame_index, total_frames or 0, len(tracks)]
-            structurer.update(tracks, t, latest_frame=frame)
+            fired = structurer.update(tracks, t, latest_frame=frame)
+            if on_event and fired:
+                on_event([e.as_dict() for e in fired])
             annotated_frame = (
                 draw_tracks(frame, tracks, resolved_zones, structurer.display_statuses())
                 if (writer is not None or progress)

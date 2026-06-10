@@ -463,42 +463,84 @@ div:has(> #load-sample-btn) {
 .pipeline-step.running  { border-color: var(--_accent); background: var(--_panel); }
 .pipeline-step.done     { border-color: var(--_border); }
 .pipeline-step.error    { border-color: var(--_danger); }
-.ps-icon   { font-size: 1rem; width: 20px; text-align: center; flex-shrink: 0; }
-.pipeline-step.running  .ps-icon { color: var(--_accent); animation: blink .9s step-start infinite; }
+.ps-icon {
+    font-family: 'Material Symbols Outlined'; font-style: normal;
+    font-size: 18px; line-height: 1;
+    width: 20px; text-align: center; flex-shrink: 0;
+    color: var(--_muted);
+}
+.pipeline-step.pending  .ps-icon { color: var(--_muted); opacity: .5; }
+.pipeline-step.running  .ps-icon { color: var(--_accent); animation: splash-spin 1.2s linear infinite; }
 .pipeline-step.done     .ps-icon { color: var(--_accent); }
 .pipeline-step.error    .ps-icon { color: var(--_danger); }
 .ps-name   { flex: 1; color: var(--_text); font-weight: 500; }
 .ps-detail { color: var(--_muted); font-size: 0.75rem; }
 
-/* ── DataFrame / Event Table ─────────────────────────────────────────── */
-table { background: var(--_panel) !important; border-collapse: collapse !important; }
-thead tr { background: var(--_surface) !important; border-bottom: 1px solid var(--_border) !important; }
-th {
-    background: var(--_surface) !important;
-    color: var(--_accent) !important;
-    font-size: 0.64rem !important;
-    font-weight: 700 !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.12em !important;
-    padding: 11px 16px !important;
-    border: none !important;
-    white-space: nowrap !important;
+/* ── Refresh events icon button ──────────────────────────────────────── */
+#refresh-events-btn {
+    padding: 5px 8px !important;
+    min-width: 34px !important;
+    max-width: 34px !important;
+    border-radius: 8px !important;
 }
-td {
-    color: var(--_text) !important;
-    font-size: 0.8rem !important;
-    padding: 10px 16px !important;
-    border: none !important;
+#refresh-events-btn::before {
+    content: "refresh";
+    font-family: 'Material Symbols Outlined' !important;
+    font-style: normal !important;
+    font-size: 18px !important;
+    line-height: 1 !important;
+    font-weight: 400 !important;
+    vertical-align: middle !important;
+}
+
+
+/* ── DataFrame / Event Table ─────────────────────────────────────────── */
+#event-table table {
+    background: var(--_panel) !important;
+    border-collapse: collapse !important;
+    border: 1px solid var(--_border) !important;
+    border-radius: 10px !important;
+    overflow: hidden !important;
+}
+#event-table thead tr {
+    background: rgba(255,255,255,.03) !important;
     border-bottom: 1px solid var(--_border) !important;
 }
-tbody tr:last-child td { border-bottom: none !important; }
-tbody tr:nth-child(even) td { background: rgba(255,255,255,.018) !important; }
-tr:hover td { background: var(--_surface) !important; cursor: pointer !important; }
+#event-table th {
+    background: transparent !important;
+    color: var(--_muted) !important;
+    font-size: 0.6rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.08em !important;
+    padding: 6px 10px !important;
+    line-height: 1.1 !important;
+    border: none !important;
+    white-space: nowrap !important;
+    vertical-align: middle !important;
+}
+#event-table td {
+    color: var(--_text) !important;
+    font-size: 0.78rem !important;
+    padding: 8px 10px !important;
+    border: none !important;
+    border-bottom: 1px solid var(--_border) !important;
+    vertical-align: top !important;
+}
+#event-table tbody tr:last-child td { border-bottom: none !important; }
+#event-table tbody tr:nth-child(even) td { background: rgba(255,255,255,.018) !important; }
+#event-table tr:hover td { background: var(--_surface) !important; cursor: pointer !important; }
 /* index + time columns: monospace muted */
-td:nth-child(1) { font-family: var(--font-mono) !important; font-size: 0.72rem !important; color: var(--_muted) !important; }
-td:nth-child(3), td:nth-child(4) { font-family: var(--font-mono) !important; font-size: 0.75rem !important; color: var(--_muted) !important; }
-td:nth-child(2) { font-weight: 500 !important; }
-td:nth-child(6) { font-family: var(--font-mono) !important; font-size: 0.75rem !important; color: var(--_accent) !important; font-weight: 600 !important; }
+#event-table td:nth-child(1) { font-family: var(--font-mono) !important; font-size: 0.72rem !important; color: var(--_muted) !important; }
+#event-table td:nth-child(4),
+#event-table td:nth-child(5) { font-family: var(--font-mono) !important; font-size: 0.74rem !important; color: var(--_muted) !important; }
+#event-table td:nth-child(2) { font-weight: 700 !important; color: var(--_accent) !important; }
+#event-table td:nth-child(3) {
+    max-width: 520px !important;
+    white-space: normal !important;
+    line-height: 1.35 !important;
+}
+#event-table td:nth-child(7) { font-family: var(--font-mono) !important; font-size: 0.74rem !important; color: var(--_accent) !important; font-weight: 600 !important; }
 
 /* Zone count numbers */
 #count-entrance input, #count-counter input,
@@ -889,7 +931,12 @@ _SAMPLE_PATHS: Dict[str, str] = {
 }
 
 
-_STEP_ICONS = {"pending": "○", "running": "●", "done": "✓", "error": "✗"}
+_STEP_ICONS = {
+    "pending": "radio_button_unchecked",
+    "running": "sync",
+    "done":    "check_circle",
+    "error":   "error",
+}
 
 _PIPELINE_STEPS_DEFAULT = [
     ("Load video",                  "pending", ""),
@@ -902,11 +949,11 @@ _PIPELINE_STEPS_DEFAULT = [
 def _steps_html(steps: list) -> str:
     rows = []
     for name, state, detail in steps:
-        icon = _STEP_ICONS.get(state, "○")
+        icon = _STEP_ICONS.get(state, "radio_button_unchecked")
         detail_span = f'<span class="ps-detail">{detail}</span>' if detail else ""
         rows.append(
             f'<div class="pipeline-step {state}">'
-            f'<span class="ps-icon">{icon}</span>'
+            f'<span class="ps-icon material-symbols-outlined">{icon}</span>'
             f'<span class="ps-name">{name}</span>'
             f'{detail_span}'
             f'</div>'
@@ -1072,13 +1119,18 @@ def build_app(
         video_input.change(fn=None, inputs=[video_input], js=_REC_JS)
 
         # ── Tabs ────────────────────────────────────────────────────────────
-        with gr.Tabs():
+        with gr.Tabs(selected=0):
 
             with gr.TabItem("Event Timeline"):
-                _section_title("Detected Events")
+                with gr.Row():
+                    _section_title("Detected Events")
+                    refresh_events_btn = gr.Button(
+                        "", variant="secondary", size="sm",
+                        elem_id="refresh-events-btn", scale=0, min_width=40,
+                    )
                 event_table = gr.DataFrame(
-                    headers=["#", "Type", "Start", "End", "Zone", "Confidence", "Clip"],
-                    label="Event Log", interactive=False, wrap=True,
+                    headers=["#", "Event", "Activity", "Start", "End", "Zone", "Confidence", "Clip"],
+                    label="Event Log", interactive=False, wrap=True, elem_id="event-table",
                 )
                 with gr.Row():
                     with gr.Column(scale=2):
@@ -1165,8 +1217,8 @@ def build_app(
                     lib_dd = gr.Dropdown(
                         label="Clips", choices=storage.choices(), interactive=True, scale=4,
                     )
-                    load_clip_btn   = gr.Button("Load for Analysis", variant="primary", scale=1)
-                    delete_clip_btn = gr.Button("Delete", variant="stop", scale=1)
+                    load_clip_btn   = gr.Button("Load for Analysis", variant="primary", size="sm", scale=1)
+                    delete_clip_btn = gr.Button("Delete", variant="stop", size="sm", scale=1)
 
                 lib_status   = gr.Textbox(label="Status", interactive=False, lines=1)
                 lib_preview  = gr.Video(label="Preview", interactive=False)
@@ -1209,6 +1261,10 @@ def build_app(
                 adv_theme_status = gr.Markdown("")
 
         # ── Callbacks ───────────────────────────────────────────────────────
+
+        # Shared live-event state — written by the pipeline thread, read by the refresh button
+        _live_events: list = []
+        _live_rows: list = []
 
         _CLIPS_DIR = str(Path(__file__).parent.parent / "data" / "clips")
 
@@ -1259,6 +1315,8 @@ def build_app(
             steps = list(_PIPELINE_STEPS_DEFAULT)  # mutable copy
             step_start: dict = {}
             _last_frame: list = [None]  # latest annotated frame (RGB numpy array)
+            _live_events.clear()
+            _live_rows.clear()
 
             def _blank():
                 return ([], [], gr.update(choices=[]), "", {"none": 1.0},
@@ -1270,7 +1328,7 @@ def build_app(
                 ann = gr.update(value=f, visible=f is not None) if f is not None else gr.update(visible=False)
                 return (
                     _steps_html(_annotate_elapsed(steps, step_start)), status,
-                    [], [], gr.update(choices=[]), "", {"none": 1.0},
+                    list(_live_events), list(_live_rows), gr.update(choices=[]), "", {"none": 1.0},
                     [], gr.update(choices=[]), {}, 0, 0, 0, 0,
                     ann,
                     gr.update(visible=False),
@@ -1321,6 +1379,31 @@ def build_app(
                     _q.put(("progress", done, total, track_count, vlm_fired, display_frame))
                     _last_progress_t[0] = now
 
+            def _on_new_events(evs: list) -> None:
+                for ev in evs:
+                    i = len(_live_events)
+                    ev_kind = "pickup" if ev.get("pickup_confirmed") else "observation"
+                    activity = (ev.get("activity") or "").strip() or "—"
+                    clip_name = "—"
+                    if ev.get("pickup_confirmed"):
+                        picked = ev.get("picked_up_items") or []
+                        if picked:
+                            clip_name = picked[0].get("name", "—") or "—"
+                    _live_events.append(ev)
+                    _live_rows.append([
+                        i, ev_kind, activity,
+                        _fmt_time(ev.get("timestamp")),
+                        _fmt_time(ev.get("confirmation_timestamp")) or "—",
+                        ev.get("zone", "") or "—",
+                        round(float(ev.get("confidence", 0)), 2),
+                        clip_name,
+                    ])
+                    print(
+                        f"[EVENT #{i}] {_fmt_time(ev.get('timestamp'))} | "
+                        f"{ev_kind.upper()} | zone={ev.get('zone') or '?'} | "
+                        f"{activity[:100]}"
+                    )
+
             def _run() -> None:
                 try:
                     result = run_visual_pipeline(
@@ -1328,6 +1411,7 @@ def build_app(
                         output_dir=output_dir,
                         write_annotated_video=True,
                         progress=_on_progress,
+                        on_event=_on_new_events,
                         preloaded_tracker=_mreg.get("yolo"),
                         preloaded_vlm=_mreg.get("vlm"),
                     )
@@ -1386,14 +1470,21 @@ def build_app(
 
             rows = []
             for i, ev in enumerate(events):
-                activity = "pickup" if ev.get("pickup_confirmed") else ev.get("activity", "")
+                kind = "pickup" if ev.get("pickup_confirmed") else "observation"
+                activity = (ev.get("activity") or "").strip() or "—"
+                clip_name = "—"
+                if ev.get("pickup_confirmed"):
+                    picked_up_items = ev.get("picked_up_items") or []
+                    if picked_up_items:
+                        clip_name = picked_up_items[0].get("name", "—") or "—"
                 rows.append([
-                    i, activity,
+                    i, kind,
+                    activity,
                     _fmt_time(ev.get("timestamp")),
-                    _fmt_time(ev.get("confirmation_timestamp")),
-                    ev.get("zone", ""),
+                    _fmt_time(ev.get("confirmation_timestamp")) or "—",
+                    ev.get("zone", "") or "—",
                     round(float(ev.get("confidence", 0)), 2),
-                    "",
+                    clip_name,
                 ])
             zone_counts = {"entrance": 0, "counter": 0, "back_door": 0, "aisles": 0}
             for ev in events:
@@ -1411,6 +1502,7 @@ def build_app(
                 zone_counts["back_door"], zone_counts["aisles"],
                 gr.update(value=f, visible=f is not None) if f is not None else gr.update(visible=False),
                 gr.update(visible=False),
+                output_dir,
             )
 
             # ── Step 3: LLM ─────────────────────────────────────────────────
@@ -1464,6 +1556,11 @@ def build_app(
             )
             return gr.update(value=str(ann) if ann.exists() else None, visible=ann.exists())
 
+        def _refresh_events():
+            return list(_live_events), list(_live_rows)
+
+        refresh_events_btn.click(_refresh_events, outputs=[event_log_state, event_table])
+
         clip_selector.change(_load_clip, inputs=[clip_selector, output_dir_state], outputs=[clip_preview])
         suspicious_clips_dd.change(_load_clip, inputs=[suspicious_clips_dd, output_dir_state], outputs=[flagged_clip_preview])
 
@@ -1508,13 +1605,21 @@ def build_app(
                 text = llm.get("summary", "").strip()
                 if not text:
                     return None
-                from postprocessing.translate_tts import tts
                 import numpy as np
-                chunks = list(tts(text, target_lang="English"))
-                if not chunks:
-                    return None
-                sample_rate = chunks[0][0]
-                audio = np.concatenate([c[1] for c in chunks])
+                preloaded_tts = _mreg.get("tts")
+                if preloaded_tts is not None:
+                    model, sample_rate = preloaded_tts
+                    chunks = list(model.generate_streaming(text=f"(A young woman, gentle and sweet voice){text}"))
+                    if not chunks:
+                        return None
+                    audio = np.concatenate([c.astype(np.float32) for c in chunks])
+                else:
+                    from postprocessing.translate_tts import tts
+                    chunks = list(tts(text, target_lang="English"))
+                    if not chunks:
+                        return None
+                    sample_rate = chunks[0][0]
+                    audio = np.concatenate([c[1] for c in chunks])
                 return sample_rate, audio
             except Exception:
                 return None
