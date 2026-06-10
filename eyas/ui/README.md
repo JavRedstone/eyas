@@ -20,7 +20,11 @@ UI language is English by default. Set Korean via:
 
 String catalogs live in [`locale.py`](locale.py) (`en` / `ko`).
 
-When language is Korean, annotated video overlay labels (person descriptions, activities, pickup/holding text) are translated and rendered with the bundled Noto font via [`utils/overlay_text.py`](../utils/overlay_text.py).
+When language is Korean:
+
+- **Event table** — column headers, event types, zones, and known activities use the locale catalog; freeform VLM activity text and clip product names are translated live via TinyAya as rows appear (`format_event_row()` in `locale.py`).
+- **Annotated video** — overlay labels (person descriptions, activities, pickup/holding text) are translated and rendered with the bundled Noto font via [`utils/overlay_text.py`](../utils/overlay_text.py).
+- **Summary / Q&A / TTS** — LLM output is post-translated when displayed or spoken.
 
 ## Tabs
 

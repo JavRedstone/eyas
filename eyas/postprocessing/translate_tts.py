@@ -48,23 +48,83 @@ def clear_translation_cache() -> None:
     _translation_cache.clear()
 
 
+_SYSTEM_PROMPT = (
+    "You are a translation engine. "
+    "Output only the translated text. "
+    "No explanations, notes, or language detection."
+)
+
+_META_PHRASES = (
+    "이 문장은",
+    "already written in",
+    "영어로 번역",
+    "If translated to",
+    "Translate the following",
+    "다음과 같이",
+)
+
+
+def _translation_messages(text: str, target_lang: str, *, strict: bool = False) -> list[dict[str, str]]:
+    if strict:
+        user_content = (
+            f"Translate to {target_lang}. Reply with ONLY the translation, nothing else:\n{text}"
+        )
+    else:
+        user_content = f"Translate to {target_lang}:\n{text}"
+    return [
+        {"role": "system", "content": _SYSTEM_PROMPT},
+        {"role": "user", "content": user_content},
+    ]
+
+
+def _looks_like_meta_response(_source: str, result: str) -> bool:
+    if not result:
+        return True
+    lower = result.lower()
+    for phrase in _META_PHRASES:
+        if phrase.lower() in lower:
+            return True
+    return False
+
+
+def _call_translation_model(
+    text: str,
+    target_lang: str,
+    *,
+    strict: bool,
+    use_gpu: bool,
+) -> str:
+    response = get_tinyaya_model(use_gpu=use_gpu).create_chat_completion(
+        messages=_translation_messages(text, target_lang, strict=strict),
+        max_tokens=4096,
+        temperature=0,
+        top_p=0.95,
+    )
+    return response["choices"][0]["message"]["content"].strip()
+
+
+def _is_cacheable(source: str, result: str) -> bool:
+    """Cache only clean translations — not meta garbage or source fallbacks."""
+    if _looks_like_meta_response(source, result):
+        return False
+    return result != source
+
+
 def translate(text: str, target_lang: str = "English", use_gpu: bool = True) -> str:
     # https://huggingface.co/CohereLabs/tiny-aya-global-GGUF
     if target_lang not in TINYAYA_SUPPORTED_LANGUAGES:
         raise ValueError(f"Target language {target_lang} not supported")
 
-    response = get_tinyaya_model(use_gpu=use_gpu).create_chat_completion(
-        messages=[
-            {
-                "role": "user",
-                "content": f"Translate the following text to {target_lang}: {text}",
-            }
-        ],
-        max_tokens=4096, # max number of tokens in the output
-        temperature=0, # take the most likely output
-        top_p=0.95,
-    )
-    return response["choices"][0]["message"]["content"].strip()
+    stripped = text.strip()
+    result = _call_translation_model(stripped, target_lang, strict=False, use_gpu=use_gpu)
+    if not _looks_like_meta_response(stripped, result):
+        return result
+
+    retry = _call_translation_model(stripped, target_lang, strict=True, use_gpu=use_gpu)
+    if not _looks_like_meta_response(stripped, retry):
+        return retry
+
+    return stripped
 
 
 def translate_cached(
@@ -84,7 +144,8 @@ def translate_cached(
     start = time.perf_counter()
     result = translate(stripped, target_lang=target_lang, use_gpu=use_gpu)
     elapsed = time.perf_counter() - start
-    _translation_cache[key] = result
+    if _is_cacheable(stripped, result):
+        _translation_cache[key] = result
     return result, TranslateStats(elapsed_s=elapsed, cache_misses=1)
 
 
