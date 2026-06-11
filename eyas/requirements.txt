@@ -7,6 +7,5 @@ torchaudio
 transformers
 ultralytics
 voxcpm
-llama-cpp-python
 pytest
 python-dotenv>=1.0
