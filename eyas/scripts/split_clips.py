@@ -36,7 +36,7 @@ def split_video(path: str, clip_len: int = 10, out_dir: str | None = None) -> Li
     w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     frames_per_clip = max(1, int(round(fps * clip_len)))
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    fourcc = cv2.VideoWriter_fourcc(*"avc1")
 
     paths: List[str] = []
     writer = None
