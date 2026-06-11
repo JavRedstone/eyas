@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Client, prepare_files } from '@gradio/client'
 import { AnimatePresence, motion } from 'framer-motion'
+import Box from '@mui/material/Box'
+import Paper from '@mui/material/Paper'
+import Typography from '@mui/material/Typography'
 import Splash from './components/Splash.jsx'
 import Header from './components/Header.jsx'
 import Sidebar from './components/Sidebar.jsx'
@@ -45,8 +48,8 @@ export default function App() {
   const [language, setLanguage]             = useState('English')
   const [samples, setSamples]               = useState([])
   const [videoPreviewSrc, setVideoPreviewSrc] = useState('')
-  const [clipSrc, setClipSrc] = useState(null)
-  const previewUrlRef = useRef('')
+  const [clipSrc, setClipSrc]               = useState(null)
+  const previewUrlRef       = useRef('')
   const annotatedVideoElRef = useRef(null)
   const splitContainerRef   = useRef(null)
   const isDragging          = useRef(false)
@@ -64,7 +67,6 @@ export default function App() {
     isDragging.current = true
     document.body.style.cursor = 'col-resize'
     document.body.style.userSelect = 'none'
-
     function onMove(e) {
       if (!isDragging.current || !splitContainerRef.current) return
       const rect = splitContainerRef.current.getBoundingClientRect()
@@ -108,9 +110,7 @@ export default function App() {
   }
 
   function setPreviewSource(nextSrc) {
-    if (previewUrlRef.current && previewUrlRef.current.startsWith('blob:')) {
-      URL.revokeObjectURL(previewUrlRef.current)
-    }
+    if (previewUrlRef.current && previewUrlRef.current.startsWith('blob:')) URL.revokeObjectURL(previewUrlRef.current)
     previewUrlRef.current = nextSrc || ''
     setVideoPreviewSrc(nextSrc || '')
   }
@@ -123,9 +123,7 @@ export default function App() {
         setSplashItems(states || [])
         setSplashPct(progress_pct ?? 0)
         if (done) { setSplashDone(true); return }
-      } catch {
-        return
-      }
+      } catch { return }
       await new Promise(res => setTimeout(res, 800))
     }
     setSplashDone(true)
@@ -135,24 +133,15 @@ export default function App() {
     try {
       const r = await c.predict('/get_samples', {})
       setSamples(r.data[0] || [])
-    } catch {
-      return
-    }
+    } catch { return }
   }, [])
 
   useEffect(() => {
     Client.connect(window.location.origin)
-      .then(c => {
-        setClient(c)
-        pollSplash(c)
-        loadSamples(c)
-      })
+      .then(c => { setClient(c); pollSplash(c); loadSamples(c) })
       .catch(() => null)
-
     return () => {
-      if (previewUrlRef.current && previewUrlRef.current.startsWith('blob:')) {
-        URL.revokeObjectURL(previewUrlRef.current)
-      }
+      if (previewUrlRef.current && previewUrlRef.current.startsWith('blob:')) URL.revokeObjectURL(previewUrlRef.current)
     }
   }, [loadSamples, pollSplash])
 
@@ -178,7 +167,6 @@ export default function App() {
   const handleAnalyze = useCallback(async () => {
     if (!client) return
     let gradioFile = getVideoPath(videoRef)
-
     if (!gradioFile && videoFile) {
       setStatusMsg('Uploading video…')
       try {
@@ -189,7 +177,6 @@ export default function App() {
       } catch (e) { setStatusMsg(`Upload failed: ${e.message}`); return }
     }
     if (!gradioFile) { setStatusMsg('No video selected.'); return }
-
     setAnalyzing(true)
     setStatusMsg('Starting pipeline…')
     setPipelineSteps([])
@@ -197,7 +184,6 @@ export default function App() {
     setAnnotatedVideo(null)
     setEvents([])
     setSummary(null)
-
     try {
       const sub = client.submit('/run_pipeline', { video_path: gradioFile })
       for await (const msg of sub) {
@@ -218,90 +204,89 @@ export default function App() {
 
   const tabProps = { client, events, outputDir, summary, chatHistory, setChatHistory, language, setLanguage, onSeekVideo: seekAnnotatedVideo, setClipSrc }
 
+  // Panel header utility
+  const PanelHeader = ({ title, children }) => (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
+      <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: 'primary.main', flexShrink: 0 }} />
+      <Typography variant="caption" fontWeight={600} sx={{ color: 'text.primary', letterSpacing: '0.03em' }}>
+        {title}
+      </Typography>
+      {children}
+    </Box>
+  )
+
   return (
     <AnimatePresence mode="wait">
       {!splashDone ? (
         <Splash key="splash" items={splashItems} pct={splashPct} />
       ) : (
-        <motion.div key="app" className="min-h-screen flex flex-col"
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
+        <Box key="app" component={motion.div}
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}
+          sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
 
           <Header language={language} />
 
           {/* Resizable two-panel layout */}
-          <div ref={splitContainerRef} className="flex p-4 flex-1 min-h-0 overflow-hidden">
+          <Box ref={splitContainerRef}
+            sx={{ display: 'flex', p: 2, flex: 1, minHeight: 0, overflow: 'hidden', gap: 0 }}>
 
-            {/* Left: footage controls + video */}
-            <div style={{ width: `${splitPct}%` }} className="flex flex-col gap-3 min-h-0 min-w-0">
+            {/* Left panel */}
+            <Box style={{ width: `${splitPct}%` }}
+              sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, minHeight: 0, minWidth: 0 }}>
               <Sidebar
                 samples={samples} videoFile={videoFile} videoRef={videoRef}
                 uploadStatus={uploadStatus}
                 onFileSelect={handleFileSelect} onLoadSample={handleLoadSample}
               />
-              <div className="card flex-1 flex flex-col min-h-0">
-                <div className="panel-header">
-                  <div className="w-1.5 h-1.5 rounded-full bg-accent" />
-                  <span className="text-xs font-semibold text-text">
-                    {clipSrc ? 'Event Clip' : annotatedVideo ? 'Annotated Video' : 'Preview'}
-                  </span>
+              <Paper sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+                <PanelHeader title={clipSrc ? 'Event Clip' : annotatedVideo ? 'Annotated Video' : 'Preview'}>
                   {clipSrc && (
-                    <button
+                    <Typography
+                      component="button"
                       onClick={() => setClipSrc(null)}
-                      className="ml-auto text-[10px] text-muted hover:text-text transition-colors px-1.5">
+                      sx={{ ml: 'auto', fontSize: '0.65rem', color: 'text.secondary', cursor: 'pointer', background: 'none', border: 'none', '&:hover': { color: 'text.primary' } }}>
                       ✕ close clip
-                    </button>
+                    </Typography>
                   )}
-                </div>
-                <div className="flex-1 flex items-center justify-center bg-black rounded-b-xl overflow-hidden min-h-0">
+                </PanelHeader>
+                <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#000', borderRadius: '0 0 11px 11px', overflow: 'hidden', minHeight: 0 }}>
                   {clipSrc ? (
-                    <video
-                      key={clipSrc}
-                      src={clipSrc}
-                      controls autoPlay
-                      className="w-full h-full object-contain"
-                    />
+                    <video key={clipSrc} src={clipSrc} controls autoPlay style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                   ) : annotatedVideo ? (
-                    <video
-                      ref={annotatedVideoElRef}
+                    <video ref={annotatedVideoElRef}
                       src={annotatedVideo.startsWith('/gradio_api/file=') ? annotatedVideo : `/gradio_api/file=${annotatedVideo}`}
-                      controls
-                      className="w-full h-full object-contain"
-                    />
+                      controls style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                   ) : videoPreviewSrc ? (
-                    <video
-                      src={videoPreviewSrc}
-                      controls muted
-                      className="w-full h-full object-contain"
-                    />
+                    <video src={videoPreviewSrc} controls muted style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                   ) : (
-                    <div className="text-center text-muted p-8">
-                      <div className="text-3xl mb-2 opacity-20">▶</div>
-                      <p className="text-xs">Load a sample or upload a video</p>
-                    </div>
+                    <Box sx={{ textAlign: 'center', p: 4 }}>
+                      <Typography sx={{ fontSize: '2rem', opacity: 0.2, mb: 1 }}>▶</Typography>
+                      <Typography variant="caption" color="text.secondary">Load a sample or upload a video</Typography>
+                    </Box>
                   )}
-                </div>
-              </div>
-            </div>
+                </Box>
+              </Paper>
+            </Box>
 
             {/* Drag handle */}
-            <div
-              className="w-2 shrink-0 mx-1.5 flex items-center justify-center cursor-col-resize group"
+            <Box sx={{ width: 16, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'col-resize', px: 0.5 }}
               onMouseDown={onDragHandleMouseDown}>
-              <div className="w-0.5 h-full rounded-full bg-border group-hover:bg-accent/60 transition-colors" />
-            </div>
+              <Box sx={{ width: 2, height: '100%', borderRadius: 9999, bgcolor: 'divider', transition: 'background-color 0.15s', '&:hover': { bgcolor: 'primary.dark' } }} />
+            </Box>
 
-            {/* Right: analysis + tabs */}
-            <div style={{ width: `${100 - splitPct}%` }} className="flex flex-col gap-3 min-h-0 min-w-0">
+            {/* Right panel */}
+            <Box style={{ width: `${100 - splitPct}%` }}
+              sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, minHeight: 0, minWidth: 0 }}>
               <AnalysisPanel
                 analyzing={analyzing} statusMsg={statusMsg}
                 pipelineSteps={pipelineSteps} pipelineProgress={pipelineProgress}
                 onAnalyze={handleAnalyze}
               />
-              <div className="card flex-1 flex flex-col min-h-0">
+              <Paper sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
                 <TabNav tabs={TABS} activeTab={activeTab} setActiveTab={setActiveTab} />
-                <div className="flex-1 overflow-y-auto p-5 min-h-0">
+                <Box sx={{ flex: 1, overflowY: 'auto', p: 2.5, minHeight: 0 }}>
                   <AnimatePresence mode="wait">
-                    <motion.div key={activeTab}
+                    <Box key={activeTab} component={motion.div}
                       initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.15 }}>
                       {activeTab === 'timeline' && <EventTimeline  {...tabProps} />}
@@ -311,14 +296,14 @@ export default function App() {
                       {activeTab === 'audio'    && <AudioReport    {...tabProps} />}
                       {activeTab === 'library'  && <ClipLibrary    {...tabProps} />}
                       {activeTab === 'settings' && <SettingsTab    {...tabProps} />}
-                    </motion.div>
+                    </Box>
                   </AnimatePresence>
-                </div>
-              </div>
-            </div>
+                </Box>
+              </Paper>
+            </Box>
 
-          </div>
-        </motion.div>
+          </Box>
+        </Box>
       )}
     </AnimatePresence>
   )
