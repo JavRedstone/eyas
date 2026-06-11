@@ -1,11 +1,15 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { Volume2, Loader2 } from 'lucide-react'
+import Box from '@mui/material/Box'
+import Typography from '@mui/material/Typography'
+import Button from '@mui/material/Button'
+import LinearProgress from '@mui/material/LinearProgress'
 
 const PHASES = [
-  { until: 4,  msg: 'Summarizing events…'   },
-  { until: 12, msg: 'Synthesizing speech…'  },
-  { until: Infinity, msg: 'Finishing up…'   },
+  { until: 4,        msg: 'Summarizing events…'  },
+  { until: 12,       msg: 'Synthesizing speech…' },
+  { until: Infinity, msg: 'Finishing up…'         },
 ]
 
 function phaseMsg(elapsed) {
@@ -57,52 +61,65 @@ export default function AudioReport({ client, summary }) {
   }))
 
   return (
-    <div className="space-y-5">
-      <p className="section-label">Spoken Security Report</p>
-      <p className="text-xs text-muted">Generates a spoken audio summary of the event log using the TTS model.</p>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+      <Typography variant="overline" sx={{ display: 'block' }}>Spoken Security Report</Typography>
+      <Typography variant="caption" color="text.secondary">
+        Generates a spoken audio summary of the event log using the TTS model.
+      </Typography>
 
       {/* Waveform visualization */}
-      <div className="flex items-center justify-center gap-0.5 h-16 bg-surface rounded-xl border border-border px-4">
+      <Box sx={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5,
+        height: 64, bgcolor: 'rgba(20,45,79,0.5)', borderRadius: 2,
+        border: '1px solid', borderColor: 'divider', px: 2,
+      }}>
         {bars.map((b, i) => (
           <motion.div key={i}
-            className="w-1 rounded-full bg-accent/60"
-            style={{ height: `${b.h * 100}%` }}
+            style={{ width: 4, borderRadius: 9999, background: 'rgba(247,208,70,0.6)', height: `${b.h * 100}%` }}
             animate={audioSrc ? { scaleY: [1, b.h + 0.4, 1], opacity: [0.6, 1, 0.6] } : { scaleY: 1 }}
             transition={{ duration: 0.8 + i * 0.02, repeat: Infinity, delay: i * 0.02 }} />
         ))}
-      </div>
+      </Box>
 
       {audioSrc && (
-        <audio src={audioSrc} controls className="w-full rounded-lg" style={{ colorScheme: 'dark' }} />
+        <audio src={audioSrc} controls style={{ width: '100%', borderRadius: 8, colorScheme: 'dark' }} />
       )}
 
       {/* Status / progress */}
       {loading && (
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-xs text-muted">
-            <Loader2 size={12} className="animate-spin shrink-0" />
-            <span>{phaseMsg(elapsed)}</span>
-            <span className="font-mono text-muted/60">{elapsed}s</span>
-          </div>
-          <div className="h-1 w-full rounded-full bg-surface border border-border overflow-hidden">
-            <motion.div
-              className="h-full rounded-full bg-accent/70"
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Loader2 size={12} style={{ flexShrink: 0, animation: 'spin 1s linear infinite' }} />
+            <Typography variant="caption" color="text.secondary">{phaseMsg(elapsed)}</Typography>
+            <Typography variant="caption" sx={{ color: 'text.secondary', opacity: 0.6, fontFamily: 'monospace' }}>{elapsed}s</Typography>
+          </Box>
+          <Box sx={{ position: 'relative', overflow: 'hidden', height: 4, borderRadius: 2, bgcolor: 'rgba(20,45,79,0.5)', border: '1px solid', borderColor: 'divider' }}>
+            <Box component={motion.div}
+              sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 2, bgcolor: 'rgba(247,208,70,0.7)' }}
               animate={{ x: ['-100%', '100%'] }}
-              transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
-            />
-          </div>
-        </div>
+              transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }} />
+          </Box>
+        </Box>
       )}
       {!loading && statusMsg && (
-        <p className="text-xs text-muted">{statusMsg}</p>
+        <Typography variant="caption" color="text.secondary">{statusMsg}</Typography>
       )}
 
-      <button onClick={generate} disabled={loading}
-        className="btn btn-secondary disabled:opacity-40">
-        {loading
-          ? <><Loader2 size={14} className="animate-spin" /> Generating…</>
-          : <><Volume2 size={14} /> Generate Audio Report</>}
-      </button>
-    </div>
+      <Button
+        variant="outlined"
+        onClick={generate}
+        disabled={loading}
+        startIcon={loading ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Volume2 size={14} />}
+        sx={{
+          alignSelf: 'flex-start',
+          borderColor: 'divider',
+          color: 'text.primary',
+          bgcolor: 'rgba(20,45,79,0.5)',
+          '&:hover': { borderColor: 'rgba(247,208,70,0.4)', bgcolor: 'rgba(247,208,70,0.04)' },
+          '&.Mui-disabled': { opacity: 0.4 },
+        }}>
+        {loading ? 'Generating…' : 'Generate Audio Report'}
+      </Button>
+    </Box>
   )
 }

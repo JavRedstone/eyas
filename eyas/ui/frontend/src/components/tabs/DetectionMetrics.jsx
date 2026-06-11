@@ -2,13 +2,16 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, Legend
 } from 'recharts'
+import Box from '@mui/material/Box'
+import Paper from '@mui/material/Paper'
+import Typography from '@mui/material/Typography'
 
 const ZONE_COLORS = {
-  entrance:   '#f7d046',
-  counter:    '#60A5FA',
+  entrance:    '#f7d046',
+  counter:     '#60A5FA',
   'back door': '#34D399',
   'back_door': '#34D399',
-  aisles:     '#FBBF24',
+  aisles:      '#FBBF24',
 }
 
 function zoneColor(z) { return ZONE_COLORS[z?.toLowerCase()] ?? '#7a8ea8' }
@@ -21,7 +24,6 @@ export default function DetectionMetrics({ summary, events }) {
     fill: zoneColor(zone),
   }))
 
-  // Events over time — group by 10-second buckets
   const bucketSize = 10
   const buckets = {}
   events.forEach(ev => {
@@ -34,20 +36,27 @@ export default function DetectionMetrics({ summary, events }) {
 
   const totalDetections = Object.values(zoneCounts).reduce((s, v) => s + Number(v), 0)
 
+  const STAT_COLORS = {
+    'Total Detections': '#f7d046',
+    'Events':           '#60A5FA',
+    'Zones Active':     '#34D399',
+    'Avg / Zone':       '#f7d046',
+  }
+
   return (
-    <div className="space-y-6">
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       {/* Stat cards */}
-      <div className="grid grid-cols-4 gap-3">
-        <StatCard label="Total Detections" value={totalDetections} color="text-accent" />
-        <StatCard label="Events" value={events.length} color="text-blue-400" />
-        <StatCard label="Zones Active" value={zoneData.filter(z => z.count > 0).length} color="text-success" />
-        <StatCard label="Avg / Zone" value={zoneData.length ? (totalDetections / zoneData.length).toFixed(1) : '—'} color="text-warning" />
-      </div>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1.5 }}>
+        <StatCard label="Total Detections" value={totalDetections} color={STAT_COLORS['Total Detections']} />
+        <StatCard label="Events" value={events.length} color={STAT_COLORS['Events']} />
+        <StatCard label="Zones Active" value={zoneData.filter(z => z.count > 0).length} color={STAT_COLORS['Zones Active']} />
+        <StatCard label="Avg / Zone" value={zoneData.length ? (totalDetections / zoneData.length).toFixed(1) : '—'} color={STAT_COLORS['Avg / Zone']} />
+      </Box>
 
       {/* Zone bar chart */}
       {zoneData.length > 0 ? (
-        <div>
-          <p className="section-label mb-3">Zone Counts</p>
+        <Box>
+          <Typography variant="overline" sx={{ display: 'block', mb: 1.5 }}>Zone Counts</Typography>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={zoneData} margin={{ top: 4, right: 16, bottom: 4, left: 0 }}>
               <CartesianGrid stroke="#2e4060" strokeDasharray="3 3" vertical={false} />
@@ -58,9 +67,9 @@ export default function DetectionMetrics({ summary, events }) {
                 content={({ payload, label }) => {
                   if (!payload?.length) return null
                   return (
-                    <div className="bg-panel border border-border rounded-lg px-3 py-2 text-xs">
-                      <div className="font-medium text-text capitalize">{label}</div>
-                      <div className="text-muted">{payload[0].value} detections</div>
+                    <div style={{ background: '#1f2833', border: '1px solid #2e4060', borderRadius: 8, padding: '8px 12px', fontSize: '0.75rem', color: '#e5e1d8' }}>
+                      <div style={{ fontWeight: 500, textTransform: 'capitalize' }}>{label}</div>
+                      <div style={{ color: '#7a8ea8' }}>{payload[0].value} detections</div>
                     </div>
                   )
                 }} />
@@ -71,15 +80,15 @@ export default function DetectionMetrics({ summary, events }) {
               </Bar>
             </BarChart>
           </ResponsiveContainer>
-        </div>
+        </Box>
       ) : (
-        <p className="text-xs text-muted">No zone data yet. Run the pipeline first.</p>
+        <Typography variant="caption" color="text.secondary">No zone data yet. Run the pipeline first.</Typography>
       )}
 
       {/* Event frequency timeline */}
       {timelineData.length > 0 && (
-        <div>
-          <p className="section-label mb-3">Event Frequency Over Time</p>
+        <Box>
+          <Typography variant="overline" sx={{ display: 'block', mb: 1.5 }}>Event Frequency Over Time</Typography>
           <ResponsiveContainer width="100%" height={140}>
             <LineChart data={timelineData} margin={{ top: 4, right: 16, bottom: 4, left: 0 }}>
               <CartesianGrid stroke="#2e4060" strokeDasharray="3 3" />
@@ -88,7 +97,7 @@ export default function DetectionMetrics({ summary, events }) {
               <Tooltip content={({ payload }) => {
                 if (!payload?.length) return null
                 return (
-                  <div className="bg-panel border border-border rounded px-2 py-1 text-xs">
+                  <div style={{ background: '#1f2833', border: '1px solid #2e4060', borderRadius: 8, padding: '8px 12px', fontSize: '0.75rem', color: '#e5e1d8' }}>
                     {payload[0].payload.t}: {payload[0].value} events
                   </div>
                 )
@@ -97,17 +106,21 @@ export default function DetectionMetrics({ summary, events }) {
                 dot={{ r: 3, fill: '#f7d046', strokeWidth: 0 }} activeDot={{ r: 5 }} />
             </LineChart>
           </ResponsiveContainer>
-        </div>
+        </Box>
       )}
-    </div>
+    </Box>
   )
 }
 
 function StatCard({ label, value, color }) {
   return (
-    <div className="bg-surface rounded-xl border border-border p-3">
-      <div className={`text-2xl font-bold font-mono ${color}`}>{value}</div>
-      <div className="text-[10px] text-muted mt-1 uppercase tracking-wide">{label}</div>
-    </div>
+    <Paper sx={{ p: 1.5, bgcolor: 'rgba(20,45,79,0.5)' }}>
+      <Typography variant="h5" fontWeight={700} sx={{ fontFamily: 'monospace', color }}>
+        {value}
+      </Typography>
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        {label}
+      </Typography>
+    </Paper>
   )
 }

@@ -1,6 +1,12 @@
 import { useState, useRef, useEffect } from 'react'
 import { Send, Trash2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import Box from '@mui/material/Box'
+import Paper from '@mui/material/Paper'
+import Typography from '@mui/material/Typography'
+import TextField from '@mui/material/TextField'
+import IconButton from '@mui/material/IconButton'
+import Chip from '@mui/material/Chip'
 
 export default function AskFootage({ client, events, chatHistory, setChatHistory }) {
   const [query, setQuery]   = useState('')
@@ -39,78 +45,99 @@ export default function AskFootage({ client, events, chatHistory, setChatHistory
   function handleKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask() } }
 
   return (
-    <div className="flex flex-col" style={{ height: 420 }}>
-      <p className="section-label mb-3">Ask a Question About the Footage</p>
-      <p className="text-xs text-muted mb-3">
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: 420 }}>
+      <Typography variant="overline" sx={{ display: 'block', mb: 1.5 }}>Ask a Question About the Footage</Typography>
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
         Try: "Were there any unusual events?" · "Which zone had the most activity?"
-      </p>
+      </Typography>
 
-      <div className="mb-3 flex flex-wrap gap-2">
+      {/* Suggestion chips */}
+      <Box sx={{ mb: 1.5, display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
         {suggestions.map(suggestion => (
-          <button
+          <Chip
             key={suggestion}
-            type="button"
-            onClick={() => setQuery(suggestion)}
-            className="rounded-full border border-border bg-surface px-3 py-1 text-xs text-text transition-colors hover:border-accent/50 hover:bg-accent/5"
+            label={suggestion}
+            size="small"
+            variant="outlined"
             disabled={loading}
-          >
-            {suggestion}
-          </button>
+            onClick={() => setQuery(suggestion)}
+            sx={{
+              borderColor: 'divider',
+              bgcolor: 'rgba(20,45,79,0.5)',
+              color: 'text.primary',
+              cursor: 'pointer',
+              '&:hover': { borderColor: 'rgba(247,208,70,0.4)', bgcolor: 'rgba(247,208,70,0.05)' },
+            }}
+          />
         ))}
-      </div>
+      </Box>
 
       {/* Chat area */}
-      <div className="flex-1 overflow-y-auto space-y-3 mb-3 min-h-0">
+      <Box sx={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 1.5, mb: 1.5, minHeight: 0 }}>
         {chatHistory.length === 0 && (
-          <div className="text-xs text-muted text-center mt-8">
+          <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center', mt: 4, display: 'block' }}>
             No conversation yet. Run a pipeline first, then ask questions.
-          </div>
+          </Typography>
         )}
         <AnimatePresence initial={false}>
           {chatHistory.map((msg, i) => (
-            <motion.div key={i}
+            <Box key={i} component={motion.div}
               initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-xs px-3 py-2 rounded-xl text-xs leading-relaxed
-                ${msg.role === 'user'
-                  ? 'bg-accent text-white rounded-br-sm'
-                  : 'bg-surface border border-border text-text rounded-bl-sm'}`}>
-                {msg.text}
-              </div>
-            </motion.div>
+              sx={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+              <Paper sx={{
+                maxWidth: '75%', px: 1.5, py: 1, borderRadius: 3,
+                bgcolor: msg.role === 'user' ? 'primary.main' : 'background.paper',
+                color: msg.role === 'user' ? 'primary.contrastText' : 'text.primary',
+                borderBottomRightRadius: msg.role === 'user' ? 4 : undefined,
+                borderBottomLeftRadius: msg.role === 'assistant' ? 4 : undefined,
+              }}>
+                <Typography variant="caption" sx={{ lineHeight: 1.6 }}>{msg.text}</Typography>
+              </Paper>
+            </Box>
           ))}
         </AnimatePresence>
         {loading && (
-          <div className="flex justify-start">
-            <div className="bg-surface border border-border rounded-xl rounded-bl-sm px-3 py-2">
-              <div className="flex gap-1">
+          <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
+            <Paper sx={{ px: 1.5, py: 1, borderRadius: 3, borderBottomLeftRadius: 4 }}>
+              <Box sx={{ display: 'flex', gap: 0.5 }}>
                 {[0, 1, 2].map(i => (
-                  <motion.div key={i} className="w-1.5 h-1.5 rounded-full bg-muted"
+                  <Box key={i} component={motion.div}
+                    sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: 'text.secondary' }}
                     animate={{ y: [0, -4, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }} />
                 ))}
-              </div>
-            </div>
-          </div>
+              </Box>
+            </Paper>
+          </Box>
         )}
         <div ref={bottomRef} />
-      </div>
+      </Box>
 
       {/* Input row */}
-      <div className="flex gap-2 shrink-0">
-        <input className="input text-xs" value={query}
-          onChange={e => setQuery(e.target.value)} onKeyDown={handleKey}
-          placeholder="Ask a question about the footage…" />
-        <button onClick={ask} disabled={!query.trim() || loading}
-          className="btn btn-primary px-3 shrink-0 disabled:opacity-40">
-          <Send size={14} />
-        </button>
+      <Box sx={{ display: 'flex', gap: 1, flexShrink: 0 }}>
+        <TextField
+          size="small"
+          fullWidth
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          onKeyDown={handleKey}
+          placeholder="Ask a question about the footage…"
+          variant="outlined"
+          sx={{ '& input': { fontSize: '0.8rem' } }}
+        />
+        <IconButton
+          onClick={ask}
+          disabled={!query.trim() || loading}
+          color="primary"
+          sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', borderRadius: 1.5, '&:hover': { bgcolor: 'primary.dark' }, '&.Mui-disabled': { opacity: 0.4, bgcolor: 'primary.main', color: 'primary.contrastText' } }}>
+          <Send size={16} />
+        </IconButton>
         {chatHistory.length > 0 && (
-          <button onClick={() => setChatHistory([])} className="btn btn-ghost px-2 shrink-0">
-            <Trash2 size={14} />
-          </button>
+          <IconButton onClick={() => setChatHistory([])} sx={{ borderRadius: 1.5 }}>
+            <Trash2 size={16} />
+          </IconButton>
         )}
-      </div>
-    </div>
+      </Box>
+    </Box>
   )
 }
 
