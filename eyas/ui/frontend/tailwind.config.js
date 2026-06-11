@@ -4,16 +4,16 @@ export default {
   theme: {
     extend: {
       colors: {
-        bg:      '#0F1117',
-        surface: '#161B2C',
-        panel:   '#1E2436',
-        border:  '#2A3050',
-        accent:  '#E8682A',
-        'accent-dim': '#B84E1C',
-        text:    '#EEF0F8',
-        muted:   '#6B728E',
+        bg:      '#0e2946',  // dark slate blue — dominant plumage
+        surface: '#142d4f',
+        panel:   '#1f2833',  // charcoal — head stripes / wing contrast
+        border:  '#2e4060',
+        accent:  '#f7d046',  // bright yellow — cere / talons
+        'accent-dim': '#c9a52e',
+        text:    '#e5e1d8',  // soft cream — underbelly
+        muted:   '#7a8ea8',
         success: '#34D399',
-        warning: '#FBBF24',
+        warning: '#f7d046',
         danger:  '#F87171',
       },
       fontFamily: {

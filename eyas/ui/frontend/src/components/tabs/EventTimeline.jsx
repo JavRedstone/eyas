@@ -3,7 +3,7 @@ import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, Responsive
 import { RefreshCw, Loader2 } from 'lucide-react'
 
 const KIND_COLORS = {
-  person:      '#E8682A',
+  person:      '#e87030',
   vehicle:     '#60A5FA',
   animal:      '#34D399',
   intrusion:   '#EF4444',
@@ -11,7 +11,7 @@ const KIND_COLORS = {
   pickup:      '#FF2222',
   suspicious:  '#FBBF24',
   observation: '#8B93A9',
-  default:     '#6B728E',
+  default:     '#7a8ea8',
 }
 
 function kindColor(kind = '') {
@@ -63,13 +63,13 @@ export default function EventTimeline({ client, events, outputDir, onSeekVideo, 
           <p className="section-label mb-3">Event Timeline</p>
           <ResponsiveContainer width="100%" height={160}>
             <ScatterChart margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
-              <CartesianGrid stroke="#2A3050" strokeDasharray="3 3" />
+              <CartesianGrid stroke="#2e4060" strokeDasharray="3 3" />
               <XAxis dataKey="x" name="Time (s)" type="number" domain={['auto', 'auto']}
-                tick={{ fill: '#6B728E', fontSize: 10 }} tickLine={false} axisLine={false}
-                label={{ value: 'seconds', position: 'insideBottomRight', offset: -4, fill: '#6B728E', fontSize: 10 }} />
+                tick={{ fill: '#7a8ea8', fontSize: 10 }} tickLine={false} axisLine={false}
+                label={{ value: 'seconds', position: 'insideBottomRight', offset: -4, fill: '#7a8ea8', fontSize: 10 }} />
               <YAxis dataKey="y" type="number" hide domain={[0, scatterData.length + 1]} />
               <Tooltip
-                cursor={{ stroke: '#2A3050' }}
+                cursor={{ stroke: '#2e4060' }}
                 content={({ payload }) => {
                   if (!payload?.length) return null
                   const d = payload[0].payload
