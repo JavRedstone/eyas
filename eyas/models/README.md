@@ -1,34 +1,31 @@
 # models
 
-Local model weight files — not tracked in git.
+Local model weight files — **not tracked in git** (gitignored). All models download automatically on first run.
 
 ## Expected files
 
-| File | Used by | Notes |
+| File | Used by | How it's obtained |
 |---|---|---|
-| `yolo11n.pt` | `object_detection/` | YOLO11-nano; download from Ultralytics or train locally |
-| `nemotron-nano-4b.gguf` | `llm/` | Default GGUF LLM; override with `EYAS_MODEL_PATH` env var |
-| `minicpmv/MiniCPM-V-4_6-F16.gguf` | `video_processing/` | Optional F16 llama-cpp-python VLM backend |
-| `minicpmv/mmproj-model-f16.gguf` | `video_processing/` | MiniCPM-V 4.6 vision projector |
+| `yolo11n.pt` | `object_detection/` | Downloaded by Ultralytics on first use, or by `scripts/download_models.py` |
+| `nemotron-nano-4b.gguf` | `llm/` | Override path; default is the HF cache (`Llama.from_pretrained`) |
+| `minicpmv/MiniCPM-V-4_6-F16.gguf` | `video_processing/` | Optional — for the llama-cpp-python VLM backend |
+| `minicpmv/mmproj-model-f16.gguf` | `video_processing/` | Matching vision projector for the GGUF backend |
 
-## Downloading
+## Auto-download (default)
 
-```bash
-# YOLO weights (auto-downloaded by Ultralytics on first run)
-python -c "from ultralytics import YOLO; YOLO('yolo11n.pt')"
+- **YOLO**: `ultralytics` fetches `yolo11n.pt` automatically on first call to `PersonTracker`
+- **Nemotron**: `llama_cpp.Llama.from_pretrained("nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF")` downloads `NVIDIA-Nemotron3-Nano-4B-Q4_K_M.gguf` to the HF hub cache
+- **TinyAya**: `huggingface_hub.hf_hub_download("CohereLabs/tiny-aya-global-GGUF")` downloads to the HF cache
+- **MiniCPM-V**: `transformers` fetches weights on first `MiniCPMVLM` instantiation
+- **VoxCPM2**: downloads on first TTS call
 
-# GGUF model — example using huggingface-cli
-huggingface-cli download <repo> nemotron-nano-4b.gguf --local-dir models/
-```
+## Docker build pre-download
 
-MiniCPM-V 4.6 weights are fetched automatically by `transformers` on first use and cached in the HuggingFace hub cache (`~/.cache/huggingface/`).
+`scripts/download_models.py` runs during `docker build` to bake YOLO and the two GGUF models into the image layer, avoiding cold-start delays.
 
-The llama-cpp-python backend also defaults to the Hugging Face cache. Pass
-`--llama-model-path models/minicpmv/MiniCPM-V-4_6-F16.gguf` to use a model
-stored under this directory instead. Also pass the matching projector with
-`--llama-mmproj-path`.
+## llama-cpp-python VLM backend (optional)
 
-Download both files with separate include flags:
+To use MiniCPM-V via llama.cpp instead of Transformers, download both GGUF files:
 
 ```bash
 hf download openbmb/MiniCPM-V-4.6-gguf \
@@ -36,3 +33,5 @@ hf download openbmb/MiniCPM-V-4.6-gguf \
   --include "*mmproj*" \
   --local-dir models/minicpmv
 ```
+
+Then pass `--vlm-backend llama-cpp-python` to `run_visual_pipeline.py`. See [`docs/LLAMA_CPP.md`](../../docs/LLAMA_CPP.md) for full instructions.
