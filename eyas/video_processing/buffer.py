@@ -107,7 +107,7 @@ def write_clip(frames: List[np.ndarray], path: str, fps: float = 12.0) -> str:
         raise ValueError("no frames to write")
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
     h, w = frames[0].shape[:2]
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    fourcc = cv2.VideoWriter_fourcc(*"avc1")
     writer = cv2.VideoWriter(path, fourcc, fps, (w, h))
     try:
         for f in frames:

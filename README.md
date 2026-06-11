@@ -1,3 +1,13 @@
+---
+title: Eyas — AI Security Camera Agent
+emoji: 🦅
+colorFrom: blue
+colorTo: purple
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # HuggingFace Build Small Hackathon — Project Workspace
 
 This workspace contains materials and a prototype plan for a Hackathon submission built around small, local models.

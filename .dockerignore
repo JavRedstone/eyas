@@ -1,0 +1,9 @@
+.git
+docs/
+eyas/.venv/
+eyas/data/runs/
+eyas/__pycache__/
+eyas/**/__pycache__/
+eyas/ui/frontend/node_modules/
+eyas/ui/dist/
+eyas/tests/
