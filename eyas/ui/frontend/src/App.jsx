@@ -45,6 +45,7 @@ export default function App() {
   const [language, setLanguage]             = useState('English')
   const [samples, setSamples]               = useState([])
   const [videoPreviewSrc, setVideoPreviewSrc] = useState('')
+  const [clipSrc, setClipSrc] = useState(null)
   const previewUrlRef = useRef('')
   const annotatedVideoElRef = useRef(null)
   const splitContainerRef   = useRef(null)
@@ -215,7 +216,7 @@ export default function App() {
     finally      { setAnalyzing(false) }
   }, [client, videoFile, videoRef])
 
-  const tabProps = { client, events, outputDir, summary, chatHistory, setChatHistory, language, setLanguage, onSeekVideo: seekAnnotatedVideo }
+  const tabProps = { client, events, outputDir, summary, chatHistory, setChatHistory, language, setLanguage, onSeekVideo: seekAnnotatedVideo, setClipSrc }
 
   return (
     <AnimatePresence mode="wait">
@@ -241,11 +242,25 @@ export default function App() {
                 <div className="panel-header">
                   <div className="w-1.5 h-1.5 rounded-full bg-accent" />
                   <span className="text-xs font-semibold text-text">
-                    {annotatedVideo ? 'Annotated Video' : 'Preview'}
+                    {clipSrc ? 'Event Clip' : annotatedVideo ? 'Annotated Video' : 'Preview'}
                   </span>
+                  {clipSrc && (
+                    <button
+                      onClick={() => setClipSrc(null)}
+                      className="ml-auto text-[10px] text-muted hover:text-text transition-colors px-1.5">
+                      ✕ close clip
+                    </button>
+                  )}
                 </div>
                 <div className="flex-1 flex items-center justify-center bg-black rounded-b-xl overflow-hidden min-h-0">
-                  {annotatedVideo ? (
+                  {clipSrc ? (
+                    <video
+                      key={clipSrc}
+                      src={clipSrc}
+                      controls autoPlay
+                      className="w-full h-full object-contain"
+                    />
+                  ) : annotatedVideo ? (
                     <video
                       ref={annotatedVideoElRef}
                       src={annotatedVideo.startsWith('/gradio_api/file=') ? annotatedVideo : `/gradio_api/file=${annotatedVideo}`}

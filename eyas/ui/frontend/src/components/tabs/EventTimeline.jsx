@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, Loader2 } from 'lucide-react'
 
 const KIND_COLORS = {
   person:      '#E8682A',
@@ -33,9 +33,9 @@ function ScatterDot({ cx, cy, payload }) {
   return <circle cx={cx} cy={cy} r={5} fill={kindColor(payload.kind)} fillOpacity={0.85} />
 }
 
-export default function EventTimeline({ client, events, outputDir, onSeekVideo }) {
-  const [clipSrc, setClipSrc]     = useState(null)
+export default function EventTimeline({ client, events, outputDir, onSeekVideo, setClipSrc }) {
   const [loadingClip, setLoading] = useState(false)
+  const [loadingIdx, setLoadingIdx] = useState(null)
 
   const scatterData = events.map((ev, i) => ({
     x: Number(ev.timestamp ?? ev.time ?? 0),
@@ -47,10 +47,12 @@ export default function EventTimeline({ client, events, outputDir, onSeekVideo }
   async function loadClip(idx) {
     if (!client || !outputDir) return
     setLoading(true)
+    setLoadingIdx(idx)
     try {
       const r = await client.predict('/load_event_clip', { clip_index: idx, output_dir: outputDir })
-      setClipSrc(resolveVideoSrc(r.data[0]))
-    } catch {} finally { setLoading(false) }
+      const src = resolveVideoSrc(r.data[0])
+      if (src) setClipSrc?.(src)
+    } catch {} finally { setLoading(false); setLoadingIdx(null) }
   }
 
   return (
@@ -130,9 +132,13 @@ export default function EventTimeline({ client, events, outputDir, onSeekVideo }
                       <td className="px-3 py-2 text-muted">{ev.zone ?? '—'}</td>
                       <td className="px-3 py-2 text-text/80 max-w-xs truncate">{ev.label ?? ev.description ?? '—'}</td>
                       <td className="px-3 py-2">
-                        <button onClick={() => loadClip(i)}
-                          className="btn btn-ghost p-1 text-[10px] gap-1">
-                          <RefreshCw size={10} /> clip
+                        <button onClick={e => { e.stopPropagation(); loadClip(i) }}
+                          disabled={loadingClip}
+                          className="btn btn-ghost p-1 text-[10px] gap-1 disabled:opacity-40">
+                          {loadingIdx === i
+                            ? <Loader2 size={10} className="animate-spin" />
+                            : <RefreshCw size={10} />}
+                          clip
                         </button>
                       </td>
                     </tr>
@@ -144,17 +150,6 @@ export default function EventTimeline({ client, events, outputDir, onSeekVideo }
         )}
       </div>
 
-      {/* Clip preview */}
-      {(clipSrc || loadingClip) && (
-        <div>
-          <p className="section-label mb-2">Clip Preview</p>
-          {loadingClip ? (
-            <div className="h-24 bg-surface rounded-lg flex items-center justify-center text-muted text-xs">Loading…</div>
-          ) : (
-            <video src={clipSrc} controls className="w-full rounded-lg border border-border bg-black" style={{ maxHeight: '50vh' }} />
-          )}
-        </div>
-      )}
     </div>
   )
 }
