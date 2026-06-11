@@ -57,3 +57,6 @@ eyas/data/
 *.tmp
 *.bak
 output/
+
+# TTS test audio output
+eyas/tests/model/tts_output/
