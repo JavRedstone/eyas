@@ -1,4 +1,8 @@
 import { RadialBarChart, RadialBar, PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
+import Box from '@mui/material/Box'
+import Paper from '@mui/material/Paper'
+import Typography from '@mui/material/Typography'
+import Chip from '@mui/material/Chip'
 
 const RISK_CONFIG = {
   high:   { color: '#F87171', label: 'High Risk',   pct: 90 },
@@ -9,7 +13,7 @@ const RISK_CONFIG = {
 
 export default function SummaryAlerts({ summary }) {
   if (!summary) {
-    return <p className="text-xs text-muted">No analysis yet. Run the pipeline first.</p>
+    return <Typography variant="caption" color="text.secondary">No analysis yet. Run the pipeline first.</Typography>
   }
 
   const risk   = (summary.risk_level ?? 'none').toLowerCase()
@@ -24,7 +28,6 @@ export default function SummaryAlerts({ summary }) {
     { name: 'bg',   value: 100 - rc.pct, fill: '#1f2833' },
   ]
 
-  // Flags by inferred type for mini pie
   const flagTypes = {}
   flags.forEach(f => {
     const t = inferFlagType(f)
@@ -34,29 +37,29 @@ export default function SummaryAlerts({ summary }) {
   const PIE_COLORS = ['#f7d046', '#F87171', '#FBBF24', '#60A5FA', '#34D399']
 
   return (
-    <div className="space-y-6">
-      {/* Risk gauge + summary */}
-      <div className="grid grid-cols-2 gap-5">
-        <div>
-          <p className="section-label mb-3">Risk Level</p>
-          <div className="flex items-center gap-4">
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      {/* Risk gauge + flag types */}
+      <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2.5 }}>
+        <Box>
+          <Typography variant="overline" sx={{ display: 'block', mb: 1.5 }}>Risk Level</Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <ResponsiveContainer width={100} height={100}>
               <RadialBarChart cx="50%" cy="50%" innerRadius="65%" outerRadius="100%"
                 startAngle={210} endAngle={-30} data={gaugeData} barSize={10}>
                 <RadialBar dataKey="value" cornerRadius={5} />
               </RadialBarChart>
             </ResponsiveContainer>
-            <div>
-              <div className="text-2xl font-bold" style={{ color: rc.color }}>{rc.pct}%</div>
-              <div className="text-sm font-medium" style={{ color: rc.color }}>{rc.label}</div>
-              {transT && <div className="text-[10px] text-muted mt-1">Translation: {transT}ms</div>}
-            </div>
-          </div>
-        </div>
+            <Box>
+              <Typography variant="h5" fontWeight={700} style={{ color: rc.color }}>{rc.pct}%</Typography>
+              <Typography variant="body2" fontWeight={500} style={{ color: rc.color }}>{rc.label}</Typography>
+              {transT && <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>Translation: {transT}ms</Typography>}
+            </Box>
+          </Box>
+        </Box>
 
         {pieData.length > 0 && (
-          <div>
-            <p className="section-label mb-3">Flag Types</p>
+          <Box>
+            <Typography variant="overline" sx={{ display: 'block', mb: 1.5 }}>Flag Types</Typography>
             <ResponsiveContainer width="100%" height={100}>
               <PieChart>
                 <Pie data={pieData} cx="50%" cy="50%" innerRadius={28} outerRadius={45}
@@ -66,70 +69,79 @@ export default function SummaryAlerts({ summary }) {
                 <Tooltip content={({ payload }) => {
                   if (!payload?.length) return null
                   const { name, value } = payload[0].payload
-                  return <div className="bg-panel border border-border rounded px-2 py-1 text-xs">{name}: {value}</div>
+                  return (
+                    <div style={{ background: '#1f2833', border: '1px solid #2e4060', borderRadius: 8, padding: '4px 8px', fontSize: '0.75rem', color: '#e5e1d8' }}>
+                      {name}: {value}
+                    </div>
+                  )
                 }} />
               </PieChart>
             </ResponsiveContainer>
-          </div>
+          </Box>
         )}
-      </div>
+      </Box>
 
       {/* Summary text */}
-      <div>
-        <p className="section-label mb-2">Overnight Summary</p>
-        <div className="bg-surface rounded-lg p-3 text-sm text-text/90 leading-relaxed border border-border">
-          {text || <span className="text-muted">No summary available.</span>}
-        </div>
-      </div>
+      <Box>
+        <Typography variant="overline" sx={{ display: 'block', mb: 1 }}>Overnight Summary</Typography>
+        <Paper sx={{ p: 1.5, bgcolor: 'rgba(20,45,79,0.5)' }}>
+          <Typography variant="body2" sx={{ lineHeight: 1.7, color: 'text.primary' }}>
+            {text || <span style={{ color: '#7a8ea8' }}>No summary available.</span>}
+          </Typography>
+        </Paper>
+      </Box>
 
       {/* Flagged items */}
       {flags.length > 0 && (
-        <div>
-          <p className="section-label mb-2">Potential Concerns ({flags.length})</p>
-          <div className="space-y-2">
+        <Box>
+          <Typography variant="overline" sx={{ display: 'block', mb: 1 }}>Potential Concerns ({flags.length})</Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             {flags.map((f, i) => (
-              <div key={i} className="flex items-start gap-2 px-3 py-2 rounded-lg bg-danger/5 border border-danger/20">
-                <div className="w-1.5 h-1.5 rounded-full bg-danger mt-1.5 shrink-0" />
-                <div className="min-w-0">
-                  <div className="text-xs font-medium text-text">{f.label}</div>
-                  <div className="text-xs text-muted">{f.detail}</div>
-                </div>
-              </div>
+              <Box key={i} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, px: 1.5, py: 1, borderRadius: 1.5, bgcolor: 'rgba(248,113,113,0.05)', border: '1px solid rgba(248,113,113,0.2)' }}>
+                <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: 'error.main', mt: 0.75, flexShrink: 0 }} />
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography variant="caption" fontWeight={500} sx={{ display: 'block', color: 'text.primary' }}>{f.label}</Typography>
+                  <Typography variant="caption" color="text.secondary">{f.detail}</Typography>
+                </Box>
+              </Box>
             ))}
-          </div>
-        </div>
+          </Box>
+        </Box>
       )}
 
       {/* Suspicious clips */}
       {suspiciousClips.length > 0 && (
-        <div>
-          <p className="section-label mb-2">Suspicious Clips ({suspiciousClips.length})</p>
-          <div className="flex flex-wrap gap-2">
+        <Box>
+          <Typography variant="overline" sx={{ display: 'block', mb: 1 }}>Suspicious Clips ({suspiciousClips.length})</Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
             {suspiciousClips.map((clip, i) => (
-              <span key={i} className="inline-flex items-center rounded-full border border-accent/30 bg-accent/5 px-3 py-1 text-xs text-text">
-                {String(clip)}
-              </span>
+              <Chip
+                key={i}
+                label={String(clip)}
+                variant="outlined"
+                size="small"
+                sx={{ borderColor: 'rgba(247,208,70,0.3)', bgcolor: 'rgba(247,208,70,0.05)', color: 'text.primary' }}
+              />
             ))}
-          </div>
-        </div>
+          </Box>
+        </Box>
       )}
-    </div>
+    </Box>
   )
 }
 
 function normalizeFlags(flags) {
-  return flags
-    .map(flag => {
-      if (typeof flag === 'string') {
-        return { label: inferFlagLabel(flag), detail: flag, text: flag }
-      }
-      const detail = flag.description ?? flag.detail ?? flag.text ?? JSON.stringify(flag)
-      return {
-        label: flag.type ? inferFlagLabel(flag.type) : inferFlagLabel(detail),
-        detail,
-        text: `${flag.type ?? ''} ${detail}`.trim(),
-      }
-    })
+  return flags.map(flag => {
+    if (typeof flag === 'string') {
+      return { label: inferFlagLabel(flag), detail: flag, text: flag }
+    }
+    const detail = flag.description ?? flag.detail ?? flag.text ?? JSON.stringify(flag)
+    return {
+      label: flag.type ? inferFlagLabel(flag.type) : inferFlagLabel(detail),
+      detail,
+      text: `${flag.type ?? ''} ${detail}`.trim(),
+    }
+  })
 }
 
 function inferFlagLabel(value) {

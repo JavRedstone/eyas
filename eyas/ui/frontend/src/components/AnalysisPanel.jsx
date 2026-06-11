@@ -1,5 +1,10 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { Play, CheckCircle, Circle, Loader2, XCircle } from 'lucide-react'
+import Box from '@mui/material/Box'
+import Paper from '@mui/material/Paper'
+import Typography from '@mui/material/Typography'
+import Button from '@mui/material/Button'
+import LinearProgress from '@mui/material/LinearProgress'
 
 const STEP_LABELS = {
   load_video:    'Load Video',
@@ -8,78 +13,80 @@ const STEP_LABELS = {
   llm_summarize: 'LLM Summary',
 }
 
-export default function AnalysisPanel({ analyzing, statusMsg, pipelineSteps, pipelineProgress, onAnalyze }) {
+const STATE_COLOR = { done: 'success.main', running: 'primary.main', error: 'error.main' }
 
+export default function AnalysisPanel({ analyzing, statusMsg, pipelineSteps, pipelineProgress, onAnalyze }) {
   return (
-    <div className="card">
-      <div className="panel-header">
-        <div className="w-1.5 h-1.5 rounded-full bg-accent" />
-        <span className="text-xs font-semibold text-text">Analysis</span>
-      </div>
-      <div className="p-4 space-y-4">
-        <motion.button
-          className={`btn btn-primary w-full justify-center py-3 text-base font-semibold
-            ${analyzing ? 'opacity-60 cursor-not-allowed' : ''}`}
-          onClick={onAnalyze}
-          disabled={analyzing}
-          whileHover={!analyzing ? { scale: 1.01 } : {}}
-          whileTap={!analyzing ? { scale: 0.98 } : {}}>
-          {analyzing
-            ? <><Loader2 size={18} className="animate-spin" /> Processing…</>
-            : <><Play size={18} /> Analyze</>}
-        </motion.button>
+    <Paper>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
+        <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: 'primary.main' }} />
+        <Typography variant="caption" fontWeight={600} sx={{ color: 'text.primary', letterSpacing: '0.03em' }}>Analysis</Typography>
+      </Box>
+
+      <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+        <Button
+          variant="contained" color="primary" fullWidth
+          onClick={onAnalyze} disabled={analyzing}
+          startIcon={analyzing ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Play size={16} />}
+          sx={{ py: 1.25, fontSize: '0.95rem' }}>
+          {analyzing ? 'Processing…' : 'Analyze'}
+        </Button>
 
         {statusMsg && (
-          <p className="text-xs text-muted font-mono">{statusMsg}</p>
+          <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
+            {statusMsg}
+          </Typography>
         )}
 
         {(analyzing || pipelineProgress > 0) && (
-          <div className="space-y-1">
-            <div className="h-2 w-full overflow-hidden rounded-full bg-surface border border-border">
-              <div
-                className="h-full rounded-full bg-accent transition-all duration-300"
-                style={{ width: `${Math.max(0, Math.min(100, pipelineProgress || 0))}%` }}
-              />
-            </div>
-            <div className="text-[10px] text-muted">Progress: {Math.round(pipelineProgress || 0)}%</div>
-          </div>
+          <Box>
+            <LinearProgress
+              variant="determinate"
+              value={Math.max(0, Math.min(100, pipelineProgress || 0))}
+              sx={{ mb: 0.5 }}
+            />
+            <Typography variant="caption" color="text.secondary">
+              Progress: {Math.round(pipelineProgress || 0)}%
+            </Typography>
+          </Box>
         )}
 
-        {/* Pipeline steps */}
         <AnimatePresence>
           {pipelineSteps.length > 0 && (
-            <motion.div className="space-y-2"
-              initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
+            <Box component={motion.div}
+              initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+              sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               {pipelineSteps.map((step, i) => (
-                <motion.div key={step.id}
-                  className="flex items-start gap-3"
+                <Box key={step.id} component={motion.div}
                   initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.05 }}>
+                  transition={{ delay: i * 0.05 }}
+                  sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
                   <StepIcon state={step.state} />
-                  <div className="min-w-0">
-                    <div className={`text-xs font-medium ${
-                      step.state === 'done'    ? 'text-success' :
-                      step.state === 'running' ? 'text-accent'  :
-                      step.state === 'error'   ? 'text-danger'  : 'text-muted'}`}>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography variant="caption" fontWeight={500}
+                      sx={{ color: STATE_COLOR[step.state] || 'text.secondary', display: 'block' }}>
                       {STEP_LABELS[step.id] || step.id}
-                    </div>
-                    {step.detail && <div className="text-[10px] text-muted truncate">{step.detail}</div>}
-                  </div>
-                </motion.div>
+                    </Typography>
+                    {step.detail && (
+                      <Typography variant="caption" color="text.secondary" noWrap sx={{ fontSize: '0.65rem' }}>
+                        {step.detail}
+                      </Typography>
+                    )}
+                  </Box>
+                </Box>
               ))}
-            </motion.div>
+            </Box>
           )}
         </AnimatePresence>
-
-      </div>
-    </div>
+      </Box>
+    </Paper>
   )
 }
 
 function StepIcon({ state }) {
-  if (state === 'done')    return <CheckCircle size={14} className="text-success mt-0.5 shrink-0" />
-  if (state === 'running') return <Loader2 size={14} className="text-accent mt-0.5 shrink-0 animate-spin" />
-  if (state === 'error')   return <XCircle size={14} className="text-danger mt-0.5 shrink-0" />
-  return <Circle size={14} className="text-muted/40 mt-0.5 shrink-0" />
+  const style = { flexShrink: 0, marginTop: 1 }
+  if (state === 'done')    return <CheckCircle size={14} style={{ ...style, color: '#34D399' }} />
+  if (state === 'running') return <Loader2 size={14} style={{ ...style, color: '#f7d046', animation: 'spin 1s linear infinite' }} />
+  if (state === 'error')   return <XCircle size={14} style={{ ...style, color: '#F87171' }} />
+  return <Circle size={14} style={{ ...style, color: 'rgba(122,142,168,0.4)' }} />
 }
-
