@@ -1,5 +1,10 @@
-# Local model artifacts that should stay out of git history
+# Model weights — downloaded at runtime/Docker build, never committed
+eyas/models/**/*.gguf
+eyas/models/**/*.pt
+eyas/models/**/*.pth
+eyas/models/**/*.bin
 eyas/models/*.gguf
+eyas/models/*.pt
 
 # Python artifacts
 __pycache__/
