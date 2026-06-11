@@ -131,7 +131,21 @@ class Reasoner:
         )
 
     def _format_events(self, events: List[Dict]) -> str:
+        # Collect the last non-empty VLM appearance description per track.
+        track_desc: Dict[int, str] = {}
+        for ev in events:
+            tid = ev.get("track_id")
+            desc = (ev.get("description") or "").strip()
+            if isinstance(tid, int) and desc:
+                track_desc[tid] = desc  # overwrite → keep latest
+
         lines: List[str] = []
+        if track_desc:
+            lines.append("Identified people:")
+            for tid in sorted(track_desc):
+                lines.append(f"  Track {tid}: {track_desc[tid]}")
+            lines.append("")
+
         for i, ev in enumerate(events):
             if self._is_observation_schema(ev):
                 lines.append(self._format_observation(i, ev))
@@ -224,26 +238,103 @@ class Reasoner:
 
 
 # ---------------------------------------------------------------------------
-# Module-level singleton + convenience shims (backward-compatible API)
+# MiniCPM-V-backed text reasoner (reuses the already-loaded VLM weights)
 # ---------------------------------------------------------------------------
 
-_default_reasoner: Optional[Reasoner] = None
+class MiniCPMTextReasoner(Reasoner):
+    """Text-only reasoner backed by a standalone MiniCPM language model.
 
+    Two performance modes:
+      NORMAL  — MiniCPM5-1B  (fast, low VRAM)
+      BOOSTED — MiniCPM4.1-8B (higher quality, more VRAM)
 
-def _get_reasoner() -> Reasoner:
-    global _default_reasoner
-    if _default_reasoner is None:
-        model_path = os.getenv("EYAS_MODEL_PATH", "models/nemotron-nano-4b.gguf")
-        n_gpu_layers = int(os.getenv("EYAS_GPU_LAYERS", "-1"))
-        _default_reasoner = Reasoner(model_path, n_gpu_layers=n_gpu_layers)
-    return _default_reasoner
+    Selected via the EYAS_LLM_MODE env var (default: "normal").
+    """
 
+    NORMAL  = "normal"
+    BOOSTED = "boosted"
 
-def summarize_events(events: List[Dict]) -> Dict:
-    """Return a natural-language summary dict for the given event list."""
-    return _get_reasoner().summarize_events(events)
+    REPOS: Dict[str, str] = {
+        NORMAL:  "openbmb/MiniCPM5-1B",
+        BOOSTED: "openbmb/MiniCPM4.1-8B",
+    }
 
+    def __init__(
+        self,
+        mode: str = NORMAL,
+        device: Optional[str] = None,
+        dtype: str = "auto",
+    ) -> None:
+        if mode not in self.REPOS:
+            raise ValueError(f"Unknown LLM mode {mode!r}. Choose 'normal' or 'boosted'.")
+        self._model_path = self.REPOS[mode]
+        self._n_ctx = 0
+        self._n_gpu_layers = 0
+        self._model = None
+        self.mode = mode
+        self.device = device
+        self.dtype = dtype
+        self._hf_model = None
+        self._tokenizer = None
+        self._loaded = False
 
-def answer_query(events: List[Dict], query: str) -> Dict:
-    """Answer a natural-language question about the event log."""
-    return _get_reasoner().answer_query(events, query)
+    def _load_model(self) -> None:
+        if self._loaded:
+            return
+        import torch
+        try:
+            from transformers import AutoModelForCausalLM, AutoTokenizer
+        except ImportError as exc:
+            raise RuntimeError(
+                "transformers is required for MiniCPMTextReasoner. "
+                "Run: pip install transformers"
+            ) from exc
+        repo = self.REPOS[self.mode]
+        self._tokenizer = AutoTokenizer.from_pretrained(repo, trust_remote_code=True)
+        torch_dtype = getattr(torch, self.dtype) if self.dtype != "auto" else "auto"
+        self._hf_model = AutoModelForCausalLM.from_pretrained(
+            repo, torch_dtype=torch_dtype, trust_remote_code=True,
+        )
+        if self.device:
+            self._hf_model = self._hf_model.to(self.device)
+        self._hf_model.eval()
+        self._loaded = True
+
+    def _run_inference(
+        self,
+        prompt: str,
+        grammar_str: str,
+        max_tokens: int = 512,
+        temperature: float = 0.2,
+    ) -> str:
+        import re
+        self._load_model()
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt},
+        ]
+        input_ids = self._tokenizer.apply_chat_template(
+            messages,
+            tokenize=True,
+            add_generation_prompt=True,
+            return_tensors="pt",
+        ).to(next(self._hf_model.parameters()).device)
+        pad_id = (
+            self._tokenizer.pad_token_id
+            if self._tokenizer.pad_token_id is not None
+            else self._tokenizer.eos_token_id
+        )
+        gen_kwargs: Dict = {
+            "max_new_tokens": max_tokens,
+            "do_sample": temperature > 0,
+            "pad_token_id": pad_id,
+        }
+        if temperature > 0:
+            gen_kwargs["temperature"] = temperature
+        gen = self._hf_model.generate(input_ids, **gen_kwargs)
+        trimmed = gen[:, input_ids.shape[1]:]
+        text = self._tokenizer.batch_decode(trimmed, skip_special_tokens=True)[0].strip()
+        # Strip Qwen3.5-style thinking block if present before the JSON
+        text = re.sub(r"<think>.*?</think>\s*", "", text, flags=re.DOTALL)
+        return text
+
