@@ -1,10 +1,16 @@
 import { useRef } from 'react'
 import { Upload } from 'lucide-react'
 import { motion } from 'framer-motion'
+import Box from '@mui/material/Box'
+import Paper from '@mui/material/Paper'
+import Typography from '@mui/material/Typography'
+import Select from '@mui/material/Select'
+import MenuItem from '@mui/material/MenuItem'
+import FormControl from '@mui/material/FormControl'
 
 export default function Sidebar({ samples, videoFile, videoRef, uploadStatus, onFileSelect, onLoadSample }) {
-  const inputRef   = useRef()
-  const hasVideo   = videoFile || videoRef
+  const inputRef = useRef()
+  const hasVideo = videoFile || videoRef
 
   function handleDrop(e) {
     e.preventDefault()
@@ -17,54 +23,63 @@ export default function Sidebar({ samples, videoFile, videoRef, uploadStatus, on
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      {/* Sample clips */}
-      <div className="card">
-        <div className="panel-header">
-          <div className="w-1.5 h-1.5 rounded-full bg-accent" />
-          <span className="text-xs font-semibold text-text">Footage</span>
-        </div>
-        <div className="p-3 space-y-3">
-          {samples.length > 0 ? (
-            <>
-              <div>
-                <div className="section-label mb-2 text-[10px]">Sample Clips</div>
-                <select className="input text-xs"
-                  onChange={e => onLoadSample(e.target.value)}
-                  defaultValue="">
-                  <option value="">— Choose a sample —</option>
-                  {samples.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-            </>
-          ) : (
-            <p className="text-xs text-muted">No sample clips found.</p>
-          )}
+    <Paper>
+      {/* Panel header */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
+        <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: 'primary.main' }} />
+        <Typography variant="caption" fontWeight={600} sx={{ color: 'text.primary', letterSpacing: '0.03em' }}>Footage</Typography>
+      </Box>
 
-          {/* Upload zone */}
-          <div>
-            <div className="section-label mb-2 text-[10px]">Upload Video</div>
-            <motion.div
-              className={`relative border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-colors
-                ${hasVideo ? 'border-accent/40 bg-accent/5' : 'border-border hover:border-accent/40 hover:bg-surface/60'}`}
-              onDragOver={e => e.preventDefault()}
-              onDrop={handleDrop}
-              onClick={() => inputRef.current?.click()}
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.99 }}>
-              <input ref={inputRef} type="file" accept="video/*" className="hidden" onChange={handleChange} />
-              <Upload className="mx-auto text-muted mb-2" size={20} />
-              <p className="text-xs text-muted">
-                {videoFile ? videoFile.name : 'Drop video or click to upload'}
-              </p>
-            </motion.div>
-          </div>
+      <Box sx={{ p: 1.5, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+        {samples.length > 0 ? (
+          <Box>
+            <Typography variant="overline" sx={{ display: 'block', mb: 0.75, fontSize: '0.65rem' }}>Sample Clips</Typography>
+            <FormControl size="small" fullWidth>
+              <Select
+                defaultValue=""
+                onChange={e => onLoadSample(e.target.value)}
+                displayEmpty
+                sx={{ fontSize: '0.8rem' }}>
+                <MenuItem value=""><em style={{ color: '#7a8ea8' }}>— Choose a sample —</em></MenuItem>
+                {samples.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+              </Select>
+            </FormControl>
+          </Box>
+        ) : (
+          <Typography variant="caption" color="text.secondary">No sample clips found.</Typography>
+        )}
 
-          {uploadStatus && (
-            <p className="text-xs text-muted truncate">{uploadStatus}</p>
-          )}
-        </div>
-      </div>
-    </div>
+        <Box>
+          <Typography variant="overline" sx={{ display: 'block', mb: 0.75, fontSize: '0.65rem' }}>Upload Video</Typography>
+          <Box
+            component={motion.div}
+            whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
+            onDragOver={e => e.preventDefault()}
+            onDrop={handleDrop}
+            onClick={() => inputRef.current?.click()}
+            sx={{
+              border: '2px dashed',
+              borderColor: hasVideo ? 'primary.dark' : 'divider',
+              borderRadius: 2,
+              p: 2,
+              textAlign: 'center',
+              cursor: 'pointer',
+              bgcolor: hasVideo ? 'rgba(247,208,70,0.04)' : 'transparent',
+              transition: 'border-color 0.15s, background-color 0.15s',
+              '&:hover': { borderColor: 'primary.dark', bgcolor: 'rgba(247,208,70,0.04)' },
+            }}>
+            <input ref={inputRef} type="file" accept="video/*" style={{ display: 'none' }} onChange={handleChange} />
+            <Upload size={20} style={{ margin: '0 auto 8px', color: '#7a8ea8', display: 'block' }} />
+            <Typography variant="caption" color="text.secondary">
+              {videoFile ? videoFile.name : 'Drop video or click to upload'}
+            </Typography>
+          </Box>
+        </Box>
+
+        {uploadStatus && (
+          <Typography variant="caption" color="text.secondary" noWrap>{uploadStatus}</Typography>
+        )}
+      </Box>
+    </Paper>
   )
 }

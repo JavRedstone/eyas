@@ -1,6 +1,17 @@
 import { useState } from 'react'
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { RefreshCw, Loader2 } from 'lucide-react'
+import Box from '@mui/material/Box'
+import Typography from '@mui/material/Typography'
+import Chip from '@mui/material/Chip'
+import IconButton from '@mui/material/IconButton'
+import MuiTooltip from '@mui/material/Tooltip'
+import Table from '@mui/material/Table'
+import TableBody from '@mui/material/TableBody'
+import TableCell from '@mui/material/TableCell'
+import TableContainer from '@mui/material/TableContainer'
+import TableHead from '@mui/material/TableHead'
+import TableRow from '@mui/material/TableRow'
 
 const KIND_COLORS = {
   person:      '#e87030',
@@ -19,7 +30,6 @@ function kindColor(kind = '') {
   return KIND_COLORS[k] || KIND_COLORS.default
 }
 
-// Derive a display kind from the raw event object
 function deriveKind(ev) {
   if (ev.kind) return ev.kind
   if (ev.event_type) return ev.event_type
@@ -56,11 +66,11 @@ export default function EventTimeline({ client, events, outputDir, onSeekVideo, 
   }
 
   return (
-    <div className="space-y-5">
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
       {/* Scatter timeline */}
       {scatterData.length > 0 && (
-        <div>
-          <p className="section-label mb-3">Event Timeline</p>
+        <Box>
+          <Typography variant="overline" sx={{ display: 'block', mb: 1.5 }}>Event Timeline</Typography>
           <ResponsiveContainer width="100%" height={160}>
             <ScatterChart margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
               <CartesianGrid stroke="#2e4060" strokeDasharray="3 3" />
@@ -74,10 +84,10 @@ export default function EventTimeline({ client, events, outputDir, onSeekVideo, 
                   if (!payload?.length) return null
                   const d = payload[0].payload
                   return (
-                    <div className="bg-panel border border-border rounded-lg px-3 py-2 text-xs shadow-lg max-w-xs">
-                      <div className="font-semibold mb-0.5" style={{ color: kindColor(d.kind) }}>{d.kind}</div>
-                      <div className="text-muted">t = {Number(d.x).toFixed(1)}s</div>
-                      {d.label && <div className="text-muted mt-1 truncate">{d.label}</div>}
+                    <div style={{ background: '#1f2833', border: '1px solid #2e4060', borderRadius: 8, padding: '8px 12px', fontSize: '0.75rem', color: '#e5e1d8', maxWidth: 200 }}>
+                      <div style={{ fontWeight: 600, marginBottom: 2, color: kindColor(d.kind) }}>{d.kind}</div>
+                      <div style={{ color: '#7a8ea8' }}>t = {Number(d.x).toFixed(1)}s</div>
+                      {d.label && <div style={{ color: '#7a8ea8', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.label}</div>}
                     </div>
                   )
                 }} />
@@ -89,68 +99,77 @@ export default function EventTimeline({ client, events, outputDir, onSeekVideo, 
               />
             </ScatterChart>
           </ResponsiveContainer>
-        </div>
+        </Box>
       )}
 
       {/* Events table */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <p className="section-label">Detected Events</p>
-          <span className="text-xs text-muted">{events.length} events</span>
-        </div>
+      <Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+          <Typography variant="overline">Detected Events</Typography>
+          <Typography variant="caption" color="text.secondary">{events.length} events</Typography>
+        </Box>
         {events.length === 0 ? (
-          <p className="text-xs text-muted">No events yet. Run the pipeline first.</p>
+          <Typography variant="caption" color="text.secondary">No events yet. Run the pipeline first.</Typography>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-border">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-border bg-surface/60">
-                  <th className="text-left px-3 py-2 text-muted font-medium">#</th>
-                  <th className="text-left px-3 py-2 text-muted font-medium">Time</th>
-                  <th className="text-left px-3 py-2 text-muted font-medium">Kind</th>
-                  <th className="text-left px-3 py-2 text-muted font-medium">Zone</th>
-                  <th className="text-left px-3 py-2 text-muted font-medium">Description</th>
-                  <th className="px-3 py-2" />
-                </tr>
-              </thead>
-              <tbody>
+          <TableContainer sx={{ borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>#</TableCell>
+                  <TableCell>Time</TableCell>
+                  <TableCell>Kind</TableCell>
+                  <TableCell>Zone</TableCell>
+                  <TableCell>Description</TableCell>
+                  <TableCell />
+                </TableRow>
+              </TableHead>
+              <TableBody>
                 {events.map((ev, i) => {
                   const kind = deriveKind(ev)
                   const color = kindColor(kind)
                   return (
-                    <tr key={i}
-                      className="border-b border-border/50 hover:bg-surface/40 transition-colors cursor-pointer"
+                    <TableRow key={i}
+                      hover
+                      sx={{ cursor: 'pointer' }}
                       onClick={() => onSeekVideo?.(Number(ev.timestamp ?? ev.time ?? 0))}>
-                      <td className="px-3 py-2 text-muted font-mono">{i + 1}</td>
-                      <td className="px-3 py-2 font-mono">{Number(ev.timestamp ?? ev.time ?? 0).toFixed(1)}s</td>
-                      <td className="px-3 py-2">
-                        <span className="badge text-[10px]"
-                          style={{ background: color + '22', color, border: `1px solid ${color}44` }}>
-                          {kind}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 text-muted">{ev.zone ?? '—'}</td>
-                      <td className="px-3 py-2 text-text/80 max-w-xs truncate">{ev.label ?? ev.description ?? '—'}</td>
-                      <td className="px-3 py-2">
-                        <button onClick={e => { e.stopPropagation(); loadClip(i) }}
-                          disabled={loadingClip}
-                          className="btn btn-ghost p-1 text-[10px] gap-1 disabled:opacity-40">
-                          {loadingIdx === i
-                            ? <Loader2 size={10} className="animate-spin" />
-                            : <RefreshCw size={10} />}
-                          clip
-                        </button>
-                      </td>
-                    </tr>
+                      <TableCell sx={{ fontFamily: 'monospace', color: 'text.secondary' }}>{i + 1}</TableCell>
+                      <TableCell sx={{ fontFamily: 'monospace' }}>{Number(ev.timestamp ?? ev.time ?? 0).toFixed(1)}s</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={kind}
+                          size="small"
+                          sx={{ background: color + '22', color, border: `1px solid ${color}44`, fontSize: '0.65rem' }}
+                        />
+                      </TableCell>
+                      <TableCell sx={{ color: 'text.secondary' }}>{ev.zone ?? '—'}</TableCell>
+                      <TableCell sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {ev.label ?? ev.description ?? '—'}
+                      </TableCell>
+                      <TableCell>
+                        <MuiTooltip title="Load clip">
+                          <span>
+                            <IconButton
+                              size="small"
+                              disabled={loadingClip}
+                              onClick={e => { e.stopPropagation(); loadClip(i) }}
+                              sx={{ fontSize: '0.65rem', gap: 0.5, borderRadius: 1, px: 0.75, py: 0.25 }}>
+                              {loadingIdx === i
+                                ? <Loader2 size={10} style={{ animation: 'spin 1s linear infinite' }} />
+                                : <RefreshCw size={10} />}
+                              <span style={{ fontSize: '0.65rem' }}>clip</span>
+                            </IconButton>
+                          </span>
+                        </MuiTooltip>
+                      </TableCell>
+                    </TableRow>
                   )
                 })}
-              </tbody>
-            </table>
-          </div>
+              </TableBody>
+            </Table>
+          </TableContainer>
         )}
-      </div>
-
-    </div>
+      </Box>
+    </Box>
   )
 }
 

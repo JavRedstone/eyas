@@ -1,5 +1,10 @@
 import { useState } from 'react'
 import { Save, Globe } from 'lucide-react'
+import Box from '@mui/material/Box'
+import Typography from '@mui/material/Typography'
+import Button from '@mui/material/Button'
+import ToggleButton from '@mui/material/ToggleButton'
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 
 const LANGUAGES = ['English', '한국어']
 
@@ -12,36 +17,53 @@ export default function SettingsTab({ client, language, setLanguage }) {
     try {
       await client.predict('/save_language', { language: local })
       setLanguage(local)
-      setStatus('Saved. Restart the app for full effect.')
+      setStatus('Saved. Language switched.')
     } catch (e) { setStatus(`Error: ${e.message}`) }
   }
 
   return (
-    <div className="space-y-6 max-w-sm">
-      <div>
-        <p className="section-label mb-3">Language</p>
-        <p className="text-xs text-muted mb-4">Changes take full effect after restarting the app.</p>
-        <div className="space-y-2">
+    <Box sx={{ maxWidth: 360, display: 'flex', flexDirection: 'column', gap: 3 }}>
+      <Box>
+        <Typography variant="overline" sx={{ display: 'block', mb: 0.5 }}>Language</Typography>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
+          Changes apply immediately for new pipeline runs.
+        </Typography>
+        <ToggleButtonGroup
+          value={local}
+          exclusive
+          onChange={(_, v) => v && setLocal(v)}
+          sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
           {LANGUAGES.map(lang => (
-            <button key={lang}
-              onClick={() => setLocal(lang)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-sm transition-all
-                ${local === lang
-                  ? 'border-accent/60 bg-accent/10 text-text'
-                  : 'border-border bg-surface text-muted hover:border-border/80 hover:text-text'}`}>
-              <Globe size={14} className={local === lang ? 'text-accent' : 'text-muted'} />
+            <ToggleButton
+              key={lang} value={lang}
+              sx={{
+                justifyContent: 'flex-start', gap: 1.5, px: 2, py: 1.25,
+                border: '1px solid !important',
+                borderColor: local === lang ? 'primary.main !important' : 'divider !important',
+                borderRadius: '8px !important',
+                bgcolor: local === lang ? 'rgba(247,208,70,0.08)' : 'transparent',
+                color: local === lang ? 'text.primary' : 'text.secondary',
+                '&.Mui-selected': {
+                  bgcolor: 'rgba(247,208,70,0.08)',
+                  color: 'text.primary',
+                  '&:hover': { bgcolor: 'rgba(247,208,70,0.12)' },
+                },
+              }}>
+              <Globe size={14} />
               {lang}
-              {local === lang && <div className="ml-auto w-2 h-2 rounded-full bg-accent" />}
-            </button>
+              {local === lang && (
+                <Box sx={{ ml: 'auto', width: 8, height: 8, borderRadius: '50%', bgcolor: 'primary.main' }} />
+              )}
+            </ToggleButton>
           ))}
-        </div>
-      </div>
+        </ToggleButtonGroup>
+      </Box>
 
-      <button onClick={save} className="btn btn-primary">
-        <Save size={14} /> Save Language
-      </button>
+      <Button variant="contained" color="primary" onClick={save} startIcon={<Save size={14} />} sx={{ alignSelf: 'flex-start' }}>
+        Save Language
+      </Button>
 
-      {status && <p className="text-xs text-muted">{status}</p>}
-    </div>
+      {status && <Typography variant="caption" color="text.secondary">{status}</Typography>}
+    </Box>
   )
 }

@@ -6,7 +6,7 @@ React + Vite SPA for the Eyas UI. Gradio acts as a pure API backend; this app is
 
 - **React 18** — component tree
 - **Vite 8** — build tool and dev server
-- **Tailwind CSS** — utility styling with the Eyas falcon theme
+- **MUI (Material UI v6)** — theming, layout, and all UI components; Eyas falcon dark theme via `src/theme.js`
 - **Framer Motion** — page and panel animations
 - **Recharts** — event scatter chart, bar charts, radial gauge, pie chart
 - **Lucide React** — icons
@@ -36,15 +36,16 @@ Gradio serves `dist/` as static files in production.
 
 ## Theme
 
-Colors are defined in [`tailwind.config.js`](tailwind.config.js) — inspired by the Peregrine falcon (*Eyas*):
+Defined in [`src/theme.js`](src/theme.js) as a MUI `createTheme()` — inspired by the Peregrine falcon (*Eyas*):
 
-| Token | Hex | Source |
+| MUI palette key | Hex | Source |
 |---|---|---|
-| `bg` | `#0e2946` | Dark slate blue — back plumage |
-| `panel` | `#1f2833` | Charcoal — head stripes |
-| `accent` | `#f7d046` | Bright yellow — cere and talons |
-| `text` | `#e5e1d8` | Soft cream — underbelly |
-| `muted` | `#7a8ea8` | Blue-grey — secondary text |
+| `background.default` | `#0e2946` | Dark slate blue — back plumage |
+| `background.paper` | `#1f2833` | Charcoal — head stripes |
+| `primary.main` | `#f7d046` | Bright yellow — cere and talons |
+| `text.primary` | `#e5e1d8` | Soft cream — underbelly |
+| `text.secondary` | `#7a8ea8` | Blue-grey — secondary text |
+| `divider` | `#2e4060` | Border / rule color |
 
 ## Component tree
 

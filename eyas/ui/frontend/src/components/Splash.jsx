@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 
 const STATUS_META = {
   ready:   { label: 'ready',   color: '#34D399', bg: '#34D39912', ring: '#34D39933' },
@@ -14,28 +14,29 @@ export default function Splash({ items = [], pct = 0 }) {
   const hasItems = items.length > 0
 
   return (
-    <motion.div className="fixed inset-0 bg-bg flex items-center justify-center z-50"
+    <motion.div
+      style={{ position: 'fixed', inset: 0, background: '#0e2946', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1300 }}
       exit={{ opacity: 0, scale: 1.01 }} transition={{ duration: 0.35 }}>
-      <div className="w-full max-w-md px-6">
+      <div style={{ width: '100%', maxWidth: 448, padding: '0 24px' }}>
 
         {/* Wordmark */}
-        <div className="flex items-center gap-3 mb-10">
-          <div className="relative w-9 h-9">
-            <div className="absolute inset-0 rounded-xl bg-accent/10 border border-accent/20" />
-            <motion.div className="absolute inset-0 rounded-xl border border-accent/40"
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 40 }}>
+          <div style={{ position: 'relative', width: 36, height: 36 }}>
+            <div style={{ position: 'absolute', inset: 0, borderRadius: 12, background: 'rgba(247,208,70,0.10)', border: '1px solid rgba(247,208,70,0.20)' }} />
+            <motion.div style={{ position: 'absolute', inset: 0, borderRadius: 12, border: '1px solid rgba(247,208,70,0.40)' }}
               animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 2, repeat: Infinity }} />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-2.5 h-2.5 rounded-full bg-accent" />
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#f7d046' }} />
             </div>
           </div>
           <div>
-            <div className="text-xl font-semibold tracking-tight">Eyas</div>
-            <div className="text-xs text-muted">AI Security Camera Agent</div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 600, letterSpacing: '-0.01em', color: '#e5e1d8' }}>Eyas</div>
+            <div style={{ fontSize: '0.75rem', color: '#7a8ea8' }}>AI Security Camera Agent</div>
           </div>
         </div>
 
         {/* Model rows */}
-        <div className="space-y-1.5 mb-6">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 24 }}>
           {hasItems
             ? items.map((item, i) => <ModelRow key={item.label || i} item={item} index={i} />)
             : [0,1,2,3,4].map(i => <SkeletonRow key={i} index={i} />)
@@ -43,13 +44,13 @@ export default function Splash({ items = [], pct = 0 }) {
         </div>
 
         {/* Progress bar */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] text-muted font-mono uppercase tracking-widest">Initializing</span>
-            <span className="text-[10px] text-muted font-mono">{pct}%</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '0.625rem', color: '#7a8ea8', fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Initializing</span>
+            <span style={{ fontSize: '0.625rem', color: '#7a8ea8', fontFamily: 'monospace' }}>{pct}%</span>
           </div>
-          <div className="h-px bg-surface rounded-full overflow-hidden">
-            <motion.div className="h-full bg-accent rounded-full"
+          <div style={{ height: 1, background: '#142d4f', borderRadius: 9999, overflow: 'hidden' }}>
+            <motion.div style={{ height: '100%', background: '#f7d046', borderRadius: 9999 }}
               animate={{ width: `${Math.max(pct, hasItems ? 4 : 12)}%` }}
               transition={{ duration: 0.5, ease: 'easeOut' }} />
           </div>
@@ -72,31 +73,28 @@ function ModelRow({ item, index }) {
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.06, duration: 0.22 }}
-      className="relative flex items-center gap-3 px-3 py-2.5 rounded-lg overflow-hidden"
-      style={{ background: status !== 'pending' ? m.bg : 'transparent' }}>
+      style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 8, overflow: 'hidden', background: status !== 'pending' ? m.bg : 'transparent' }}>
 
       {/* Shimmer for loading row */}
       {isLoading && (
-        <motion.div className="absolute inset-0 pointer-events-none"
-          style={{ background: 'linear-gradient(90deg, transparent, rgba(232,104,42,0.07), transparent)' }}
+        <motion.div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'linear-gradient(90deg, transparent, rgba(232,104,42,0.07), transparent)' }}
           animate={{ x: ['-100%', '200%'] }}
           transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }} />
       )}
 
       {/* Icon */}
-      <div className="relative shrink-0 w-5 h-5 flex items-center justify-center">
+      <div style={{ position: 'relative', flexShrink: 0, width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {isLoading ? (
           <>
-            <motion.div className="absolute w-5 h-5 rounded-full border-2"
-              style={{ borderColor: m.ring, borderTopColor: m.color }}
+            <motion.div style={{ position: 'absolute', width: 20, height: 20, borderRadius: '50%', border: '2px solid', borderColor: m.ring, borderTopColor: m.color }}
               animate={{ rotate: 360 }}
               transition={{ duration: 0.9, repeat: Infinity, ease: 'linear' }} />
-            <div className="w-1.5 h-1.5 rounded-full" style={{ background: m.color }} />
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: m.color }} />
           </>
         ) : isDone ? (
           <motion.svg initial={{ scale: 0 }} animate={{ scale: 1 }}
             transition={{ type: 'spring', stiffness: 500, damping: 22 }}
-            viewBox="0 0 16 16" fill="none" className="w-4.5 h-4.5" width={18} height={18}>
+            viewBox="0 0 16 16" fill="none" width={18} height={18}>
             <circle cx="8" cy="8" r="7" stroke={m.color} strokeWidth="1.5" fill={m.bg} />
             <motion.path d="M5 8.5l2 2 4-4" stroke={m.color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
               initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.25, delay: 0.05 }} />
@@ -107,26 +105,24 @@ function ModelRow({ item, index }) {
             <path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke={m.color} strokeWidth="1.5" strokeLinecap="round" />
           </svg>
         ) : (
-          <div className="w-4 h-4 rounded-full border-2" style={{ borderColor: m.ring }} />
+          <div style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${m.ring}` }} />
         )}
       </div>
 
       {/* Label + model name */}
-      <div className="flex-1 min-w-0">
-        <div className={`text-xs font-medium truncate ${
-          isDone ? 'text-text' : isLoading ? 'text-text' : 'text-muted'}`}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: '0.75rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: (isDone || isLoading) ? '#e5e1d8' : '#7a8ea8' }}>
           {label}
         </div>
         {(model_name || detail) && (
-          <div className="text-[10px] text-muted truncate mt-0.5 font-mono opacity-70">
+          <div style={{ fontSize: '0.625rem', color: '#7a8ea8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2, fontFamily: 'monospace', opacity: 0.7 }}>
             {model_name || detail}
           </div>
         )}
       </div>
 
       {/* Badge */}
-      <div className="shrink-0 text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded font-mono"
-        style={{ color: m.color, background: m.bg, border: `1px solid ${m.ring}` }}>
+      <div style={{ flexShrink: 0, fontSize: '0.5625rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', padding: '2px 6px', borderRadius: 4, fontFamily: 'monospace', color: m.color, background: m.bg, border: `1px solid ${m.ring}` }}>
         {m.label}
       </div>
     </motion.div>
@@ -137,13 +133,13 @@ function SkeletonRow({ index }) {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 0.5 }}
       transition={{ delay: index * 0.05 }}
-      className="flex items-center gap-3 px-3 py-2.5">
-      <div className="w-5 h-5 rounded-full bg-surface shrink-0" />
-      <div className="flex-1 space-y-1.5">
-        <div className="h-2.5 bg-surface rounded w-28" />
-        <div className="h-2 bg-surface/60 rounded w-44" />
+      style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px' }}>
+      <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#142d4f', flexShrink: 0 }} />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ height: 10, background: '#142d4f', borderRadius: 4, width: 112 }} />
+        <div style={{ height: 8, background: 'rgba(20,45,79,0.6)', borderRadius: 4, width: 176 }} />
       </div>
-      <div className="w-12 h-4 bg-surface rounded" />
+      <div style={{ width: 48, height: 16, background: '#142d4f', borderRadius: 4 }} />
     </motion.div>
   )
 }

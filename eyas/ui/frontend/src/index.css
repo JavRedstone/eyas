@@ -1,35 +1,8 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Global overrides not covered by MUI CssBaseline */
+html { scroll-behavior: smooth; }
+* { box-sizing: border-box; }
 
-@layer base {
-  * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
-  body { background: #0e2946; color: #e5e1d8; margin: 0; }
-  ::-webkit-scrollbar { width: 5px; height: 5px; }
-  ::-webkit-scrollbar-track { background: #1f2833; }
-  ::-webkit-scrollbar-thumb { background: #2e4060; border-radius: 9999px; }
-  ::-webkit-scrollbar-thumb:hover { background: #3e5278; }
-}
-
-@layer components {
-  .card { @apply bg-panel border border-border rounded-xl; }
-  .btn {
-    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm
-           transition-all duration-150 cursor-pointer select-none;
-  }
-  .btn-primary  { @apply bg-accent hover:bg-accent-dim text-white shadow-lg shadow-accent/20; }
-  .btn-secondary { @apply bg-surface hover:bg-panel border border-border text-text; }
-  .btn-danger   { @apply bg-danger/10 hover:bg-danger/20 border border-danger/30 text-danger; }
-  .btn-ghost    { @apply hover:bg-white/5 text-muted hover:text-text; }
-  .input {
-    @apply bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text
-           placeholder-muted focus:outline-none focus:border-accent/60 focus:ring-1
-           focus:ring-accent/30 transition-all w-full;
-  }
-  .badge { @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold; }
-  .section-label { @apply text-xs font-semibold uppercase tracking-widest text-muted; }
-  .panel-header {
-    @apply flex items-center gap-2 px-4 py-3 border-b border-border;
-  }
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }

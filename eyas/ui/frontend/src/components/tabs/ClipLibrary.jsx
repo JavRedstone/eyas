@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react'
-import { RefreshCw, Play, Trash2, ArrowUpCircle, Film } from 'lucide-react'
+import { RefreshCw, Trash2, ArrowUpCircle, Film } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import Box from '@mui/material/Box'
+import Paper from '@mui/material/Paper'
+import Typography from '@mui/material/Typography'
+import IconButton from '@mui/material/IconButton'
+import MuiTooltip from '@mui/material/Tooltip'
 
 function resolveVideoSrc(value) {
   if (!value) return ''
@@ -21,9 +26,9 @@ function resolveVideoSrc(value) {
 }
 
 export default function ClipLibrary({ client }) {
-  const [clips, setClips]     = useState([])
-  const [status, setStatus]   = useState('')
-  const [preview, setPreview] = useState(null)
+  const [clips, setClips]       = useState([])
+  const [status, setStatus]     = useState('')
+  const [preview, setPreview]   = useState(null)
   const [selected, setSelected] = useState(null)
 
   useEffect(() => { refresh() }, [client])
@@ -66,57 +71,75 @@ export default function ClipLibrary({ client }) {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="section-label">Stored Clips</p>
-        <button onClick={refresh} className="btn btn-ghost p-1.5"><RefreshCw size={13} /></button>
-      </div>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Typography variant="overline">Stored Clips</Typography>
+        <IconButton size="small" onClick={refresh} sx={{ borderRadius: 1 }}>
+          <RefreshCw size={13} />
+        </IconButton>
+      </Box>
 
-      {status && <p className="text-xs text-muted">{status}</p>}
+      {status && <Typography variant="caption" color="text.secondary">{status}</Typography>}
 
       {clips.length === 0 ? (
-        <div className="text-center py-12 text-muted">
-          <Film size={32} className="mx-auto mb-3 opacity-30" />
-          <p className="text-xs">No clips stored yet.</p>
-        </div>
+        <Box sx={{ textAlign: 'center', py: 6, color: 'text.secondary' }}>
+          <Film size={32} style={{ margin: '0 auto 12px', display: 'block', opacity: 0.3 }} />
+          <Typography variant="caption">No clips stored yet.</Typography>
+        </Box>
       ) : (
-        <div className="grid grid-cols-2 gap-3">
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1.5 }}>
           <AnimatePresence>
             {clips.map((clip, i) => (
-              <motion.div key={clip} layout
+              <Paper
+                key={clip}
+                component={motion.div}
+                layout
                 initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }} transition={{ delay: i * 0.04 }}
-                className={`cursor-pointer rounded-xl border p-3 transition-colors
-                  ${selected === clip ? 'border-accent/60 bg-accent/5' : 'border-border bg-surface hover:border-border/80'}`}
-                onClick={() => loadPreview(clip)}>
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Film size={13} className="text-muted shrink-0" />
-                    <span className="text-xs truncate text-text">{clip}</span>
-                  </div>
-                  <div className="flex gap-1 shrink-0">
-                    <button onClick={e => { e.stopPropagation(); loadForAnalysis(clip) }}
-                      className="btn btn-ghost p-1 text-success hover:text-success" title="Load for analysis">
-                      <ArrowUpCircle size={12} />
-                    </button>
-                    <button onClick={e => { e.stopPropagation(); deleteClip(clip) }}
-                      className="btn btn-ghost p-1 text-danger hover:text-danger" title="Delete">
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
+                onClick={() => loadPreview(clip)}
+                sx={{
+                  cursor: 'pointer',
+                  p: 1.5,
+                  border: '1px solid',
+                  borderColor: selected === clip ? 'rgba(247,208,70,0.5)' : 'divider',
+                  bgcolor: selected === clip ? 'rgba(247,208,70,0.05)' : 'background.paper',
+                  transition: 'border-color 0.15s, background-color 0.15s',
+                  '&:hover': { borderColor: selected === clip ? 'rgba(247,208,70,0.5)' : 'rgba(46,64,96,0.8)' },
+                }}>
+                <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+                    <Film size={13} style={{ color: '#7a8ea8', flexShrink: 0 }} />
+                    <Typography variant="caption" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{clip}</Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
+                    <MuiTooltip title="Load for analysis">
+                      <IconButton size="small" onClick={e => { e.stopPropagation(); loadForAnalysis(clip) }}
+                        sx={{ color: 'success.main', borderRadius: 1, p: 0.5 }}>
+                        <ArrowUpCircle size={12} />
+                      </IconButton>
+                    </MuiTooltip>
+                    <MuiTooltip title="Delete">
+                      <IconButton size="small" onClick={e => { e.stopPropagation(); deleteClip(clip) }}
+                        sx={{ color: 'error.main', borderRadius: 1, p: 0.5 }}>
+                        <Trash2 size={12} />
+                      </IconButton>
+                    </MuiTooltip>
+                  </Box>
+                </Box>
+              </Paper>
             ))}
           </AnimatePresence>
-        </div>
+        </Box>
       )}
 
       {preview && (
-        <div>
-          <p className="section-label mb-2">Preview: <span className="normal-case font-normal text-text">{selected}</span></p>
-          <video src={preview} controls className="w-full rounded-xl border border-border bg-black max-h-48" />
-        </div>
+        <Box>
+          <Typography variant="overline" sx={{ display: 'block', mb: 1 }}>
+            Preview: <Typography component="span" variant="caption" sx={{ textTransform: 'none', color: 'text.primary', fontWeight: 400 }}>{selected}</Typography>
+          </Typography>
+          <video src={preview} controls style={{ width: '100%', borderRadius: 12, border: '1px solid #2e4060', background: '#000', maxHeight: 192, display: 'block' }} />
+        </Box>
       )}
-    </div>
+    </Box>
   )
 }
