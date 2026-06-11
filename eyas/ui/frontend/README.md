@@ -1,16 +1,65 @@
-# React + Vite
+# frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite SPA for the Eyas UI. Gradio acts as a pure API backend; this app is the only user-facing interface.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **React 18** — component tree
+- **Vite 8** — build tool and dev server
+- **Tailwind CSS** — utility styling with the Eyas falcon theme
+- **Framer Motion** — page and panel animations
+- **Recharts** — event scatter chart, bar charts, radial gauge, pie chart
+- **Lucide React** — icons
+- **@gradio/client** — connects to the Gradio API at `/gradio_api`
 
-## React Compiler
+## Dev
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+npm install
+npm run dev      # http://localhost:5173
+```
 
-## Expanding the ESLint configuration
+Vite proxies `/gradio_api/*` to `http://localhost:7860` (the running Gradio backend). Start Gradio first:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+# from eyas/
+python app.py
+```
+
+## Build
+
+```bash
+npm run build    # outputs to ../dist/ (eyas/ui/dist/)
+```
+
+Gradio serves `dist/` as static files in production.
+
+## Theme
+
+Colors are defined in [`tailwind.config.js`](tailwind.config.js) — inspired by the Peregrine falcon (*Eyas*):
+
+| Token | Hex | Source |
+|---|---|---|
+| `bg` | `#0e2946` | Dark slate blue — back plumage |
+| `panel` | `#1f2833` | Charcoal — head stripes |
+| `accent` | `#f7d046` | Bright yellow — cere and talons |
+| `text` | `#e5e1d8` | Soft cream — underbelly |
+| `muted` | `#7a8ea8` | Blue-grey — secondary text |
+
+## Component tree
+
+```
+App.jsx                    Root — resizable split layout, all pipeline state
+  Header.jsx               App bar — title and active language indicator
+  Sidebar.jsx              Footage controls — upload zone, sample picker
+  AnalysisPanel.jsx        Run pipeline button, step progress, status
+  TabNav.jsx               Tab bar
+  tabs/
+    EventTimeline.jsx      Scatter chart + event table + clip loader
+    SummaryAlerts.jsx      Risk gauge, flag pie, summary text
+    AskFootage.jsx         LLM chat interface
+    DetectionMetrics.jsx   Zone bar chart + event density line chart
+    AudioReport.jsx        TTS generation with progress phases
+    ClipLibrary.jsx        Stored clip browser
+    SettingsTab.jsx        Language selector
+```

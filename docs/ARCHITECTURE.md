@@ -1,103 +1,88 @@
-# Architecture — Offline CCTV Processing Pipeline
+# Architecture — Eyas Pipeline
 
-This document summarizes the modular, linear processing pipeline (left→right) that transforms raw video into structured events, applies language reasoning, and exposes multi-modal outputs via a Gradio app. It follows the diagram in image_846955.png.
+Linear processing pipeline: raw video → tracks → observations → events → reasoning → UI.
 
-## Overview
-- Input: raw CCTV video
-- Two parallel vision tracks: object counting and multimodal video understanding
-- Event structuring: fuse detections into a time-mapped event log
-- Language reasoning: local LLM via `llama.cpp` analyzes events and generates summaries/alerts
-- Post-processing: translation and TTS for multi-lingual audio output
-- UI: Gradio app that surfaces video, counts, logs, summaries, and audio
+## Pipeline overview
 
-## Team assignments
-These are the current owners for each pipeline area:
-- **Joe**: Video Processing (MiniCPMV-4.6 / multimodal track)
-- **Javier**: Language Reasoning (Nemotron models / `llama.cpp` runtime)
-- **Hanhee**: Translation & transcription services (Cohere models)
+```
+Input video (MP4 / camera)
+  │
+  ├─ object_detection/    YOLO11n + BotSORT
+  │    └─ Track[]         per-frame person tracks with crop
+  │
+  ├─ video_processing/    MiniCPM-V 4.6 (1.3B VLM)
+  │    └─ PersonObservation[]  description, activity, held_objects, pickup_confirmed
+  │
+  ├─ event_structuring/   heuristic event builder
+  │    └─ Event[]         timestamped, zone-tagged, typed events (pickup, loitering, …)
+  │
+  ├─ llm/                 Nemotron 3 Nano 4B (GGUF via llama.cpp)
+  │    └─ LLMResult       summary, flags, risk_level, suspicious_clips
+  │
+  └─ postprocessing/      optional enrichment
+       ├─ translation     TinyAya GGUF → Korean (or other locales)
+       └─ tts             VoxCPM2 → spoken audio brief
+```
 
-Note: the names above match the labels used in the diagram (Joe, Javier, Hanhee) and indicate who is responsible for implementation and testing of the corresponding blocks.
+The pipeline runs in a background thread; Gradio streams progress updates to the React frontend via a generator endpoint.
 
-## 1. Input Stage
-- INPUT Video Footage: raw camera streams or uploaded clips (RTSP, MP4).
-- Video is forked concurrently into the Object Detection track and the Video Processing track.
+## Components
 
-## 2. Processing & Analysis Tracks (parallel)
-- Object Detection (Count)
-  - Purpose: fast, robust counting / SKU-level or category-level detection for inventory and simple triggers.
-  - Candidate models: YOLOv11 (full) or YOLOv8-tiny (lightweight).
-  - Output: per-frame detections, per-zone counts, detection confidences.
+### object_detection
 
-- Video Processing (Multimodal)
-  - Purpose: richer scene understanding, actions, and candidate-event extraction.
-  - Candidate models: MiniCPMo-4.5 Omni (full) or MiniCPMV-4.6 1.3B for a lighter alternative.
-  - Output: short-clip-level annotations (actions, object interactions, timestamps).
+- **Model**: YOLO11n (`yolo11n.pt`) with BotSORT tracking
+- **Input**: BGR video frames
+- **Output**: `Track[]` — track_id, label, confidence, bbox
+- Crops around each bounding box are passed to the VLM
 
-## 3. Event Structuring
-- The Event Structuring node ingests detection streams and clip annotations.
-- Responsibilities:
-  - Map detections into zones (entrance, counter, back door, aisles).
-  - Group temporally adjacent detections into events (entry, dwell, pick-up, concealment, exit).
-  - Attach metadata: camera id, zone, bounding boxes, confidence, clip pointers.
-- Output: a time-ordered structured event log (JSON/SQLite) used by downstream components.
+### video_processing
 
-## 4. Language Reasoning (local LLM via llama.cpp)
-- Purpose: convert structured events into natural-language summaries, alerts, and QA responses.
-- Runtime: runs locally using `llama.cpp` bindings.
-  - Candidate models: Nemotron 3 Nano 4B for lightweight local reasoning, or Nemotron 3 Nano 30B-A3B for stronger reasoning where hardware allows.
-- Typical prompts/functions:
-  - Summarize a time window ("overnight summary").
-  - Generate an alert description from a suspicious event.
-  - Answer direct queries about the event log.
+- **Model**: MiniCPM-V 4.6 Transformers (default) or GGUF via llama-cpp-python
+- **Input**: List of person crop frames per track
+- **Output**: `PersonObservation` — structured JSON parsed from VLM response
+- Frames are sub-sampled to at most `k` before the VLM call
+- `PersonObservation.pickup_confirmed` drives the `pickup` event kind
 
-## 5. Post-Processing & Enrichment
-- Alert Summary
-  - Receives LLM output and packages short, action-oriented alerts.
-  - Adds metadata links to the underlying clips and timestamps for fast review.
+### event_structuring
 
-- Translation
-  - Optional localization block for multilingual deployments.
-  - Suggested models: Cohere-transcribe-03-2026 or Cohere Tiny Aya for lighter load.
-  - Use-case: translate alerts and summaries before TTS or UI display.
+- Maintains a per-track observation buffer with configurable evidence window
+- Emits an `Event` when a track exits or the buffer reaches the flush threshold
+- Zone assignment uses configurable polygons (`--zone NAME:KIND:X1,Y1,X2,Y2`)
+- Produced events: `pickup`, `loitering`, `observation`, `intrusion`, `suspicious`
 
-- Voice Output (TTS)
-  - Converts translated text to audio for spoken alerts.
-  - Suggested model: VoxCPM2 TTS (local or hosted depending on constraints).
+### llm
 
-## 6. User Interface (Gradio App)
-- The central user-facing hub. Key responsibilities:
-  - Ingest input video or sample clips.
-  - Display object counts and per-zone metrics from the Object Detection track.
-  - Show the Event Structuring log with quick clip previews and metadata.
-  - Surface LLM-generated summaries, QA answers, and alert details.
-  - Play translated audio from the Voice Output stage.
-- Design notes:
-  - Expose clip-level "jump to video" links for human review.
-  - Show confidence scores and a short explanation for each alert to support human triage.
+- **Model**: Nemotron 3 Nano 4B GGUF, Q4_K_M quantization
+- **Runtime**: `llama-cpp-python` (CPU build on HF Spaces; Metal on Apple Silicon)
+- Functions: `summarize_events()`, `answer_query()`, `generate_alert()`
+- Context window: 4096 tokens; constrained grammar for structured JSON output
 
-## Integration notes & trade-offs
-- Local-first vs cloud:
-  - `llama.cpp` and tiny models enable fully offline deployments (privacy-friendly, eligible for Off the Grid bonus).
-  - Larger models (Nemotron 30B) or cloud translation/tts may require more resources or hosted infra.
-- Robustness:
-  - Counting/YOLO track is optimized for speed and simpler invariants; multimodal track handles nuanced events.
-  - Event structuring heuristics are critical: tune zone definitions, time thresholds, and merging rules.
-- Accuracy:
-  - Accuracy depends on camera placement, lighting, occlusion, and training data for the chosen models.
-  - Multi-camera coverage and integration with POS/inventory systems dramatically reduce false positives.
+### postprocessing
 
-## Privacy & safety
-- Treat LLM alerts as leads for human review — do not automate punitive actions.
-- Prefer anonymized logs (no persistent face IDs) unless explicitly required and compliant.
-- Keep retention policies and audit logs for alerts and reviewer actions.
+- **Translation**: TinyAya GGUF via llama-cpp-python; cached; retries once on invalid output
+- **TTS**: VoxCPM2 (requires CUDA); streams `(sample_rate, audio_chunk)` pairs
+- Both are optional — pipeline runs without them when models are unavailable
 
-## Deployment checklist (quick)
-- Camera feeds or sample clips available (RTSP or MP4).
-- Chosen object-detection and video models downloaded and verified.
-- Local `llama.cpp` runtime installed and tested with selected Nemotron model.
-- Gradio app scaffolded with endpoints to read the event log and play clips.
-- Minimal monitoring: alert queue, review UI, and logging/audit trails.
+### ui
 
----
+- **Backend**: Gradio Blocks with all UI components hidden; exposes API endpoints only
+- **Frontend**: React + Vite SPA served as static files from `eyas/ui/dist/`
+- **Communication**: `@gradio/client` JS SDK via `/gradio_api`
+- Resizable split layout: video + footage controls on the left, analysis tabs on the right
+- See [ui/README.md](../eyas/ui/README.md) for the full tab breakdown
 
-If you'd like, I can link this file from `docs/HACKATHON.md` and/or add a small diagram snippet and quick-start run commands for a prototype environment.
+## Data flow (single pipeline run)
+
+1. React calls `/run_pipeline` with the video path
+2. Gradio streams JSON update objects as the pipeline progresses
+3. React updates pipeline step state, event list, and video src incrementally
+4. On completion, the final update includes `annotated_video_path`, `summary`, and `output_dir`
+5. Subsequent tab actions (Q&A, audio, clip load) call individual Gradio endpoints
+
+## Video encoding
+
+All `VideoWriter` instances use the `avc1` (H.264) fourcc — required for browser-compatible MP4 playback. The default `mp4v` codec produces FMP4 which most browsers do not support inline.
+
+## Deployment
+
+See the root [README.md](../README.md) for Docker and HF Spaces deployment details.

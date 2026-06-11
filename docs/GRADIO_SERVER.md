@@ -236,28 +236,25 @@ Factual pointers for work in this repo. No migration plan implied.
 
 ### Current state
 
-- Eyas runs `gr.Blocks` via `eyas/app.py` → `build_app()` in `eyas/ui/gradio_app.py` → `app.launch()`.
-- UI customization is heavy but in-Python: `EyasTheme`, CSS strings, `gr.HTML`, inline JS snippets.
-- No separate frontend assets (no standalone `.html`/`.js`/`.css` files).
+- Eyas uses `gr.Blocks` as a **pure API backend** — all Gradio UI components are hidden.
+- The operator-facing interface is a **React + Vite SPA** served from `eyas/ui/dist/`.
+- `@gradio/client` connects the React app to Gradio endpoints via `/gradio_api`.
+- This already qualifies for the Off-Brand bonus (custom frontend beyond default Gradio styling).
 
 ### Relationship to Server
 
-- Server would be a **greenfield path** for a fully custom frontend, not a drop-in replacement for existing Blocks wiring.
-- Callback logic inside `build_app()` would need to become standalone functions before `@app.api()` registration.
-- The current Blocks UI already qualifies as heavily customized Gradio. Server is relevant if you want to leave Gradio's component model entirely.
+Migrating to `gradio.Server` would allow replacing `gr.Blocks` entirely with FastAPI `@app.api()` endpoints. The business logic functions already exist as standalone callables inside `build_app()` — extracting them would be the main work.
 
-### Hackathon note
+That migration is not currently planned. The `gr.Blocks` + hidden-components approach works correctly and has Gradio's queue, SSE streaming, and file-serving built in.
 
-The Off-Brand bonus mentions custom frontend / `gr.Server`. Server is one way to achieve that; it is not the only way.
-
-### Files to read before Server work
+### Files to read before any Server migration
 
 | File | Why |
 |------|-----|
-| `eyas/ui/gradio_app.py` | Current UI layout, callbacks, business logic |
+| `eyas/ui/gradio_app.py` | All API endpoints as closures |
 | `eyas/app.py` | Launch entry point, preferences |
-| `eyas/ui/README.md` | Tab structure, i18n, run commands |
-| `docs/ARCHITECTURE.md` §6 | Intended UI responsibilities |
+| `eyas/ui/README.md` | Tab structure, i18n, component tree |
+| `docs/ARCHITECTURE.md` | Full pipeline and data-flow description |
 
 ---
 
