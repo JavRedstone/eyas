@@ -5,11 +5,11 @@
 @layer base {
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
-  body { background: #0F1117; color: #EEF0F8; margin: 0; }
+  body { background: #0e2946; color: #e5e1d8; margin: 0; }
   ::-webkit-scrollbar { width: 5px; height: 5px; }
-  ::-webkit-scrollbar-track { background: #1E2436; }
-  ::-webkit-scrollbar-thumb { background: #2A3050; border-radius: 9999px; }
-  ::-webkit-scrollbar-thumb:hover { background: #3a4060; }
+  ::-webkit-scrollbar-track { background: #1f2833; }
+  ::-webkit-scrollbar-thumb { background: #2e4060; border-radius: 9999px; }
+  ::-webkit-scrollbar-thumb:hover { background: #3e5278; }
 }
 
 @layer components {

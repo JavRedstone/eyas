@@ -3,9 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 const STATUS_META = {
   ready:   { label: 'ready',   color: '#34D399', bg: '#34D39912', ring: '#34D39933' },
   error:   { label: 'error',   color: '#F87171', bg: '#F8717112', ring: '#F8717133' },
-  skipped: { label: 'skipped', color: '#6B728E', bg: '#6B728E12', ring: '#6B728E33' },
-  loading: { label: 'loading', color: '#E8682A', bg: '#E8682A12', ring: '#E8682A33' },
-  pending: { label: 'pending', color: '#2A3050', bg: 'transparent', ring: '#2A3050' },
+  skipped: { label: 'skipped', color: '#7a8ea8', bg: '#7a8ea812', ring: '#7a8ea833' },
+  loading: { label: 'loading', color: '#f7d046', bg: '#f7d04612', ring: '#f7d04633' },
+  pending: { label: 'pending', color: '#2e4060', bg: 'transparent', ring: '#2e4060' },
 }
 
 function meta(s) { return STATUS_META[s] || STATUS_META.pending }

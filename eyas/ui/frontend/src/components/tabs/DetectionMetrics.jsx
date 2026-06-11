@@ -4,14 +4,14 @@ import {
 } from 'recharts'
 
 const ZONE_COLORS = {
-  entrance:   '#E8682A',
+  entrance:   '#f7d046',
   counter:    '#60A5FA',
   'back door': '#34D399',
   'back_door': '#34D399',
   aisles:     '#FBBF24',
 }
 
-function zoneColor(z) { return ZONE_COLORS[z?.toLowerCase()] ?? '#6B728E' }
+function zoneColor(z) { return ZONE_COLORS[z?.toLowerCase()] ?? '#7a8ea8' }
 
 export default function DetectionMetrics({ summary, events }) {
   const zoneCounts = summary?.zone_counts ?? {}
@@ -50,9 +50,9 @@ export default function DetectionMetrics({ summary, events }) {
           <p className="section-label mb-3">Zone Counts</p>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={zoneData} margin={{ top: 4, right: 16, bottom: 4, left: 0 }}>
-              <CartesianGrid stroke="#2A3050" strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="zone" tick={{ fill: '#6B728E', fontSize: 11 }} tickLine={false} axisLine={false} />
-              <YAxis tick={{ fill: '#6B728E', fontSize: 11 }} tickLine={false} axisLine={false} />
+              <CartesianGrid stroke="#2e4060" strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="zone" tick={{ fill: '#7a8ea8', fontSize: 11 }} tickLine={false} axisLine={false} />
+              <YAxis tick={{ fill: '#7a8ea8', fontSize: 11 }} tickLine={false} axisLine={false} />
               <Tooltip
                 cursor={{ fill: 'rgba(255,255,255,0.03)' }}
                 content={({ payload, label }) => {
@@ -82,9 +82,9 @@ export default function DetectionMetrics({ summary, events }) {
           <p className="section-label mb-3">Event Frequency Over Time</p>
           <ResponsiveContainer width="100%" height={140}>
             <LineChart data={timelineData} margin={{ top: 4, right: 16, bottom: 4, left: 0 }}>
-              <CartesianGrid stroke="#2A3050" strokeDasharray="3 3" />
-              <XAxis dataKey="t" tick={{ fill: '#6B728E', fontSize: 10 }} tickLine={false} axisLine={false} />
-              <YAxis tick={{ fill: '#6B728E', fontSize: 10 }} tickLine={false} axisLine={false} />
+              <CartesianGrid stroke="#2e4060" strokeDasharray="3 3" />
+              <XAxis dataKey="t" tick={{ fill: '#7a8ea8', fontSize: 10 }} tickLine={false} axisLine={false} />
+              <YAxis tick={{ fill: '#7a8ea8', fontSize: 10 }} tickLine={false} axisLine={false} />
               <Tooltip content={({ payload }) => {
                 if (!payload?.length) return null
                 return (
@@ -93,8 +93,8 @@ export default function DetectionMetrics({ summary, events }) {
                   </div>
                 )
               }} />
-              <Line type="monotone" dataKey="count" stroke="#E8682A" strokeWidth={2}
-                dot={{ r: 3, fill: '#E8682A', strokeWidth: 0 }} activeDot={{ r: 5 }} />
+              <Line type="monotone" dataKey="count" stroke="#f7d046" strokeWidth={2}
+                dot={{ r: 3, fill: '#f7d046', strokeWidth: 0 }} activeDot={{ r: 5 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>

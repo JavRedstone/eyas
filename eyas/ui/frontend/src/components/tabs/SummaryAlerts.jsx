@@ -4,7 +4,7 @@ const RISK_CONFIG = {
   high:   { color: '#F87171', label: 'High Risk',   pct: 90 },
   medium: { color: '#FBBF24', label: 'Medium Risk',  pct: 55 },
   low:    { color: '#34D399', label: 'Low Risk',     pct: 25 },
-  none:   { color: '#6B728E', label: 'No Risk',      pct: 5  },
+  none:   { color: '#7a8ea8', label: 'No Risk',      pct: 5  },
 }
 
 export default function SummaryAlerts({ summary }) {
@@ -21,7 +21,7 @@ export default function SummaryAlerts({ summary }) {
 
   const gaugeData = [
     { name: 'Risk', value: rc.pct, fill: rc.color },
-    { name: 'bg',   value: 100 - rc.pct, fill: '#1E2436' },
+    { name: 'bg',   value: 100 - rc.pct, fill: '#1f2833' },
   ]
 
   // Flags by inferred type for mini pie
@@ -31,7 +31,7 @@ export default function SummaryAlerts({ summary }) {
     flagTypes[t] = (flagTypes[t] || 0) + 1
   })
   const pieData = Object.entries(flagTypes).map(([name, value]) => ({ name, value }))
-  const PIE_COLORS = ['#E8682A', '#F87171', '#FBBF24', '#60A5FA', '#34D399']
+  const PIE_COLORS = ['#f7d046', '#F87171', '#FBBF24', '#60A5FA', '#34D399']
 
   return (
     <div className="space-y-6">
