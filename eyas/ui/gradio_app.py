@@ -1,8 +1,4 @@
-"""Gradio UI for Eyas — AI Security Camera Agent.
-
-Theme is selected at startup (via preferences.json / CLI) and baked into
-the Gradio theme object.  No runtime CSS class-toggling; restart to change.
-"""
+"""Gradio UI for Eyas — AI Security Camera Agent."""
 
 import json
 import sys
@@ -24,7 +20,6 @@ from gradio.themes.base import Base
 from gradio.themes.utils import colors, fonts, sizes
 
 from storage import manager as storage
-from streaming.capture import default_capture as _stream
 import model_registry as _mreg
 from ui.locale import (
     LANGUAGE_KEY,
@@ -43,138 +38,21 @@ from ui.locale import (
 _mreg.start()
 
 # ---------------------------------------------------------------------------
-# Palette definitions
+# Hawk Vision palette — single fixed theme
 # ---------------------------------------------------------------------------
 
-_DARK: Dict[str, Dict] = {
-    "night": dict(
-        bg="#0a0e17", panel="#111827", surface="#1f2937", border="#2d3748",
-        accent="#10b981", accent_hover="#059669", text="#f1f5f9",
-        muted="#9ca3af", danger="#f87171", label="#9ca3af", hue=colors.emerald,
-    ),
-    "amber": dict(
-        bg="#0c0900", panel="#1a1200", surface="#261b00", border="#3d2a00",
-        accent="#f59e0b", accent_hover="#d97706", text="#fef3c7",
-        muted="#d97706", danger="#ef4444", label="#d97706", hue=colors.amber,
-    ),
-    "cyber": dict(
-        bg="#06000f", panel="#0f0020", surface="#1a0035", border="#2d0060",
-        accent="#a855f7", accent_hover="#9333ea", text="#f0e6ff",
-        muted="#a78bfa", danger="#f43f5e", label="#a78bfa", hue=colors.purple,
-    ),
-    "sentinel": dict(
-        bg="#0f1923", panel="#1a2535", surface="#243040", border="#2e3f55",
-        accent="#3b82f6", accent_hover="#2563eb", text="#f1f5f9",
-        muted="#94a3b8", danger="#f87171", label="#94a3b8", hue=colors.blue,
-    ),
-}
-
-_LIGHT: Dict[str, Dict] = {
-    "night": dict(
-        bg="#f0f4f8", panel="#ffffff", surface="#f8fafc", border="#e2e8f0",
-        accent="#059669", accent_hover="#047857", text="#0f172a",
-        muted="#475569", danger="#dc2626", label="#475569", hue=colors.emerald,
-    ),
-    "amber": dict(
-        bg="#fffbf0", panel="#ffffff", surface="#fef9f0", border="#fde68a",
-        accent="#d97706", accent_hover="#b45309", text="#1c0a00",
-        muted="#92400e", danger="#dc2626", label="#92400e", hue=colors.amber,
-    ),
-    "cyber": dict(
-        bg="#f5f0ff", panel="#ffffff", surface="#faf5ff", border="#e9d5ff",
-        accent="#9333ea", accent_hover="#7c3aed", text="#1e0540",
-        muted="#6d28d9", danger="#dc2626", label="#6d28d9", hue=colors.purple,
-    ),
-    "sentinel": dict(
-        bg="#eff6ff", panel="#ffffff", surface="#f0f9ff", border="#bfdbfe",
-        accent="#2563eb", accent_hover="#1d4ed8", text="#0f1923",
-        muted="#1e40af", danger="#dc2626", label="#1e40af", hue=colors.blue,
-    ),
-}
-
-_COLOR_NAMES = {
-    "night": "Night Vision",
-    "amber": "Amber CRT",
-    "cyber": "Cyberpunk",
-    "sentinel": "Sentinel",
-}
-_COLOR_KEY = {v: k for k, v in _COLOR_NAMES.items()}  # "Night Vision" -> "night", etc.
-
-
-# ---------------------------------------------------------------------------
-# Advanced palettes — sourced from designs/*/DESIGN.md (awesome-design-md)
-# ---------------------------------------------------------------------------
-
-_ADVANCED: Dict[str, Dict] = {
-    "voltagent": dict(
-        bg="#101010", panel="#1a1a1a", surface="#222222", border="#3d3a39",
-        accent="#00d992", accent_hover="#10b981", text="#f2f2f2",
-        muted="#8b949e", danger="#ef4444", label="#bdbdbd", hue=colors.emerald,
-    ),
-    "xai": dict(
-        bg="#0a0a0a", panel="#191919", surface="#1a1c20", border="#212327",
-        accent="#ff7a17", accent_hover="#e06010", text="#ffffff",
-        muted="#7d8187", danger="#ef4444", label="#dadbdf", hue=colors.orange,
-    ),
-    "warp": dict(
-        bg="#2b2622", panel="#383330", surface="#3f3a36", border="#4a453f",
-        accent="#f7f5f0", accent_hover="#ffffff", text="#f7f5f0",
-        muted="#aea69c", danger="#ef4444", label="#c9c0ad", hue=colors.amber,
-    ),
-    "linear": dict(
-        bg="#010102", panel="#0f1011", surface="#141516", border="#23252a",
-        accent="#5e6ad2", accent_hover="#828fff", text="#f7f8f8",
-        muted="#8a8f98", danger="#ef4444", label="#d0d6e0", hue=colors.indigo,
-    ),
-    "sentry": dict(
-        bg="#150f23", panel="#1f1633", surface="#2a1f40", border="#362d59",
-        accent="#c2ef4e", accent_hover="#a8d435", text="#ffffff",
-        muted="#bdb8c0", danger="#fa7faa", label="#bdb8c0", hue=colors.green,
-    ),
-    "stripe": dict(
-        bg="#0d253d", panel="#1c1e54", surface="#21235a", border="#2e3560",
-        accent="#533afd", accent_hover="#4434d4", text="#ffffff",
-        muted="#64748d", danger="#ea2261", label="#a0b4c8", hue=colors.indigo,
-    ),
-    "supabase": dict(
-        bg="#1c1c1c", panel="#202020", surface="#242424", border="#333333",
-        accent="#3ecf8e", accent_hover="#24b47e", text="#ffffff",
-        muted="#707070", danger="#ef4444", label="#9a9a9a", hue=colors.emerald,
-    ),
-    "vercel": dict(
-        bg="#000000", panel="#111111", surface="#1a1a1a", border="#333333",
-        accent="#0070f3", accent_hover="#0761d1", text="#ffffff",
-        muted="#888888", danger="#ee0000", label="#a1a1a1", hue=colors.blue,
-    ),
-    "cursor": dict(
-        bg="#f7f7f4", panel="#ffffff", surface="#f0efe8", border="#e6e5e0",
-        accent="#f54e00", accent_hover="#d04200", text="#26251e",
-        muted="#807d72", danger="#cf2d56", label="#5a5852", hue=colors.orange,
-    ),
-    "runway": dict(
-        bg="#000000", panel="#1a1a1a", surface="#030303", border="#27272a",
-        accent="#ffffff", accent_hover="#e5e5e5", text="#ffffff",
-        muted="#767d88", danger="#ef4444", label="#a7a7a7", hue=colors.gray,
-    ),
-}
-
-_ADVANCED_NAMES: Dict[str, str] = {
-    "voltagent": "VoltAgent",
-    "xai":       "xAI",
-    "warp":      "Warp",
-    "linear":    "Linear",
-    "sentry":    "Sentry",
-    "stripe":    "Stripe",
-    "supabase":  "Supabase",
-    "vercel":    "Vercel",
-    "cursor":    "Cursor",
-    "runway":    "Runway",
-}
-_ADVANCED_KEY: Dict[str, str] = {v: k for k, v in _ADVANCED_NAMES.items()}
-
-
-def _theme_label(color: str, dark: bool) -> str:
-    return f"{_COLOR_NAMES[color]} · {'Dark' if dark else 'Light'}"
+_HAWK = dict(
+    bg="#1C1C1C",            # Soot Black
+    panel="#3D2314",         # Deep Chocolate Brown
+    surface="#5C4033",       # Earth Brown
+    border="#7A5545",        # Warm dark brown (harmonises with earth palette)
+    accent="#B85A38",        # Cinnamon Red  — primary
+    accent_hover="#D06A4C",  # Rusty Red-Orange — primary hover
+    text="#F5EAD4",          # Cream / Pale Buff
+    muted="#9C8878",         # Warm muted
+    danger="#E05A3A",        # Warm red-orange danger
+    label="#A09080",         # Light warm muted
+)
 
 
 # ---------------------------------------------------------------------------
@@ -182,11 +60,30 @@ def _theme_label(color: str, dark: bool) -> str:
 # ---------------------------------------------------------------------------
 
 _STRUCTURAL_CSS = """
+/* ── Design tokens ───────────────────────────────────────────────────── */
+:root {
+    /* Radius scale */
+    --r-xs:   4px;   /* code snippets, tiny pills           */
+    --r-sm:   8px;   /* inputs, pipeline steps, table       */
+    --r-card: 12px;  /* cards, panels, dialogs              */
+    --r-btn:  20px;  /* all buttons (MD3 filled/tonal pill) */
+    --r-nav:  28px;  /* navigation rail indicators          */
+
+    /* Shadow scale (warm-toned dark) */
+    --sh-sm: 0 1px 3px rgba(0,0,0,.40);
+    --sh-md: 0 2px 8px rgba(0,0,0,.45);
+    --sh-lg: 0 4px 14px rgba(0,0,0,.55);
+
+    /* Button heights */
+    --btn-h:    36px;
+    --btn-h-lg: 44px;
+}
+
 footer { display: none !important; }
 .app-title, .main-header h1, h1.title,
 .gradio-container > .main > .wrap > .prose h1:first-child { display: none !important; }
 
-/* Header: transparent wrappers */
+/* ── Header wrappers ─────────────────────────────────────────────────── */
 #eyas-header, #eyas-header .block, #eyas-header .form {
     background: transparent !important;
     border: none !important;
@@ -203,14 +100,14 @@ footer { display: none !important; }
     align-items: flex-start !important;
 }
 
-/* Theme badge */
+/* Badge */
 .eyas-theme-badge {
     display: inline-flex;
     align-items: center;
     gap: 5px;
     background: var(--_surface);
     border: 1px solid var(--_border);
-    border-radius: 6px;
+    border-radius: var(--r-sm);
     padding: 5px 11px;
     font-size: 0.72rem;
     color: var(--_muted);
@@ -218,10 +115,7 @@ footer { display: none !important; }
     white-space: nowrap;
     line-height: 1.4;
 }
-.eyas-theme-badge strong {
-    color: var(--_text);
-    font-weight: 600;
-}
+.eyas-theme-badge strong { color: var(--_text); font-weight: 600; }
 
 /* Header content */
 .eyas-title-row { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; }
@@ -239,8 +133,8 @@ body.has-feed .eyas-rec { display: inline; }
 #eyas-sidebar {
     background: var(--_panel) !important;
     border: 1px solid var(--_border) !important;
-    border-radius: 12px !important;
-    box-shadow: 0 4px 16px rgba(0,0,0,.35) !important;
+    border-radius: var(--r-card) !important;
+    box-shadow: var(--sh-md) !important;
     overflow: hidden !important;
     padding: 0 !important;
 }
@@ -255,8 +149,8 @@ body.has-feed .eyas-rec { display: inline; }
 #eyas-main {
     background: var(--_surface) !important;
     border: 1px solid var(--_border) !important;
-    border-radius: 12px !important;
-    box-shadow: 0 4px 16px rgba(0,0,0,.35) !important;
+    border-radius: var(--r-card) !important;
+    box-shadow: var(--sh-md) !important;
     overflow: hidden !important;
     padding: 0 !important;
 }
@@ -268,12 +162,12 @@ body.has-feed .eyas-rec { display: inline; }
     border-radius: 0 !important;
 }
 
-/* Re-style inputs/selects/textareas inside the cards so they still look distinct */
+/* Inputs inside cards */
 #eyas-sidebar input, #eyas-sidebar textarea, #eyas-sidebar select,
 #eyas-main    input, #eyas-main    textarea, #eyas-main    select {
-    background: var(--_surface) !important;
+    background: var(--_panel) !important;
     border: 1px solid var(--_border) !important;
-    border-radius: 6px !important;
+    border-radius: var(--r-sm) !important;
 }
 #eyas-sidebar input:focus, #eyas-sidebar textarea:focus,
 #eyas-main    input:focus, #eyas-main    textarea:focus {
@@ -292,7 +186,7 @@ body.has-feed .eyas-rec { display: inline; }
     letter-spacing: 0.2em;
     text-transform: uppercase;
     color: var(--_muted);
-    background: var(--_surface);
+    background: var(--_panel);
     border-bottom: 1px solid var(--_border);
     padding: 10px 16px;
 }
@@ -305,17 +199,54 @@ body.has-feed .eyas-rec { display: inline; }
 }
 .eyas-panel-header .ph-label { color: var(--_text); }
 
-/* ── Material Design 3 buttons ───────────────────────────────────────── */
-/* All primary buttons: filled pill */
-button.primary, button[data-testid="primary"] {
-    border-radius: 20px !important;
-}
-/* All secondary buttons: outlined pill */
-button.secondary, button[data-testid="secondary"] {
-    border-radius: 20px !important;
+/* ── Buttons ─────────────────────────────────────────────────────────── */
+/* MD3 system: all buttons are pills — filled (primary) or tonal (secondary) */
+
+/* Base pill shape + min height for every button */
+button, .btn {
+    border-radius: var(--r-btn) !important;
+    min-height: var(--btn-h) !important;
 }
 
-/* Analyze button: full-width pill, Material icon, physical press */
+/* Primary — filled */
+button.primary, button[data-testid="primary"],
+button.lg.primary {
+    border-radius: var(--r-btn) !important;
+    min-height: var(--btn-h) !important;
+    box-shadow: var(--sh-sm) !important;
+    transition: box-shadow 0.12s ease, transform 0.08s ease !important;
+}
+button.primary:hover, button[data-testid="primary"]:hover {
+    box-shadow: var(--sh-md) !important;
+    transform: translateY(-1px) !important;
+}
+button.primary:active, button[data-testid="primary"]:active {
+    box-shadow: none !important;
+    transform: translateY(1px) !important;
+}
+
+/* Secondary — tonal (accent tint fill, accent text, no hard outline) */
+button.secondary, button[data-testid="secondary"] {
+    border-radius: var(--r-btn) !important;
+    min-height: var(--btn-h) !important;
+    background: var(--_accent-a12) !important;
+    border: 1px solid transparent !important;
+    color: var(--_accent) !important;
+    box-shadow: none !important;
+    transition: background 0.12s ease, border-color 0.12s ease !important;
+}
+button.secondary:hover, button[data-testid="secondary"]:hover {
+    background: var(--_accent-a08) !important;
+    border-color: var(--_border) !important;
+}
+
+/* Stop / danger button */
+button.stop, button[data-testid="stop"] {
+    border-radius: var(--r-btn) !important;
+    min-height: var(--btn-h) !important;
+}
+
+/* Analyze button — large filled pill with icon + physical press */
 div:has(> #analyze-btn),
 div:has(> #load-sample-btn) {
     padding: 0 16px !important;
@@ -326,12 +257,13 @@ div:has(> #load-sample-btn) {
     font-size: 0.88rem !important;
     letter-spacing: 0.1em !important;
     text-transform: uppercase !important;
-    border-radius: 20px !important;
+    border-radius: var(--r-btn) !important;
+    min-height: var(--btn-h-lg) !important;
     width: 100% !important;
     margin: 0 !important;
-    transition: transform 0.08s ease, box-shadow 0.08s ease !important;
-    box-shadow: 0 4px 0 rgba(0,0,0,.5), 0 1px 3px rgba(0,0,0,.3) !important;
+    box-shadow: 0 4px 0 rgba(0,0,0,.45), var(--sh-sm) !important;
     transform: translateY(0) !important;
+    transition: transform 0.08s ease, box-shadow 0.08s ease !important;
     text-decoration: none !important;
 }
 #analyze-btn::before {
@@ -345,17 +277,33 @@ div:has(> #load-sample-btn) {
     font-weight: 400 !important;
 }
 #analyze-btn:hover {
-    transform: translateY(-3px) !important;
-    box-shadow: 0 7px 0 rgba(0,0,0,.5), 0 2px 8px rgba(0,0,0,.3) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 0 rgba(0,0,0,.45), var(--sh-md) !important;
 }
 #analyze-btn:active {
     transform: translateY(2px) !important;
-    box-shadow: 0 1px 0 rgba(0,0,0,.5) !important;
+    box-shadow: 0 1px 0 rgba(0,0,0,.45) !important;
+}
+
+/* Refresh icon button — same pill, compact */
+#refresh-events-btn {
+    padding: 0 10px !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
+    min-height: var(--btn-h) !important;
+    border-radius: var(--r-btn) !important;
+}
+#refresh-events-btn::before {
+    content: "refresh";
+    font-family: 'Material Symbols Outlined' !important;
+    font-style: normal !important;
+    font-size: 18px !important;
+    line-height: 1 !important;
+    font-weight: 400 !important;
+    vertical-align: middle !important;
 }
 
 /* ── Sidebar navigation tabs ─────────────────────────────────────────── */
-
-/* Outer container: horizontal flex — nav left, content right */
 .tabs {
     display: flex !important;
     flex-direction: row !important;
@@ -363,12 +311,10 @@ div:has(> #load-sample-btn) {
     gap: 0 !important;
     background: var(--_panel) !important;
     border: 1px solid var(--_border) !important;
-    border-radius: 12px !important;
-    box-shadow: 0 4px 16px rgba(0,0,0,.3) !important;
+    border-radius: var(--r-card) !important;
+    box-shadow: var(--sh-md) !important;
     overflow: hidden !important;
 }
-
-/* Left sidebar strip that wraps .tab-container */
 .tab-wrapper {
     display: flex !important;
     flex-direction: column !important;
@@ -380,12 +326,8 @@ div:has(> #load-sample-btn) {
     align-self: stretch !important;
     padding: 8px 0 !important;
 }
-
-/* Hide Gradio's horizontal-scroll duplicate + overflow "…" button */
 .tab-container.visually-hidden { display: none !important; }
 .overflow-menu { display: none !important; }
-
-/* The actual list of nav buttons */
 .tab-container {
     display: flex !important;
     flex-direction: column !important;
@@ -396,7 +338,7 @@ div:has(> #load-sample-btn) {
     width: 100% !important;
 }
 
-/* Nav buttons — MD3 navigation rail/drawer style */
+/* Nav rail buttons */
 .tab-container button {
     display: flex !important;
     align-items: center !important;
@@ -416,7 +358,8 @@ div:has(> #load-sample-btn) {
     border: none !important;
     border-bottom: none !important;
     outline: none !important;
-    border-radius: 28px !important;
+    border-radius: var(--r-nav) !important;
+    min-height: unset !important;
     box-shadow: none !important;
     transition: background 0.13s, color 0.13s !important;
     cursor: pointer !important;
@@ -438,16 +381,10 @@ div:has(> #load-sample-btn) {
 }
 .tab-container button::after,
 .tab-container button.selected::after,
-.tab-container button[aria-selected="true"]::after {
-    display: none !important;
-    content: none !important;
-}
-.tab-container button:focus, .tab-container button:focus-visible {
-    outline: none !important;
-    box-shadow: none !important;
-}
+.tab-container button[aria-selected="true"]::after { display: none !important; content: none !important; }
+.tab-container button:focus, .tab-container button:focus-visible { outline: none !important; box-shadow: none !important; }
 
-/* Material Symbol icons via ::before */
+/* Material Symbol icons */
 .tab-container button::before {
     font-family: 'Material Symbols Outlined' !important;
     font-style: normal !important;
@@ -463,11 +400,9 @@ div:has(> #load-sample-btn) {
 .tab-container button:nth-child(3)::before { content: "forum"; }
 .tab-container button:nth-child(4)::before { content: "monitoring"; }
 .tab-container button:nth-child(5)::before { content: "volume_up"; }
-.tab-container button:nth-child(6)::before { content: "videocam"; }
-.tab-container button:nth-child(7)::before { content: "video_library"; }
-.tab-container button:nth-child(8)::before { content: "tune"; }
+.tab-container button:nth-child(6)::before { content: "video_library"; }
+.tab-container button:nth-child(7)::before { content: "tune"; }
 
-/* Tab content panel fills remaining width */
 .tabitem {
     flex: 1 !important;
     min-width: 0 !important;
@@ -478,7 +413,7 @@ div:has(> #load-sample-btn) {
 .pipeline-steps { display: flex; flex-direction: column; gap: 5px; padding: 2px 0; }
 .pipeline-step {
     display: flex; align-items: center; gap: 10px;
-    padding: 9px 14px; border-radius: 7px;
+    padding: 9px 14px; border-radius: var(--r-sm);
     border: 1px solid var(--_border); background: var(--_panel);
     font-size: 0.82rem; transition: border-color .2s, opacity .2s, background .2s;
 }
@@ -499,30 +434,12 @@ div:has(> #load-sample-btn) {
 .ps-name   { flex: 1; color: var(--_text); font-weight: 500; }
 .ps-detail { color: var(--_muted); font-size: 0.75rem; }
 
-/* ── Refresh events icon button ──────────────────────────────────────── */
-#refresh-events-btn {
-    padding: 5px 8px !important;
-    min-width: 34px !important;
-    max-width: 34px !important;
-    border-radius: 8px !important;
-}
-#refresh-events-btn::before {
-    content: "refresh";
-    font-family: 'Material Symbols Outlined' !important;
-    font-style: normal !important;
-    font-size: 18px !important;
-    line-height: 1 !important;
-    font-weight: 400 !important;
-    vertical-align: middle !important;
-}
-
-
 /* ── DataFrame / Event Table ─────────────────────────────────────────── */
 #event-table table {
     background: var(--_panel) !important;
     border-collapse: collapse !important;
     border: 1px solid var(--_border) !important;
-    border-radius: 10px !important;
+    border-radius: var(--r-sm) !important;
     overflow: hidden !important;
 }
 #event-table thead tr {
@@ -553,16 +470,11 @@ div:has(> #load-sample-btn) {
 #event-table tbody tr:last-child td { border-bottom: none !important; }
 #event-table tbody tr:nth-child(even) td { background: rgba(255,255,255,.018) !important; }
 #event-table tr:hover td { background: var(--_surface) !important; cursor: pointer !important; }
-/* index + time columns: monospace muted */
 #event-table td:nth-child(1) { font-family: var(--font-mono) !important; font-size: 0.72rem !important; color: var(--_muted) !important; }
 #event-table td:nth-child(4),
 #event-table td:nth-child(5) { font-family: var(--font-mono) !important; font-size: 0.74rem !important; color: var(--_muted) !important; }
 #event-table td:nth-child(2) { font-weight: 700 !important; color: var(--_accent) !important; }
-#event-table td:nth-child(3) {
-    max-width: 520px !important;
-    white-space: normal !important;
-    line-height: 1.35 !important;
-}
+#event-table td:nth-child(3) { max-width: 520px !important; white-space: normal !important; line-height: 1.35 !important; }
 #event-table td:nth-child(7) { font-family: var(--font-mono) !important; font-size: 0.74rem !important; color: var(--_accent) !important; font-weight: 600 !important; }
 
 /* Zone count numbers */
@@ -570,6 +482,7 @@ div:has(> #load-sample-btn) {
 #count-back-door input, #count-aisles input {
     font-size: 2rem !important; font-weight: 700 !important;
     text-align: center !important; color: var(--_accent) !important;
+    border-radius: var(--r-sm) !important;
 }
 
 /* Status output */
@@ -584,17 +497,17 @@ div:has(> #load-sample-btn) {
 .block em { color: var(--_muted) !important; }
 
 /* Chatbot bubbles */
-.message.user .bubble-wrap { background: var(--_panel)   !important; border-radius: 8px 8px 2px 8px !important; }
-.message.bot  .bubble-wrap { background: var(--_surface) !important; border-radius: 8px 8px 8px 2px !important; }
+.message.user .bubble-wrap { background: var(--_panel)   !important; border-radius: var(--r-sm) var(--r-sm) var(--r-xs) var(--r-sm) !important; }
+.message.bot  .bubble-wrap { background: var(--_surface) !important; border-radius: var(--r-sm) var(--r-sm) var(--r-sm) var(--r-xs) !important; }
 
 /* Code blocks */
 code, pre,
 .prose code, .prose pre,
 .message code, .message pre {
-    background-color: var(--_surface) !important;
+    background-color: var(--_panel) !important;
     color: var(--_text) !important;
     border: 1px solid var(--_border) !important;
-    border-radius: 4px;
+    border-radius: var(--r-xs);
 }
 code { padding: 1px 5px; }
 pre  { padding: 10px 14px !important; }
@@ -603,13 +516,13 @@ pre code { background-color: transparent !important; border: none !important; pa
 /* Scrollbars */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: var(--_panel); }
-::-webkit-scrollbar-thumb { background: var(--_border); border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: var(--_border); border-radius: var(--r-xs); }
 ::-webkit-scrollbar-thumb:hover { background: var(--_muted); }
 
-/* ── Startup splash screen ───────────────────────────────────────────── */
+/* ── Startup splash ───────────────────────────────────────────────────── */
 #eyas-splash {
     position: fixed; inset: 0; z-index: 10000;
-    background: var(--_bg, #0a0e17);
+    background: var(--_bg, #1C1C1C);
     display: flex; flex-direction: column;
     align-items: center; justify-content: center; gap: 28px;
 }
@@ -619,9 +532,7 @@ pre code { background-color: transparent !important; border: none !important; pa
 }
 @keyframes splash-fade-out { to { opacity: 0; } }
 
-.splash-logo-row {
-    display: flex; align-items: center; gap: 12px;
-}
+.splash-logo-row { display: flex; align-items: center; gap: 12px; }
 .splash-logo-dot {
     width: 10px; height: 10px; border-radius: 50%;
     background: var(--_accent); box-shadow: 0 0 12px var(--_accent);
@@ -642,10 +553,11 @@ pre code { background-color: transparent !important; border: none !important; pa
 .splash-card {
     background: var(--_panel);
     border: 1px solid var(--_border);
-    border-radius: 16px;
+    border-radius: var(--r-card);
     padding: 0;
     min-width: 320px;
     overflow: hidden;
+    box-shadow: var(--sh-lg);
 }
 .splash-card-header {
     font-family: var(--font-mono); font-size: 0.58rem; font-weight: 700;
@@ -664,13 +576,10 @@ pre code { background-color: transparent !important; border: none !important; pa
     font-size: 20px; line-height: 1; flex-shrink: 0;
     color: var(--_muted);
 }
-.splash-item-icon.si-loading {
-    color: var(--_accent);
-    animation: splash-spin 1.2s linear infinite;
-}
-.splash-item-icon.si-ready   { color: #10b981; }
+.splash-item-icon.si-loading { color: var(--_accent); animation: splash-spin 1.2s linear infinite; }
+.splash-item-icon.si-ready   { color: #7DC47A; }
 .splash-item-icon.si-error   { color: var(--_danger); }
-.splash-item-icon.si-skipped { color: #f59e0b; }
+.splash-item-icon.si-skipped { color: #C9904A; }
 @keyframes splash-spin { to { transform: rotate(360deg); } }
 .splash-item-body { display: flex; flex-direction: column; gap: 1px; }
 .splash-item-label { font-size: 0.8rem; font-weight: 600; color: var(--_muted); text-transform: uppercase; letter-spacing: 0.04em; }
@@ -678,7 +587,7 @@ pre code { background-color: transparent !important; border: none !important; pa
 .splash-item-detail { font-size: 0.72rem; color: var(--_muted); font-family: var(--font-mono); margin-top: 1px; }
 .splash-progress-wrap {
     height: 3px; background: var(--_border); margin: 0;
-    border-radius: 0 0 16px 16px; overflow: hidden;
+    border-radius: 0 0 var(--r-card) var(--r-card); overflow: hidden;
 }
 .splash-progress-bar {
     height: 100%; background: var(--_accent);
@@ -688,110 +597,16 @@ pre code { background-color: transparent !important; border: none !important; pa
 """
 
 
-# Per-theme personality overrides — appended after _STRUCTURAL_CSS at build time.
-# Only the active theme's block is included; no runtime selectors needed.
-_PER_THEME_CSS: Dict[str, str] = {
-    "night": """
-/* Night Vision: terminal green glow */
-thead tr { border-bottom-color: var(--_accent) !important; }
-th { text-shadow: 0 0 10px rgba(16,185,129,.35) !important; }
-.tab-container button.selected { background: rgba(16,185,129,.07) !important; }
-.eyas-panel-header .ph-label { letter-spacing: 0.22em !important; }
-""",
-    "amber": """
-/* Amber CRT: warm retro terminal */
-table { font-family: var(--font-mono) !important; }
-th { letter-spacing: 0.18em !important; }
-.tabs, #eyas-sidebar, #eyas-main { border-radius: 6px !important; }
-tbody tr:nth-child(even) td { background: rgba(245,158,11,.05) !important; }
-.eyas-panel-header { letter-spacing: 0.25em !important; }
-""",
-    "cyber": """
-/* Cyberpunk: neon glow */
-th { text-shadow: 0 0 14px var(--_accent) !important; }
-thead tr { border-bottom-color: var(--_accent) !important; box-shadow: 0 2px 14px rgba(168,85,247,.25) !important; }
-.tab-container button.selected { text-shadow: 0 0 8px var(--_accent) !important; }
-.tabs, #eyas-sidebar, #eyas-main { border-radius: 4px !important; }
-.pipeline-step.running { box-shadow: 0 0 12px rgba(168,85,247,.4) !important; }
-tbody tr:nth-child(even) td { background: rgba(168,85,247,.04) !important; }
-""",
-    "sentinel": """
-/* Sentinel: clean enterprise blue */
-thead tr { border-bottom: 2px solid var(--_accent) !important; }
-.tab-container button.selected { font-weight: 600 !important; }
-#analyze-btn { border-radius: 4px !important; }
-tbody tr:nth-child(even) td { background: rgba(59,130,246,.04) !important; }
-""",
-    "voltagent": """
-/* VoltAgent: minimal green terminal */
-th { text-shadow: 0 0 8px rgba(0,217,146,.25) !important; }
-thead tr { border-bottom-color: var(--_accent) !important; }
-.tab-container button.selected { background: rgba(0,217,146,.05) !important; }
-""",
-    "xai": """
-/* xAI: bold orange-tech */
-thead tr { border-bottom: 2px solid var(--_accent) !important; }
-th { font-weight: 800 !important; font-size: 0.68rem !important; }
-.tabs, #eyas-sidebar, #eyas-main { border-radius: 6px !important; }
-""",
-    "warp": """
-/* Warp: warm rounded terminal */
-.tabs, #eyas-sidebar, #eyas-main { border-radius: 10px !important; }
-th { letter-spacing: 0.08em !important; font-weight: 600 !important; color: var(--_text) !important; text-transform: none !important; }
-thead tr { background: rgba(247,245,240,.05) !important; }
-tbody tr:nth-child(even) td { background: rgba(247,245,240,.025) !important; }
-""",
-    "linear": """
-/* Linear: ultra minimal */
-.tabs, #eyas-sidebar, #eyas-main { box-shadow: none !important; }
-th { font-weight: 500 !important; color: var(--_muted) !important; letter-spacing: 0.06em !important; }
-thead tr { background: transparent !important; }
-.tab-container button { font-size: 0.8rem !important; }
-""",
-    "sentry": """
-/* Sentry: lime-on-purple drama */
-th { text-shadow: 0 0 10px rgba(194,239,78,.3) !important; }
-thead tr { border-bottom-color: var(--_accent) !important; }
-.tab-container button.selected { background: rgba(194,239,78,.07) !important; }
-tbody tr:nth-child(even) td { background: rgba(194,239,78,.03) !important; }
-""",
-    "stripe": """
-/* Stripe: gradient-header indigo */
-thead tr { background: linear-gradient(135deg, var(--_surface) 0%, rgba(83,58,253,.18) 100%) !important; border-bottom: 1px solid var(--_accent) !important; }
-th { font-weight: 700 !important; }
-.tabs, #eyas-sidebar, #eyas-main { border-radius: 8px !important; }
-""",
-    "supabase": """
-/* Supabase: clean dark green */
-thead tr { border-bottom: 1px solid var(--_accent) !important; }
-th { font-size: 0.64rem !important; letter-spacing: 0.13em !important; }
-tbody tr:nth-child(even) td { background: rgba(62,207,142,.03) !important; }
-""",
-    "vercel": """
-/* Vercel: pure minimal black */
-.tabs, #eyas-sidebar, #eyas-main { border-radius: 0 !important; border-color: #333 !important; }
-th { color: var(--_accent) !important; font-weight: 600 !important; font-size: 0.65rem !important; letter-spacing: 0.06em !important; }
-thead tr { border-bottom: 1px solid #333 !important; }
-.tab-container button.selected { background: rgba(0,112,243,.06) !important; }
-tbody tr:nth-child(even) td { background: rgba(255,255,255,.03) !important; }
-""",
-    "cursor": """
-/* Cursor: mac-like warm light */
-.tabs, #eyas-sidebar, #eyas-main { border-radius: 10px !important; box-shadow: 0 2px 8px rgba(0,0,0,.07) !important; }
-th { color: var(--_muted) !important; font-weight: 600 !important; font-size: 0.64rem !important; }
-thead tr { border-bottom: 1px solid var(--_border) !important; }
-tbody tr:nth-child(even) td { background: rgba(0,0,0,.02) !important; }
-""",
-    "runway": """
-/* Runway: typographic serif elegance */
-th { font-family: var(--font) !important; font-style: italic !important; color: var(--_muted) !important; font-size: 0.76rem !important; letter-spacing: 0.02em !important; text-transform: none !important; }
-.tabs, #eyas-sidebar, #eyas-main { border-radius: 2px !important; box-shadow: none !important; }
-.tab-container button { letter-spacing: 0.02em !important; }
-""",
-}
+# Hawk Vision personality overrides
+_HAWK_EXTRA_CSS = """
+thead tr { border-bottom-color: var(--_border) !important; }
+.tab-container button.selected { background: var(--_accent-a12) !important; }
+tbody tr:nth-child(even) td { background: rgba(184,90,56,.04) !important; }
+"""
 
 
-def _build_css(p: dict, theme_key: str = "night") -> str:
+def _build_css() -> str:
+    p = _HAWK
     imports = (
         "@import url('https://fonts.googleapis.com/css2?"
         "family=Google+Sans:ital,wght@0,400;0,500;0,700;1,400"
@@ -815,98 +630,72 @@ def _build_css(p: dict, theme_key: str = "night") -> str:
         f"    --_danger:     {p['danger']};\n"
         "}\n"
     )
-    return imports + root + _STRUCTURAL_CSS + _PER_THEME_CSS.get(theme_key, "")
+    return imports + root + _STRUCTURAL_CSS + _HAWK_EXTRA_CSS
 
 
 # ---------------------------------------------------------------------------
-# Per-theme font stacks
+# Font stacks
 # ---------------------------------------------------------------------------
 
-_GS = [fonts.GoogleFont("Google Sans"), fonts.GoogleFont("DM Sans"), fonts.Font("system-ui"), fonts.Font("sans-serif")]
-
-_FONTS: Dict[str, list] = {
-    # Simple themes
-    "night":    _GS,
-    "amber":    _GS,
-    "cyber":    _GS,
-    "sentinel": _GS,
-    # Advanced themes
-    "voltagent": _GS,
-    "xai":       _GS,
-    "warp":      _GS,
-    "linear":    _GS,
-    "sentry":    [fonts.GoogleFont("Google Sans"), fonts.GoogleFont("Rubik"), fonts.Font("system-ui"), fonts.Font("sans-serif")],
-    "stripe":    _GS,
-    "supabase":  _GS,
-    "vercel":    [fonts.GoogleFont("Google Sans"), fonts.GoogleFont("Geist"), fonts.Font("system-ui"), fonts.Font("sans-serif")],
-    "cursor":    [fonts.GoogleFont("Google Sans"), fonts.Font("system-ui"), fonts.Font("Helvetica Neue"), fonts.Font("sans-serif")],
-    "runway":    [fonts.GoogleFont("Instrument Serif"), fonts.Font("Georgia"), fonts.Font("serif")],
-}
-
-_FONTS_MONO_BY_THEME: Dict[str, list] = {
-    "vercel": [fonts.GoogleFont("Geist Mono"), fonts.Font("ui-monospace"), fonts.Font("monospace")],
-    "cursor": [fonts.GoogleFont("JetBrains Mono"), fonts.Font("Fira Code"), fonts.Font("ui-monospace"), fonts.Font("monospace")],
-}
-_FONTS_MONO_DEFAULT = [fonts.GoogleFont("JetBrains Mono"), fonts.Font("ui-monospace"), fonts.Font("Consolas"), fonts.Font("monospace")]
+_FONTS_DEFAULT = [fonts.GoogleFont("Google Sans"), fonts.GoogleFont("DM Sans"), fonts.Font("system-ui"), fonts.Font("sans-serif")]
+_FONTS_MONO    = [fonts.GoogleFont("JetBrains Mono"), fonts.Font("ui-monospace"), fonts.Font("Consolas"), fonts.Font("monospace")]
 
 
 # ---------------------------------------------------------------------------
-# Gradio theme — palette baked in at construction time
+# Gradio theme — Hawk Vision, single fixed palette
 # ---------------------------------------------------------------------------
 
-class EyasTheme(Base):
-    """Surveillance-console Gradio theme. Palette is chosen at startup; restart to change."""
+class HawkTheme(Base):
+    """Hawk-inspired surveillance console theme."""
 
-    def __init__(self, color: str = "night", dark: bool = True, advanced: Optional[str] = None) -> None:
-        if advanced and advanced in _ADVANCED:
-            p = _ADVANCED[advanced]
-        else:
-            palettes = _DARK if dark else _LIGHT
-            p = palettes.get(color, _DARK["night"])
-
-        _fkey = advanced if advanced else color
+    def __init__(self) -> None:
+        p = _HAWK
         super().__init__(
-            primary_hue=p["hue"],
+            primary_hue=colors.orange,
             secondary_hue=colors.gray,
             neutral_hue=colors.gray,
             spacing_size=sizes.spacing_md,
             radius_size=sizes.radius_sm,
             text_size=sizes.text_sm,
-            font=_FONTS.get(_fkey, _FONTS["night"]),
-            font_mono=_FONTS_MONO_BY_THEME.get(_fkey, _FONTS_MONO_DEFAULT),
+            font=_FONTS_DEFAULT,
+            font_mono=_FONTS_MONO,
         )
         super().set(
             # Page
-            body_background_fill=p["bg"],         body_background_fill_dark=p["bg"],
-            body_text_color=p["text"],             body_text_color_dark=p["text"],
-            background_fill_primary=p["panel"],    background_fill_primary_dark=p["panel"],
-            background_fill_secondary=p["surface"],background_fill_secondary_dark=p["surface"],
+            body_background_fill=p["bg"],          body_background_fill_dark=p["bg"],
+            body_text_color=p["text"],              body_text_color_dark=p["text"],
+            background_fill_primary=p["panel"],     background_fill_primary_dark=p["panel"],
+            background_fill_secondary=p["surface"], background_fill_secondary_dark=p["surface"],
             # Blocks
-            block_background_fill=p["panel"],      block_background_fill_dark=p["panel"],
-            block_border_color=p["border"],        block_border_color_dark=p["border"],
+            block_background_fill=p["panel"],       block_background_fill_dark=p["panel"],
+            block_border_color=p["border"],         block_border_color_dark=p["border"],
             block_border_width="1px",
-            block_label_text_color=p["label"],     block_label_text_color_dark=p["label"],
-            block_label_background_fill=p["panel"],block_label_background_fill_dark=p["panel"],
-            # Inputs
-            input_background_fill=p["surface"],    input_background_fill_dark=p["surface"],
-            input_border_color=p["border"],        input_border_color_dark=p["border"],
-            input_border_color_focus=p["accent"],  input_border_color_focus_dark=p["accent"],
-            input_placeholder_color=p["muted"],    input_placeholder_color_dark=p["muted"],
+            block_label_text_color=p["label"],      block_label_text_color_dark=p["label"],
+            block_label_background_fill=p["panel"], block_label_background_fill_dark=p["panel"],
+            # Inputs — use panel (darker) so they read as inset against surface card bg
+            input_background_fill=p["panel"],       input_background_fill_dark=p["panel"],
+            input_border_color=p["border"],         input_border_color_dark=p["border"],
+            input_border_color_focus=p["accent"],   input_border_color_focus_dark=p["accent"],
+            input_placeholder_color=p["muted"],     input_placeholder_color_dark=p["muted"],
             # Primary button
-            button_primary_background_fill=p["accent"],      button_primary_background_fill_dark=p["accent"],
+            button_primary_background_fill=p["accent"],            button_primary_background_fill_dark=p["accent"],
             button_primary_background_fill_hover=p["accent_hover"], button_primary_background_fill_hover_dark=p["accent_hover"],
-            button_primary_text_color="#ffffff",             button_primary_text_color_dark="#ffffff",
-            button_primary_border_color=p["accent"],         button_primary_border_color_dark=p["accent"],
-            # Secondary button
-            button_secondary_background_fill=p["surface"],   button_secondary_background_fill_dark=p["surface"],
-            button_secondary_border_color=p["border"],       button_secondary_border_color_dark=p["border"],
-            button_secondary_text_color=p["text"],           button_secondary_text_color_dark=p["text"],
+            button_primary_text_color="#ffffff",                   button_primary_text_color_dark="#ffffff",
+            button_primary_border_color=p["accent"],               button_primary_border_color_dark=p["accent"],
+            # Secondary button — tonal: accent-tinted fill, accent text
+            button_secondary_background_fill=f"rgba({int(p['accent'][1:3],16)},{int(p['accent'][3:5],16)},{int(p['accent'][5:7],16)},.12)",
+            button_secondary_background_fill_dark=f"rgba({int(p['accent'][1:3],16)},{int(p['accent'][3:5],16)},{int(p['accent'][5:7],16)},.12)",
+            button_secondary_border_color="transparent",    button_secondary_border_color_dark="transparent",
+            button_secondary_text_color=p["accent"],        button_secondary_text_color_dark=p["accent"],
             # Accent
             color_accent=p["accent"],
             color_accent_soft=f"rgba({int(p['accent'][1:3],16)},{int(p['accent'][3:5],16)},{int(p['accent'][5:7],16)},.18)",
         )
-        self.name = f"eyas-{advanced or color}-{'adv' if advanced else ('dark' if dark else 'light')}"
-        self.custom_css = _build_css(p, _fkey)
+        self.name = "eyas-hawk"
+        self.custom_css = _build_css()
+
+
+_HAWK_THEME = HawkTheme()
 
 
 # ---------------------------------------------------------------------------
@@ -1027,7 +816,7 @@ def _splash_html(S: "Strings | None" = None, states: list | None = None, fading:
         from model_registry import get_states
         states = get_states()
 
-    _registry_keys = ["yolo", "vlm", "llm", "tinyaya"]
+    _registry_keys = ["yolo", "vlm", "llm", "tts", "tinyaya"]
 
     total = len(states)
     done_count = sum(1 for s in states if s.status in {"ready", "error", "skipped"})
@@ -1090,19 +879,11 @@ def _save_prefs_file(prefs_path: Optional[Path], updates: dict) -> None:
 
 
 def build_app(
-    color: str = "night",
-    dark: bool = True,
-    advanced: Optional[str] = None,
     language: str = "en",
     prefs_path: Optional[Path] = None,
 ) -> gr.Blocks:
 
     S = Strings(language)
-    current_label = (
-        _ADVANCED_NAMES.get(advanced, advanced)
-        if advanced else _theme_label(color, dark)
-    )
-    _theme = EyasTheme(color=color, dark=dark, advanced=advanced)
 
     with gr.Blocks(title=S.t("app.title")) as demo:
 
@@ -1117,7 +898,7 @@ def build_app(
             with gr.Column(scale=1, min_width=160, elem_id="theme-col"):
                 gr.HTML(
                     f'<div class="eyas-theme-badge">'
-                    f'{S.t("badge.theme", theme=current_label)}<br>'
+                    f'Hawk Vision<br>'
                     f'{S.t("badge.language", language=LANGUAGE_LABELS.get(language, language))}'
                     f'</div>'
                 )
@@ -1230,29 +1011,9 @@ def build_app(
             with gr.TabItem(S.t("tabs.audio_report")):
                 _section_title(S.t("labels.spoken_report"))
                 gr.Markdown(S.t("labels.audio_help"))
-                audio_output      = gr.Audio(label=S.t("labels.tts_report"), interactive=False)
+                audio_output       = gr.Audio(label=S.t("labels.tts_report"), interactive=False)
+                audio_status       = gr.Textbox(label=S.t("labels.status"), interactive=False, lines=1)
                 generate_audio_btn = gr.Button(S.t("buttons.generate_audio"), variant="secondary")
-
-            # ── Live Feed ────────────────────────────────────────────────────
-            with gr.TabItem(S.t("tabs.live_feed")):
-                _section_title(S.t("labels.camera_stream"))
-                gr.Markdown(S.t("labels.live_feed_help"))
-                with gr.Row():
-                    stream_src = gr.Textbox(
-                        placeholder=S.t("labels.source_placeholder"),
-                        label=S.t("labels.source"), scale=4, lines=1,
-                    )
-                    start_stream_btn = gr.Button(S.t("buttons.start"), variant="primary", scale=1)
-                    stop_stream_btn  = gr.Button(S.t("buttons.stop"),  variant="secondary", scale=1)
-
-                stream_status = gr.Textbox(label=S.t("labels.stream_status"), interactive=False, lines=1)
-                live_image    = gr.Image(label=S.t("labels.live_feed"), interactive=False, height=420)
-                feed_timer    = gr.Timer(value=0.1, active=False)
-
-                with gr.Row():
-                    start_rec_btn = gr.Button(S.t("buttons.start_recording"), variant="primary")
-                    stop_rec_btn  = gr.Button(S.t("buttons.stop_recording"),  variant="secondary")
-                rec_status = gr.Textbox(label=S.t("labels.recording"), interactive=False, lines=1)
 
             # ── Clip Library ─────────────────────────────────────────────────
             with gr.TabItem(S.t("tabs.clip_library")):
@@ -1280,42 +1041,19 @@ def build_app(
                 save_lang_btn = gr.Button(S.t("buttons.save_language"), variant="secondary", size="sm")
                 lang_status = gr.Markdown("")
 
-                gr.HTML("<hr style='border-color:var(--_border);margin:18px 0;'>")
-                _section_title(S.t("labels.simple_theme"))
-                gr.Markdown(S.t("labels.theme_help"))
-                with gr.Row():
-                    color_dd = gr.Dropdown(
-                        choices=list(_COLOR_NAMES.values()),
-                        value=_COLOR_NAMES[color],
-                        label=S.t("labels.color"),
-                        interactive=True,
-                    )
-                    mode_dd = gr.Dropdown(
-                        choices=[S.t("modes.dark"), S.t("modes.light")],
-                        value=S.t("modes.dark") if dark else S.t("modes.light"),
-                        label=S.t("labels.mode"),
-                        interactive=True,
-                    )
-                save_btn     = gr.Button(S.t("buttons.save_theme"), variant="secondary", size="sm")
-                theme_status = gr.Markdown("")
-
-                gr.HTML("<hr style='border-color:var(--_border);margin:18px 0;'>")
-                _section_title(S.t("labels.advanced_theme"))
-                gr.Markdown(S.t("labels.advanced_theme_help"))
-                advanced_dd = gr.Dropdown(
-                    choices=list(_ADVANCED_NAMES.values()),
-                    value=_ADVANCED_NAMES.get(advanced) if advanced else None,
-                    label=S.t("labels.advanced_theme"),
-                    interactive=True,
-                )
-                save_adv_btn    = gr.Button(S.t("buttons.save_advanced_theme"), variant="secondary", size="sm")
-                adv_theme_status = gr.Markdown("")
-
         # ── Callbacks ───────────────────────────────────────────────────────
 
         # Shared live-event state — written by the pipeline thread, read by the refresh button
         _live_events: list = []
         _live_rows: list = []
+
+        def _event_clip_choices(evs: list) -> list:
+            choices = []
+            for i, ev in enumerate(evs):
+                t = ev.get("timestamp") or 0
+                activity = "pickup" if ev.get("pickup_confirmed") else (ev.get("activity") or "observation")
+                choices.append(f"#{i} – {activity[:25]} @ {t:.1f}s")
+            return choices
 
         _CLIPS_DIR = str(Path(__file__).parent.parent / "data" / "clips")
 
@@ -1356,12 +1094,11 @@ def build_app(
             import cv2 as _cv2
             from visual_pipeline import run_visual_pipeline
 
-            _preloaded_reasoner = _mreg.get("llm")
             def _summarize(events):
-                if _preloaded_reasoner is not None:
-                    return _preloaded_reasoner.summarize_events(events)
-                from llm.reasoner import summarize_events as _fallback
-                return _fallback(events)
+                _r = _mreg.get("llm")
+                if _r is None:
+                    raise RuntimeError("LLM not available")
+                return _r.summarize_events(events)
 
             steps = pipeline_steps_default()  # mutable copy
             step_start: dict = {}
@@ -1567,7 +1304,7 @@ def build_app(
             ann_vid_path = vp.annotated_video_path
             yield (
                 _steps_html(S, _annotate_elapsed(steps, step_start)), status,
-                events, rows, gr.update(choices=[]),
+                events, rows, gr.update(choices=_event_clip_choices(events), value=None),
                 llm_display["summary"], translation_time_str,
                 {S.risk_label(risk_key): 1.0},
                 llm_display["flags"], gr.update(choices=llm["suspicious_clips"]),
@@ -1626,18 +1363,17 @@ def build_app(
                 return _append_turn(history, message, reply), "", ""
             try:
                 _r = _mreg.get("llm")
-                if _r is not None:
-                    result = _r.answer_query(events, message)
-                else:
-                    from llm.reasoner import answer_query as _answer
-                    result = _answer(events, message)
+                if _r is None:
+                    reply = S.t("status.llm_unavailable")
+                    return _append_turn(history, message, reply), "", ""
+                result = _r.answer_query(events, message)
                 reply = result["answer"]
                 reply, stats = localize_text(reply, language)
                 if result.get("clips"):
                     reply += "\n\n" + S.t("status.related_clips", clips=", ".join(result["clips"]))
                 timing = format_translation_time(S, stats)
             except Exception as exc:
-                reply = S.t("status.llm_error", error=exc)
+                reply = S.t("status.llm_error", error=f"{type(exc).__name__}: {exc}")
                 timing = ""
             return _append_turn(history, message, reply), "", timing
 
@@ -1655,76 +1391,33 @@ def build_app(
 
         def generate_audio(events: List[Dict]):
             if not events:
-                return None, ""
+                return None, S.t("status.no_events_qa")
+            _r = _mreg.get("llm")
+            if _r is None:
+                return None, S.t("status.llm_unavailable")
             try:
-                _r = _mreg.get("llm")
-                if _r is not None:
-                    llm = _r.summarize_events(events)
-                else:
-                    from llm.reasoner import summarize_events as _summarize
-                    llm = _summarize(events)
+                llm = _r.summarize_events(events)
                 text = llm.get("summary", "").strip()
                 if not text:
-                    return None, ""
+                    return None, "No summary to speak."
                 text, stats = localize_text(text, language)
                 from postprocessing.translate_tts import tts
                 import numpy as np
                 chunks = list(tts(text, target_lang=S.tts_lang))
                 if not chunks:
-                    return None, format_translation_time(S, stats)
+                    return None, "TTS produced no audio."
                 sample_rate = chunks[0][0]
                 audio = np.concatenate([c[1] for c in chunks])
-                return (sample_rate, audio), format_translation_time(S, stats)
-            except Exception:
-                return None, ""
+                timing = format_translation_time(S, stats)
+                return (sample_rate, audio), timing or "Done."
+            except Exception as exc:
+                return None, f"Audio error: {type(exc).__name__}: {exc}"
 
         generate_audio_btn.click(
             generate_audio,
             inputs=[event_log_state],
-            outputs=[audio_output, summary_translation_time],
+            outputs=[audio_output, audio_status],
         )
-
-        # ── Live Feed callbacks ──────────────────────────────────────────────
-
-        def start_stream(src: str):
-            src = src.strip()
-            if not src:
-                return S.t("status.no_source"), gr.Timer(active=False)
-            try:
-                source = int(src) if src.isdigit() else src
-                _stream.start(source)
-                return S.t("status.connected", src=src), gr.Timer(active=True)
-            except Exception as exc:
-                return S.t("status.stream_error", error=exc), gr.Timer(active=False)
-
-        def stop_stream():
-            _stream.stop()
-            return S.t("status.stream_stopped"), gr.Timer(active=False)
-
-        def poll_frame():
-            return _stream.get_rgb()
-
-        def start_recording():
-            if not _stream.is_open():
-                return S.t("status.no_active_stream")
-            path = _stream.start_recording()
-            return S.t("status.recording_to", path=path)
-
-        def stop_recording():
-            path = _stream.stop_recording()
-            if path is None:
-                return S.t("status.no_recording")
-            try:
-                entry = storage.store(path, source="stream")
-                return S.t("status.saved_recording", filename=entry["filename"], size_mb=entry["size_mb"])
-            except Exception as exc:
-                return S.t("status.saved_path_error", path=path, error=exc)
-
-        start_stream_btn.click(start_stream, inputs=[stream_src],  outputs=[stream_status, feed_timer])
-        stop_stream_btn.click(stop_stream,   inputs=[],            outputs=[stream_status, feed_timer])
-        feed_timer.tick(poll_frame, outputs=[live_image])
-        start_rec_btn.click(start_recording, outputs=[rec_status])
-        stop_rec_btn.click(stop_recording,   outputs=[rec_status])
 
         # ── Clip Library callbacks ───────────────────────────────────────────
 
@@ -1754,33 +1447,6 @@ def build_app(
         load_clip_btn.click(load_for_analysis, inputs=[lib_dd], outputs=[video_input, lib_status])
         delete_clip_btn.click(delete_clip, inputs=[lib_dd], outputs=[lib_status, lib_dd])
 
-        def save_theme(color_label: str, mode_label: str) -> str:
-            if prefs_path is None:
-                return S.t("status.no_prefs_path")
-            c = _COLOR_KEY.get(color_label, "night")
-            d = mode_label == "Dark"
-            try:
-                _save_prefs_file(prefs_path, {"theme": c, "dark": d})
-                return S.t("status.theme_saved", color=color_label, mode=mode_label)
-            except Exception as exc:
-                return S.t("status.theme_save_error", error=exc)
-
-        save_btn.click(save_theme, inputs=[color_dd, mode_dd], outputs=[theme_status])
-
-        def save_advanced_theme(adv_label: str) -> str:
-            if prefs_path is None:
-                return S.t("status.no_prefs_path")
-            key = _ADVANCED_KEY.get(adv_label)
-            if key is None:
-                return S.t("status.unknown_theme", theme=adv_label)
-            try:
-                _save_prefs_file(prefs_path, {"advanced": key})
-                return S.t("status.advanced_saved", theme=adv_label)
-            except Exception as exc:
-                return S.t("status.theme_save_error", error=exc)
-
-        save_adv_btn.click(save_advanced_theme, inputs=[advanced_dd], outputs=[adv_theme_status])
-
         def save_language(lang_label: str) -> str:
             if prefs_path is None:
                 return S.t("status.no_prefs_path")
@@ -1791,8 +1457,8 @@ def build_app(
                 _save_prefs_file(prefs_path, {"language": lang_key})
                 return S.t("status.language_saved", language=lang_label)
             except Exception as exc:
-                return S.t("status.theme_save_error", error=exc)
+                return S.t("status.prefs_error", error=exc)
 
         save_lang_btn.click(save_language, inputs=[language_dd], outputs=[lang_status])
 
-    return demo, _theme
+    return demo, _HAWK_THEME
