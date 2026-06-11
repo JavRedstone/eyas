@@ -8,8 +8,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxext6 \
     libxrender-dev \
     libgomp1 \
-    build-essential \
-    cmake \
     git \
     git-lfs \
     curl \
@@ -37,8 +35,9 @@ RUN cd eyas/ui/frontend && npm run build
 # ── Python dependencies ───────────────────────────────────────────────────────
 COPY --chown=user:user eyas/requirements.txt ./requirements.txt
 
-# CPU-only llama-cpp-python (avoids CUDA toolchain requirement)
-RUN CMAKE_ARGS="-DGGML_BLAS=OFF -DGGML_CUDA=OFF" pip install --no-cache-dir llama-cpp-python
+# Install llama-cpp-python from pre-built CPU wheel — avoids slow C++ compilation
+RUN pip install --no-cache-dir llama-cpp-python \
+    --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
 
 RUN pip install --no-cache-dir -r requirements.txt
 
