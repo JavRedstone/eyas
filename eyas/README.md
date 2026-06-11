@@ -42,7 +42,11 @@ python scripts/run_visual_pipeline.py input/sample.mp4
 # Korean overlay labels on the annotated video
 python scripts/run_visual_pipeline.py input/sample.mp4 --language ko
 
-# Gradio UI
+# Gradio API + React UI (http://localhost:7860)
 python app.py
 python app.py --lang ko
+python app.py --port 7960
+
+# Frontend hot-reload dev server (http://localhost:5173)
+cd ui/frontend && npm run dev
 ```
