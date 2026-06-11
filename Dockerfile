@@ -33,19 +33,23 @@ RUN cd eyas/ui/frontend && npm ci
 
 COPY --chown=user:user eyas/ui/frontend/ ./eyas/ui/frontend/
 RUN cd eyas/ui/frontend && npm run build
-# output lands in eyas/ui/dist/ (configured in vite.config.js)
 
 # ── Python dependencies ───────────────────────────────────────────────────────
 COPY --chown=user:user eyas/requirements.txt ./requirements.txt
 
-# Build llama-cpp-python CPU-only (avoids CUDA toolchain requirement)
-RUN CMAKE_ARGS="-DGGML_BLAS=OFF -DGGML_CUDA=OFF" \
-    pip install --no-cache-dir llama-cpp-python
+# CPU-only llama-cpp-python (avoids CUDA toolchain requirement)
+RUN CMAKE_ARGS="-DGGML_BLAS=OFF -DGGML_CUDA=OFF" pip install --no-cache-dir llama-cpp-python
 
 RUN pip install --no-cache-dir -r requirements.txt
 
 # ── Application code ──────────────────────────────────────────────────────────
 COPY --chown=user:user . .
+
+# ── Pre-download models at build time ─────────────────────────────────────────
+# HF_TOKEN is passed from Space secrets as a build ARG
+ARG HF_TOKEN=""
+ENV HF_TOKEN=${HF_TOKEN}
+RUN python3 scripts/download_models.py
 
 WORKDIR /app/eyas
 
