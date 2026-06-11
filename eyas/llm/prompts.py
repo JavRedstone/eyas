@@ -1,9 +1,15 @@
-"""Prompt templates, few-shot examples, and GBNF grammars for the reasoning module."""
+"""Prompt templates and GBNF grammars for the reasoning module."""
 
 SYSTEM_PROMPT = (
-    "You are a security analyst assistant for a convenience store. "
-    "You receive structured CCTV event logs and produce concise, factual security reports. "
-    "Respond only with the requested JSON — no extra prose, no markdown fences."
+    "You are a security analyst for a convenience store. "
+    "You receive structured CCTV event logs. Each event has a Track ID — "
+    "a unique identifier for a specific person tracked by the camera system. "
+    "Events with the same Track ID belong to the same individual. "
+    "When an 'Identified people' section is provided, describe each person by their "
+    "appearance (e.g. 'the person in a red hoodie') rather than just 'Track N'. "
+    "You may include the Track ID in parentheses for clarity: "
+    "'the person in a red hoodie (Track 3)'. "
+    "Respond ONLY with valid JSON — no prose, no markdown fences, no thinking text."
 )
 
 # ---------------------------------------------------------------------------
@@ -11,16 +17,31 @@ SYSTEM_PROMPT = (
 # ---------------------------------------------------------------------------
 
 SUMMARIZE_PROMPT = """\
-Below is a CCTV event log. Summarize what happened, flag anything suspicious, and assess the overall risk level.
+Analyze the CCTV event log below. Group events by Track ID to identify each person's activity.
+When an 'Identified people' section is present, refer to each person by their appearance
+(e.g. "the person in a red hoodie (Track 3)") rather than just their Track ID.
+Produce a security summary that covers:
+  1. How many distinct people were tracked
+  2. For each person who had a pickup event: appearance, number of items taken, zones visited
+  3. Any suspicious patterns (repeated pickups, unusual zones, concealment)
+  4. Overall risk level: "none" (no pickups), "low" (1 pickup, normal behaviour),
+     "medium" (multiple pickups or unusual movement), "high" (concealment or many items)
 
 --- EXAMPLE ---
-Event log (period: 01:00:00–01:30:00):
-Event 1: [entry] 01:02:11–01:02:20 | Zone: back_door | Conf: 0.94 | clip: cam2_01h02.mp4
-Event 2: [dwell] 01:02:25–01:07:44 | Zone: aisle_3  | Conf: 0.88 | clip: cam1_01h02.mp4
-Event 3: [exit]  01:07:50–01:07:58 | Zone: back_door | Conf: 0.95 | clip: cam2_01h07.mp4
+Event log (period: 14:00:00–14:30:00):
+Identified people:
+  Track 3: wearing a white t-shirt and blue jeans, medium build
+  Track 5: wearing a black hoodie, tall
+
+Event 0: [Track 3 | t=0.00s] Zone: entrance | entry | Pickup: no | Conf: 0.91
+Event 1: [Track 3 | t=12.50s] Zone: aisle_2 | dwell | Pickup: no | Conf: 0.87
+Event 2: [Track 3 | t=28.10s] Zone: aisle_2 | pickup | Held: water x1 | Pickup: YES -> water x1 | Conf: 0.93
+Event 3: [Track 5 | t=5.00s] Zone: entrance | entry | Pickup: no | Conf: 0.89
+Event 4: [Track 5 | t=45.00s] Zone: counter | dwell | Pickup: no | Conf: 0.85
+Event 5: [Track 3 | t=55.00s] Zone: aisle_3 | pickup | Held: chips x1 | Pickup: YES -> chips x1 | Conf: 0.90
 
 Response:
-{{"summary": "1 after-hours entry via back door at 01:02. Occupant lingered in aisle 3 for ~5 min then exited. No counter or register interaction. Review cam2_01h02.mp4.", "flags": ["after-hours entry", "prolonged dwell"], "suspicious_clips": ["cam2_01h02.mp4", "cam1_01h02.mp4"], "risk_level": "medium"}}
+{{"summary": "2 people tracked. The person in a white t-shirt and jeans (Track 3) took 2 items (water, chips) across aisle_2 and aisle_3 without visiting the counter — possible theft. The person in a black hoodie (Track 5) entered and went to the counter (normal behaviour).", "flags": ["Person in white t-shirt (Track 3) took multiple items without counter visit"], "suspicious_clips": [], "risk_level": "medium"}}
 --- END EXAMPLE ---
 
 Event log (period: {period}):
@@ -30,22 +51,28 @@ Response:
 """
 
 # ---------------------------------------------------------------------------
-# Question-answering over the event log
+# Question-answering
 # ---------------------------------------------------------------------------
 
 QA_PROMPT = """\
-Below is a CCTV event log. Answer the user's question accurately and cite relevant event indices (0-based) and clip filenames.
+Answer the question about the CCTV event log below.
+When an 'Identified people' section is present, refer to each person by their appearance.
+Cite relevant event indices (0-based) and note how many items each person took if relevant.
 
 --- EXAMPLE ---
 Event log:
-Event 0: [entry] 01:02:11–01:02:20 | Zone: back_door | Conf: 0.94 | clip: cam2_01h02.mp4
-Event 1: [dwell] 01:02:25–01:07:44 | Zone: aisle_3  | Conf: 0.88 | clip: cam1_01h02.mp4
-Event 2: [exit]  01:07:50–01:07:58 | Zone: back_door | Conf: 0.95 | clip: cam2_01h07.mp4
+Identified people:
+  Track 3: wearing a white t-shirt and blue jeans
+  Track 5: wearing a black hoodie
 
-Question: Was there any unusual activity?
+Event 0: [Track 3 | t=0.00s] Zone: entrance | entry | Pickup: no | Conf: 0.91
+Event 1: [Track 3 | t=28.10s] Zone: aisle_2 | pickup | Held: water x1 | Pickup: YES -> water x1 | Conf: 0.93
+Event 2: [Track 5 | t=5.00s] Zone: entrance | entry | Pickup: no | Conf: 0.89
+
+Question: Who took items and how many?
 
 Response:
-{{"answer": "Yes — 1 unscheduled after-hours entry at the back door at 01:02. The person lingered in aisle 3 for approximately 5 minutes before leaving.", "relevant_event_indices": [0, 1], "clips": ["cam2_01h02.mp4", "cam1_01h02.mp4"]}}
+{{"answer": "The person in a white t-shirt and jeans (Track 3) took 1 item (water) from aisle_2. The person in a black hoodie (Track 5) had no pickup events.", "relevant_event_indices": [1], "clips": []}}
 --- END EXAMPLE ---
 
 Event log:
@@ -64,10 +91,10 @@ ALERT_PROMPT = """\
 Generate a short security alert for the following CCTV event. Be concise and factual.
 
 --- EXAMPLE ---
-Event: [concealment] 14:32:05–14:32:41 | Zone: aisle_2 | Conf: 0.82 | clip: cam3_14h32.mp4
+Event: [Track 7 | t=840.00s] Zone: aisle_2 | concealment | Held: bottle x1 | Pickup: YES | Conf: 0.82
 
 Response:
-{{"alert": "Possible concealment detected in aisle 2 at 14:32. Confidence 82%. Review cam3_14h32.mp4.", "severity": "high", "clip": "cam3_14h32.mp4"}}
+{{"alert": "Possible concealment by Track 7 in aisle_2 at t=840s. Item: bottle. Confidence 82%.", "severity": "high", "clip": ""}}
 --- END EXAMPLE ---
 
 Event: {event}
@@ -76,10 +103,9 @@ Response:
 """
 
 # ---------------------------------------------------------------------------
-# GBNF grammars — force valid JSON from the LLM
+# GBNF grammars — force valid JSON from llama-cpp models (unused by HF models)
 # ---------------------------------------------------------------------------
 
-# Shared building blocks
 _GBNF_COMMON = r"""
 ws        ::= ([ \t\n\r])*
 string    ::= "\"" ([^"\\] | "\\" (["\\/bfnrt] | "u" [0-9a-fA-F] [0-9a-fA-F] [0-9a-fA-F] [0-9a-fA-F]))* "\""

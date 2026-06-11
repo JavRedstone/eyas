@@ -1,13 +1,9 @@
 """Launcher for the Eyas prototype.
 
-Theme and language are read from preferences.json at startup and can be overridden
-via CLI flags:
+Language is read from preferences.json at startup and can be overridden via CLI flags:
 
-    python app.py                        # use preferences.json
-    python app.py --theme amber          # Amber CRT (dark)
-    python app.py --theme sentinel --light  # Sentinel light
-    python app.py --advanced voltagent   # Advanced DESIGN.md theme
-    python app.py --lang ko              # Korean UI
+    python app.py                 # use preferences.json
+    python app.py --lang ko       # Korean UI
 """
 
 import argparse
@@ -20,7 +16,7 @@ load_dotenv(Path(__file__).parent / ".env")
 from ui.gradio_app import build_app
 
 _PREFS = Path(__file__).parent / "preferences.json"
-_DEFAULTS = {"theme": "night", "dark": True, "language": "en"}
+_DEFAULTS = {"language": "en"}
 
 
 def _load_prefs() -> dict:
@@ -32,20 +28,6 @@ def _load_prefs() -> dict:
 
 def _parse_args(prefs: dict) -> dict:
     parser = argparse.ArgumentParser(description="Eyas — AI Security Camera Agent")
-    parser.add_argument(
-        "--theme",
-        choices=["night", "amber", "cyber", "sentinel"],
-        default=None,
-        help="Simple colour theme (overrides preferences.json)",
-    )
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument("--dark",  dest="dark", action="store_true",  default=None, help="Dark mode")
-    group.add_argument("--light", dest="dark", action="store_false",            help="Light mode")
-    parser.add_argument(
-        "--advanced",
-        default=None,
-        help="Advanced DESIGN.md theme key (overrides preferences.json)",
-    )
     parser.add_argument(
         "--lang",
         choices=["en", "ko"],
@@ -61,13 +43,6 @@ def _parse_args(prefs: dict) -> dict:
     args = parser.parse_args()
 
     result = dict(prefs)
-    if args.theme is not None:
-        result["theme"] = args.theme
-        result.pop("advanced", None)
-    if args.dark is not None:
-        result["dark"] = args.dark
-    if args.advanced is not None:
-        result["advanced"] = args.advanced
     if args.lang is not None:
         result["language"] = args.lang
     if args.port is not None:
@@ -77,9 +52,6 @@ def _parse_args(prefs: dict) -> dict:
 
 prefs = _parse_args(_load_prefs())
 app, _theme = build_app(
-    color=prefs.get("theme", "night"),
-    dark=prefs.get("dark", True),
-    advanced=prefs.get("advanced"),
     language=prefs.get("language", "en"),
     prefs_path=_PREFS,
 )

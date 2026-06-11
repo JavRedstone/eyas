@@ -4,15 +4,13 @@ from __future__ import annotations
 import os
 import threading
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 _LOCK = threading.Lock()
 _started = False
 
-_NEMOTRON_REPO   = "nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF"
-_NEMOTRON_FILE   = "NVIDIA-Nemotron3-Nano-4B-Q4_K_M.gguf"
 _VLM_REPO        = "openbmb/MiniCPM-V-4.6"
+_TTS_REPO        = "openbmb/VoxCPM2"
 
 
 @dataclass
@@ -27,7 +25,8 @@ class ModelState:
 _STATES: Dict[str, ModelState] = {
     "yolo":    ModelState("Object Detector",   "YOLO11n"),
     "vlm":     ModelState("Vision Analyzer",   "MiniCPM-V 4.6"),
-    "llm":     ModelState("LLM Reasoner",      "Nemotron Nano 4B"),
+    "llm":     ModelState("LLM Reasoner",      "Nemotron-Nano-4B"),
+    "tts":     ModelState("Text-to-Speech",    "VoxCPM2"),
     "tinyaya": ModelState("Translator",        "Tiny Aya Global"),
 }
 _INSTANCES: Dict[str, Any] = {}
@@ -70,19 +69,6 @@ def _hf_cached(repo_id: str, filename: str = "config.json") -> bool:
         return result is not None and result != "None"
     except Exception:
         return False
-
-
-def _download_gguf(dest: Path) -> None:
-    """Download the Nemotron GGUF from HF Hub into models/ and rename to dest."""
-    from huggingface_hub import hf_hub_download
-    tmp = hf_hub_download(
-        repo_id=_NEMOTRON_REPO,
-        filename=_NEMOTRON_FILE,
-        local_dir=str(dest.parent),
-    )
-    tmp_path = Path(tmp)
-    if tmp_path != dest:
-        tmp_path.rename(dest)
 
 
 # ---------------------------------------------------------------------------
@@ -129,26 +115,38 @@ def _load_models() -> None:
     except Exception as exc:
         _set("vlm", "error", "error", str(exc)[:120])
 
-    # ── LLM Reasoner ────────────────────────────────────────────────────────
+    # ── LLM Reasoner (Nemotron GGUF) ─────────────────────────────────────────
+    from llm.reasoner import Reasoner as _GGUFReasoner
+    _nemotron_file = models_dir() / "nemotron-nano-4b.gguf"
+    with _LOCK:
+        _STATES["llm"].model_name = "Nemotron-Nano-4B"
+    _set("llm", "sync", "loading",
+         "Loading weights…" if _nemotron_file.is_file() else "Downloading from HuggingFace…")
     try:
-        gguf_path = Path(os.getenv("EYAS_MODEL_PATH", str(models_dir() / "nemotron-nano-4b.gguf")))
-
-        if gguf_path.is_file():
-            _set("llm", "sync", "loading", "Loading weights…")
-        else:
-            _set("llm", "sync", "loading", "Downloading from HuggingFace…")
-            _download_gguf(gguf_path)
-            _set("llm", "sync", "loading", "Loading weights…")
-
-        from llm.reasoner import Reasoner
         n_gpu_layers = int(os.getenv("EYAS_GPU_LAYERS", "-1"))
-        reasoner = Reasoner(str(gguf_path), n_gpu_layers=n_gpu_layers)
+        reasoner = _GGUFReasoner(str(_nemotron_file), n_gpu_layers=n_gpu_layers)
         reasoner._load_model()
         with _LOCK:
             _INSTANCES["llm"] = reasoner
         _set("llm", "check_circle", "ready", "Ready")
     except Exception as exc:
+        import traceback
+        traceback.print_exc()
         _set("llm", "error", "error", str(exc)[:120])
+
+    # ── TTS (VoxCPM2) ────────────────────────────────────────────────────────
+    if _hf_cached(_TTS_REPO):
+        _set("tts", "sync", "loading", "Loading weights…")
+    else:
+        _set("tts", "sync", "loading", "Downloading from HuggingFace…")
+    try:
+        from postprocessing import get_voxcpm2_model
+        tts_model, _sr = get_voxcpm2_model()
+        with _LOCK:
+            _INSTANCES["tts"] = tts_model
+        _set("tts", "check_circle", "ready", "Ready")
+    except Exception as exc:
+        _set("tts", "error", "error", str(exc)[:120])
 
     # ── Tiny Aya (translation) ───────────────────────────────────────────────
     from postprocessing import TINYAYA_GGUF_REPO, TINYAYA_GGUF_FILE
