@@ -49,8 +49,9 @@ def build_app(
 ) -> gr.Blocks:
 
     S = Strings(language)
+    _lang = [language]  # mutable so save_language can hot-swap at runtime
 
-    # ── API functions (closures so they can access S, language, prefs_path) ──
+    # ── API functions (closures so they can access S, _lang, prefs_path) ──
 
     def poll_splash() -> dict:
         """Return model loading state for the splash screen."""
@@ -182,7 +183,7 @@ def build_app(
                     on_event=_on_new_events,
                     preloaded_tracker=_mreg.get("yolo"),
                     preloaded_vlm=_mreg.get("vlm"),
-                    locale=language,
+                    locale=_lang[0],
                 )
                 _q.put(("done", result))
             except Exception as exc:
@@ -275,7 +276,7 @@ def build_app(
                 yield {**_emit(S.t("status.running_llm")),
                        "zone_counts": zone_counts, "output_dir": output_dir}
 
-        llm_display, llm_stats = localize_llm_result(llm, language)
+        llm_display, llm_stats = localize_llm_result(llm, _lang[0])
         combined_stats = translation_stats
         if llm_stats:
             combined_stats = combined_stats.merge(llm_stats)
@@ -329,7 +330,7 @@ def build_app(
                 return _append(history, message, reply), "", ""
             result = _r.answer_query(events, message)
             reply = result["answer"]
-            reply, stats = localize_text(reply, language)
+            reply, stats = localize_text(reply, _lang[0])
             if result.get("clips"):
                 reply += "\n\n" + S.t("status.related_clips", clips=", ".join(result["clips"]))
             timing = format_translation_time(S, stats)
@@ -350,7 +351,7 @@ def build_app(
             text = llm.get("summary", "").strip()
             if not text:
                 return None, "No summary to speak."
-            text, stats = localize_text(text, language)
+            text, stats = localize_text(text, _lang[0])
             from postprocessing.translate_tts import tts
             chunks = list(tts(text, target_lang=S.tts_lang))
             if not chunks:
@@ -372,7 +373,7 @@ def build_app(
         return path
 
     def refresh_library() -> list:
-        return storage.choices(language)
+        return storage.choices(_lang[0])
 
     def preview_clip(choice: str):
         path = storage.path_from_choice(choice) if choice else None
@@ -386,11 +387,11 @@ def build_app(
 
     def delete_clip(choice: str) -> tuple:
         if not choice:
-            return S.t("status.nothing_selected"), storage.choices(language)
+            return S.t("status.nothing_selected"), storage.choices(_lang[0])
         filename = choice.split(" — ", 1)[1].split("  ")[0].strip() if " — " in choice else ""
         ok = storage.delete(filename) if filename else False
         msg = S.t("status.deleted", filename=filename) if ok else S.t("status.delete_failed")
-        return msg, storage.choices(language)
+        return msg, storage.choices(_lang[0])
 
     def load_event_clip(clip_index: int, output_dir: str):
         import cv2 as _cv2, tempfile as _tf, json as _json
@@ -448,6 +449,7 @@ def build_app(
         return str(ann) if ann else None
 
     def save_language(lang_label: str) -> str:
+        nonlocal S
         if prefs_path is None:
             return S.t("status.no_prefs_path")
         lang_key = next((k for k, v in LANGUAGE_LABELS.items() if v == lang_label), None)
@@ -460,6 +462,8 @@ def build_app(
             except Exception:
                 pass
             prefs_path.write_text(json.dumps({**existing, "language": lang_key}, indent=2))
+            _lang[0] = lang_key
+            S = Strings(lang_key)
             return S.t("status.language_saved", language=lang_label)
         except Exception as exc:
             return S.t("status.prefs_error", error=exc)
