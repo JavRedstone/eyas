@@ -18,6 +18,6 @@ def get_video_info(cap: cv2.VideoCapture) -> Tuple[float, int, int]:
 def create_video_writer(
     path: str, fps: float, width: int, height: int
 ) -> cv2.VideoWriter:
-    """Create an mp4v VideoWriter for the given path and dimensions."""
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    """Create an H.264 VideoWriter for the given path and dimensions."""
+    fourcc = cv2.VideoWriter_fourcc(*"avc1")
     return cv2.VideoWriter(path, fourcc, fps, (width, height))

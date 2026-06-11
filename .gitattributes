@@ -20,5 +20,7 @@
 # Project-specific paths
 eyas/models/** filter=lfs diff=lfs merge=lfs -text
 eyas/data/** filter=lfs diff=lfs merge=lfs -text
+# Override: README files inside model dirs should not go into LFS
+eyas/models/README.md -filter -diff -merge text
 # Ensure large generated model files are treated as binary
 *.model filter=lfs diff=lfs merge=lfs -text
