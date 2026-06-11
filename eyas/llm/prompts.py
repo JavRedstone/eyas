@@ -23,9 +23,13 @@ When an 'Identified people' section is present, refer to each person by their ap
 Produce a security summary that covers:
   1. How many distinct people were tracked
   2. For each person who had a pickup event: appearance, number of items taken, zones visited
-  3. Any suspicious patterns (repeated pickups, unusual zones, concealment)
+  3. Any suspicious or notable patterns, including pickup/handling of items, repeated pickups,
+     unusual zones, concealment, and people lingering or standing still without obvious purpose
   4. Overall risk level: "none" (no pickups), "low" (1 pickup, normal behaviour),
      "medium" (multiple pickups or unusual movement), "high" (concealment or many items)
+
+If someone picks up an item, mention that explicitly in the summary and include it in flags
+even if the overall risk stays low.
 
 --- EXAMPLE ---
 Event log (period: 14:00:00–14:30:00):

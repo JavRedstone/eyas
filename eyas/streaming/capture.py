@@ -102,7 +102,7 @@ class StreamCapture:
         ts   = datetime.now().strftime("%Y%m%d_%H%M%S")
         path = str(_CLIPS_DIR / f"stream_{ts}.mp4")
         w, h = self.frame_size()
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        fourcc = cv2.VideoWriter_fourcc(*"avc1")
         with self._lock:
             self._writer   = cv2.VideoWriter(path, fourcc, self.capture_fps(), (w, h))
             self._rec_path = path
