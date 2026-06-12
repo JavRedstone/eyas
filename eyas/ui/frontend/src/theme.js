@@ -3,18 +3,35 @@ import { createTheme } from '@mui/material/styles'
 export function createEyasTheme(mode) {
   const dark = mode === 'dark'
 
-  // Yellow primary, blue secondary — Peregrine/Eyas palette
-  const yellow = { main: dark ? '#f7d046' : '#d4a017', dark: dark ? '#c9a52e' : '#a07010', light: dark ? '#fae07a' : '#e8b830', contrast: dark ? '#0b1929' : '#0b1929' }
-  const blue   = { main: dark ? '#4b9eff' : '#1565C0', dark: dark ? '#2d7dd2' : '#003c8f', contrast: '#ffffff' }
-  const bg     = { default: dark ? '#0b1929' : '#eef2f7', paper: dark ? '#0f2338' : '#ffffff' }
-  const text   = { primary: dark ? '#e5e1d8' : '#0d1b2a', secondary: dark ? '#7a8ea8' : '#4a6080' }
-  const div    = dark ? '#1a3352' : '#c8d8ea'
+  // Dark:  yellow primary on navy  — Peregrine plumage
+  // Light: blue primary on warm yellow — inverted palette
+  const primary = dark
+    ? { main: '#f7d046', dark: '#c9a52e', light: '#fae07a', contrast: '#0b1929' }
+    : { main: '#1565C0', dark: '#003c8f', light: '#4d8cda', contrast: '#ffffff' }
+
+  const secondary = dark
+    ? { main: '#4b9eff', dark: '#2d7dd2', contrast: '#ffffff' }
+    : { main: '#d4a017', dark: '#a07010', contrast: '#0b1929' }
+
+  const bg = dark
+    ? { default: '#0b1929', paper: '#0f2338' }
+    : { default: '#fef9e7', paper: '#ffffff' }   // warm yellow ground, white cards
+
+  const text = dark
+    ? { primary: '#e5e1d8', secondary: '#7a8ea8' }
+    : { primary: '#0d1b2a', secondary: '#4a5e78' }
+
+  const div = dark ? '#1a3352' : '#dfc85e'   // navy rule / golden rule
+
+  // AppBar tint: translucent navy in dark, translucent warm-yellow in light
+  const appBarBg = dark ? 'rgba(15,35,56,0.90)' : 'rgba(254,248,220,0.92)'
+  const appBarColor = dark ? '#e5e1d8' : '#0d1b2a'
 
   return createTheme({
     palette: {
       mode,
-      primary:    { main: yellow.main, dark: yellow.dark, light: yellow.light, contrastText: yellow.contrast },
-      secondary:  { main: blue.main, dark: blue.dark, contrastText: blue.contrast },
+      primary:    { main: primary.main, dark: primary.dark, light: primary.light, contrastText: primary.contrast },
+      secondary:  { main: secondary.main, dark: secondary.dark, contrastText: secondary.contrast },
       background: bg,
       text,
       success: { main: '#34D399' },
@@ -97,13 +114,11 @@ export function createEyasTheme(mode) {
         styleOverrides: {
           root: ({ theme }) => ({
             backgroundImage: 'none',
-            backgroundColor: dark
-              ? 'rgba(15,35,56,0.88)'
-              : 'rgba(255,255,255,0.88)',
+            backgroundColor: appBarBg,
             backdropFilter: 'blur(8px)',
             borderBottom: `1px solid ${theme.palette.divider}`,
             boxShadow: 'none',
-            color: theme.palette.text.primary,
+            color: appBarColor,
           }),
         },
       },
@@ -116,7 +131,7 @@ export function createEyasTheme(mode) {
         styleOverrides: {
           root: ({ theme }) => ({
             '& .MuiTableCell-root': {
-              backgroundColor: dark ? 'rgba(11,25,41,0.6)' : theme.palette.background.default,
+              backgroundColor: dark ? 'rgba(11,25,41,0.6)' : 'rgba(254,240,160,0.35)',
               fontWeight: 600,
               color: theme.palette.text.secondary,
             },
@@ -125,10 +140,10 @@ export function createEyasTheme(mode) {
       },
       MuiIconButton: {
         styleOverrides: {
-          root: ({ theme }) => ({
+          root: {
             borderRadius: 8,
             '&:hover': { backgroundColor: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)' },
-          }),
+          },
         },
       },
       MuiDivider: {
