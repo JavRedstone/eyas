@@ -5,21 +5,15 @@ import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
 import LinearProgress from '@mui/material/LinearProgress'
+import { t } from '../../i18n.js'
 
-const PHASES = [
-  { until: 4,        msg: 'Summarizing events…'  },
-  { until: 12,       msg: 'Synthesizing speech…' },
-  { until: Infinity, msg: 'Finishing up…'         },
-]
-
-function phaseMsg(elapsed) {
-  for (const p of PHASES) {
-    if (elapsed < p.until) return p.msg
-  }
-  return 'Finishing up…'
+function phaseMsg(elapsed, language) {
+  if (elapsed < 4)  return t(language, 'audio.summarizing')
+  if (elapsed < 12) return t(language, 'audio.synthesizing')
+  return t(language, 'audio.finishing')
 }
 
-export default function AudioReport({ client, summary }) {
+export default function AudioReport({ client, summary, language = 'English' }) {
   const [audioSrc, setAudioSrc]   = useState(null)
   const [loading, setLoading]     = useState(false)
   const [statusMsg, setStatusMsg] = useState('')
@@ -48,9 +42,9 @@ export default function AudioReport({ client, summary }) {
       if (fd) {
         const src = fd.url ?? (fd.path ? `/gradio_api/file=${fd.path}` : null)
         if (src) { setAudioSrc(src); setStatusMsg(msg || '') }
-        else setStatusMsg('No audio returned.')
+        else setStatusMsg(t(language, 'audio.no_audio'))
       } else {
-        setStatusMsg(msg || 'No audio returned.')
+        setStatusMsg(msg || t(language, 'audio.no_audio'))
       }
     } catch (e) { setStatusMsg(`Error: ${e.message}`) }
     finally { setLoading(false) }
@@ -62,9 +56,9 @@ export default function AudioReport({ client, summary }) {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-      <Typography variant="overline" sx={{ display: 'block' }}>Spoken Security Report</Typography>
+      <Typography variant="overline" sx={{ display: 'block' }}>{t(language, 'audio.title')}</Typography>
       <Typography variant="caption" color="text.secondary">
-        Generates a spoken audio summary of the event log using the TTS model.
+        {t(language, 'audio.help')}
       </Typography>
 
       {/* Waveform visualization */}
@@ -90,7 +84,7 @@ export default function AudioReport({ client, summary }) {
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Loader2 size={12} style={{ flexShrink: 0, animation: 'spin 1s linear infinite' }} />
-            <Typography variant="caption" color="text.secondary">{phaseMsg(elapsed)}</Typography>
+            <Typography variant="caption" color="text.secondary">{phaseMsg(elapsed, language)}</Typography>
             <Typography variant="caption" sx={{ color: 'text.secondary', opacity: 0.6, fontFamily: 'monospace' }}>{elapsed}s</Typography>
           </Box>
           <Box sx={{ position: 'relative', overflow: 'hidden', height: 4, borderRadius: 2, bgcolor: 'rgba(20,45,79,0.5)', border: '1px solid', borderColor: 'divider' }}>
@@ -118,7 +112,7 @@ export default function AudioReport({ client, summary }) {
           '&:hover': { borderColor: 'rgba(247,208,70,0.4)', bgcolor: 'rgba(247,208,70,0.04)' },
           '&.Mui-disabled': { opacity: 0.4 },
         }}>
-        {loading ? 'Generating…' : 'Generate Audio Report'}
+        {loading ? t(language, 'audio.generating') : t(language, 'audio.generate')}
       </Button>
     </Box>
   )

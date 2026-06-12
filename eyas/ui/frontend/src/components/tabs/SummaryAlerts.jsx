@@ -3,22 +3,27 @@ import Box from '@mui/material/Box'
 import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
 import Chip from '@mui/material/Chip'
+import { t } from '../../i18n.js'
 
-const RISK_CONFIG = {
-  high:   { color: '#F87171', label: 'High Risk',   pct: 90 },
-  medium: { color: '#FBBF24', label: 'Medium Risk',  pct: 55 },
-  low:    { color: '#34D399', label: 'Low Risk',     pct: 25 },
-  none:   { color: '#7a8ea8', label: 'No Risk',      pct: 5  },
+function riskConfig(risk, language) {
+  const configs = {
+    high:   { color: '#F87171', pct: 90 },
+    medium: { color: '#FBBF24', pct: 55 },
+    low:    { color: '#34D399', pct: 25 },
+    none:   { color: '#7a8ea8', pct: 5  },
+  }
+  const c = configs[risk] || configs.none
+  return { ...c, label: t(language, `risk.${risk === 'none' ? 'none' : risk}`) }
 }
 
-export default function SummaryAlerts({ summary }) {
+export default function SummaryAlerts({ summary, language = 'English' }) {
   if (!summary) {
-    return <Typography variant="caption" color="text.secondary">No analysis yet. Run the pipeline first.</Typography>
+    return <Typography variant="caption" color="text.secondary">{t(language, 'summary.empty')}</Typography>
   }
 
   const risk   = (summary.risk_level ?? 'none').toLowerCase()
-  const rc     = RISK_CONFIG[risk] || RISK_CONFIG.none
-  const flags  = normalizeFlags(summary.flags ?? [])
+  const rc     = riskConfig(risk, language)
+  const flags  = normalizeFlags(summary.flags ?? [], language)
   const suspiciousClips = Array.isArray(summary.suspicious_clips) ? summary.suspicious_clips : []
   const text   = summary.summary ?? summary.overnight_summary ?? ''
   const transT = summary.translation_time_ms
@@ -30,8 +35,8 @@ export default function SummaryAlerts({ summary }) {
 
   const flagTypes = {}
   flags.forEach(f => {
-    const t = inferFlagType(f)
-    flagTypes[t] = (flagTypes[t] || 0) + 1
+    const ft = f.flagType
+    flagTypes[ft] = (flagTypes[ft] || 0) + 1
   })
   const pieData = Object.entries(flagTypes).map(([name, value]) => ({ name, value }))
   const PIE_COLORS = ['#f7d046', '#F87171', '#FBBF24', '#60A5FA', '#34D399']
@@ -41,7 +46,7 @@ export default function SummaryAlerts({ summary }) {
       {/* Risk gauge + flag types */}
       <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2.5 }}>
         <Box>
-          <Typography variant="overline" sx={{ display: 'block', mb: 1.5 }}>Risk Level</Typography>
+          <Typography variant="overline" sx={{ display: 'block', mb: 1.5 }}>{t(language, 'summary.risk_level')}</Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <ResponsiveContainer width={100} height={100}>
               <RadialBarChart cx="50%" cy="50%" innerRadius="65%" outerRadius="100%"
@@ -52,14 +57,14 @@ export default function SummaryAlerts({ summary }) {
             <Box>
               <Typography variant="h5" fontWeight={700} style={{ color: rc.color }}>{rc.pct}%</Typography>
               <Typography variant="body2" fontWeight={500} style={{ color: rc.color }}>{rc.label}</Typography>
-              {transT && <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>Translation: {transT}ms</Typography>}
+              {transT && <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>{t(language, 'summary.translation', { ms: transT })}</Typography>}
             </Box>
           </Box>
         </Box>
 
         {pieData.length > 0 && (
           <Box>
-            <Typography variant="overline" sx={{ display: 'block', mb: 1.5 }}>Flag Types</Typography>
+            <Typography variant="overline" sx={{ display: 'block', mb: 1.5 }}>{t(language, 'summary.flag_types')}</Typography>
             <ResponsiveContainer width="100%" height={100}>
               <PieChart>
                 <Pie data={pieData} cx="50%" cy="50%" innerRadius={28} outerRadius={45}
@@ -83,10 +88,10 @@ export default function SummaryAlerts({ summary }) {
 
       {/* Summary text */}
       <Box>
-        <Typography variant="overline" sx={{ display: 'block', mb: 1 }}>Overnight Summary</Typography>
+        <Typography variant="overline" sx={{ display: 'block', mb: 1 }}>{t(language, 'summary.overnight')}</Typography>
         <Paper sx={{ p: 1.5, bgcolor: 'rgba(20,45,79,0.5)' }}>
           <Typography variant="body2" sx={{ lineHeight: 1.7, color: 'text.primary' }}>
-            {text || <span style={{ color: '#7a8ea8' }}>No summary available.</span>}
+            {text || <span style={{ color: '#7a8ea8' }}>{t(language, 'summary.no_summary')}</span>}
           </Typography>
         </Paper>
       </Box>
@@ -94,7 +99,7 @@ export default function SummaryAlerts({ summary }) {
       {/* Flagged items */}
       {flags.length > 0 && (
         <Box>
-          <Typography variant="overline" sx={{ display: 'block', mb: 1 }}>Potential Concerns ({flags.length})</Typography>
+          <Typography variant="overline" sx={{ display: 'block', mb: 1 }}>{t(language, 'summary.concerns', { count: flags.length })}</Typography>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             {flags.map((f, i) => (
               <Box key={i} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, px: 1.5, py: 1, borderRadius: 1.5, bgcolor: 'rgba(248,113,113,0.05)', border: '1px solid rgba(248,113,113,0.2)' }}>
@@ -112,7 +117,7 @@ export default function SummaryAlerts({ summary }) {
       {/* Suspicious clips */}
       {suspiciousClips.length > 0 && (
         <Box>
-          <Typography variant="overline" sx={{ display: 'block', mb: 1 }}>Suspicious Clips ({suspiciousClips.length})</Typography>
+          <Typography variant="overline" sx={{ display: 'block', mb: 1 }}>{t(language, 'summary.suspicious', { count: suspiciousClips.length })}</Typography>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
             {suspiciousClips.map((clip, i) => (
               <Chip
@@ -130,29 +135,24 @@ export default function SummaryAlerts({ summary }) {
   )
 }
 
-function normalizeFlags(flags) {
+function inferFlagKey(value) {
+  const text = String(value).toLowerCase()
+  if (text.includes('pickup') || text.includes('taken') || text.includes('take') || text.includes('conceal') || text.includes('held')) return 'flag.theft'
+  if (text.includes('door') || text.includes('entrance') || text.includes('exit')) return 'flag.entry_exit'
+  if (text.includes('stationary') || text.includes('loiter') || text.includes('idle') || text.includes('wait')) return 'flag.loitering'
+  if (text.includes('interaction') || text.includes('interact')) return 'flag.interaction'
+  return 'flag.other'
+}
+
+function normalizeFlags(flags, language) {
   return flags.map(flag => {
     if (typeof flag === 'string') {
-      return { label: inferFlagLabel(flag), detail: flag, text: flag }
+      const key = inferFlagKey(flag)
+      return { label: t(language, key), detail: flag, text: flag, flagType: t('English', key) }
     }
     const detail = flag.description ?? flag.detail ?? flag.text ?? JSON.stringify(flag)
-    return {
-      label: flag.type ? inferFlagLabel(flag.type) : inferFlagLabel(detail),
-      detail,
-      text: `${flag.type ?? ''} ${detail}`.trim(),
-    }
+    const rawText = `${flag.type ?? ''} ${detail}`.trim()
+    const key = flag.type ? inferFlagKey(flag.type) : inferFlagKey(detail)
+    return { label: t(language, key), detail, text: rawText, flagType: t('English', key) }
   })
-}
-
-function inferFlagLabel(value) {
-  const text = String(value).toLowerCase()
-  if (text.includes('pickup') || text.includes('taken') || text.includes('take') || text.includes('conceal') || text.includes('held')) return 'Theft-related'
-  if (text.includes('door') || text.includes('entrance') || text.includes('exit')) return 'Entry / Exit'
-  if (text.includes('stationary') || text.includes('loiter') || text.includes('idle') || text.includes('wait')) return 'Loitering / Stationary'
-  if (text.includes('interaction') || text.includes('interact')) return 'Interaction'
-  return 'Other'
-}
-
-function inferFlagType(flag) {
-  return inferFlagLabel(flag.text || flag.label || flag.detail).toLowerCase().replace(/\s+/g, '_')
 }

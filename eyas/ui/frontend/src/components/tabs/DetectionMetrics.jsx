@@ -5,6 +5,7 @@ import {
 import Box from '@mui/material/Box'
 import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
+import { t } from '../../i18n.js'
 
 const ZONE_COLORS = {
   entrance:    '#f7d046',
@@ -16,7 +17,7 @@ const ZONE_COLORS = {
 
 function zoneColor(z) { return ZONE_COLORS[z?.toLowerCase()] ?? '#7a8ea8' }
 
-export default function DetectionMetrics({ summary, events }) {
+export default function DetectionMetrics({ summary, events, language = 'English' }) {
   const zoneCounts = summary?.zone_counts ?? {}
   const zoneData = Object.entries(zoneCounts).map(([zone, count]) => ({
     zone: zone.replace(/_/g, ' '),
@@ -27,36 +28,29 @@ export default function DetectionMetrics({ summary, events }) {
   const bucketSize = 10
   const buckets = {}
   events.forEach(ev => {
-    const t = Math.floor(Number(ev.time ?? 0) / bucketSize) * bucketSize
-    buckets[t] = (buckets[t] || 0) + 1
+    const t0 = Math.floor(Number(ev.time ?? 0) / bucketSize) * bucketSize
+    buckets[t0] = (buckets[t0] || 0) + 1
   })
   const timelineData = Object.entries(buckets)
     .sort((a, b) => +a[0] - +b[0])
-    .map(([t, count]) => ({ t: `${t}s`, count }))
+    .map(([t0, count]) => ({ t: `${t0}s`, count }))
 
   const totalDetections = Object.values(zoneCounts).reduce((s, v) => s + Number(v), 0)
-
-  const STAT_COLORS = {
-    'Total Detections': '#f7d046',
-    'Events':           '#60A5FA',
-    'Zones Active':     '#34D399',
-    'Avg / Zone':       '#f7d046',
-  }
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       {/* Stat cards */}
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1.5 }}>
-        <StatCard label="Total Detections" value={totalDetections} color={STAT_COLORS['Total Detections']} />
-        <StatCard label="Events" value={events.length} color={STAT_COLORS['Events']} />
-        <StatCard label="Zones Active" value={zoneData.filter(z => z.count > 0).length} color={STAT_COLORS['Zones Active']} />
-        <StatCard label="Avg / Zone" value={zoneData.length ? (totalDetections / zoneData.length).toFixed(1) : '—'} color={STAT_COLORS['Avg / Zone']} />
+        <StatCard label={t(language, 'metrics.total')}  value={totalDetections}                                        color="#f7d046" />
+        <StatCard label={t(language, 'metrics.events')} value={events.length}                                          color="#60A5FA" />
+        <StatCard label={t(language, 'metrics.zones')}  value={zoneData.filter(z => z.count > 0).length}               color="#34D399" />
+        <StatCard label={t(language, 'metrics.avg')}    value={zoneData.length ? (totalDetections / zoneData.length).toFixed(1) : '—'} color="#f7d046" />
       </Box>
 
       {/* Zone bar chart */}
       {zoneData.length > 0 ? (
         <Box>
-          <Typography variant="overline" sx={{ display: 'block', mb: 1.5 }}>Zone Counts</Typography>
+          <Typography variant="overline" sx={{ display: 'block', mb: 1.5 }}>{t(language, 'metrics.zone_chart')}</Typography>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={zoneData} margin={{ top: 4, right: 16, bottom: 4, left: 0 }}>
               <CartesianGrid stroke="#2e4060" strokeDasharray="3 3" vertical={false} />
@@ -69,7 +63,7 @@ export default function DetectionMetrics({ summary, events }) {
                   return (
                     <div style={{ background: '#1f2833', border: '1px solid #2e4060', borderRadius: 8, padding: '8px 12px', fontSize: '0.75rem', color: '#e5e1d8' }}>
                       <div style={{ fontWeight: 500, textTransform: 'capitalize' }}>{label}</div>
-                      <div style={{ color: '#7a8ea8' }}>{payload[0].value} detections</div>
+                      <div style={{ color: '#7a8ea8' }}>{payload[0].value} {t(language, 'metrics.detections')}</div>
                     </div>
                   )
                 }} />
@@ -82,13 +76,13 @@ export default function DetectionMetrics({ summary, events }) {
           </ResponsiveContainer>
         </Box>
       ) : (
-        <Typography variant="caption" color="text.secondary">No zone data yet. Run the pipeline first.</Typography>
+        <Typography variant="caption" color="text.secondary">{t(language, 'metrics.empty')}</Typography>
       )}
 
       {/* Event frequency timeline */}
       {timelineData.length > 0 && (
         <Box>
-          <Typography variant="overline" sx={{ display: 'block', mb: 1.5 }}>Event Frequency Over Time</Typography>
+          <Typography variant="overline" sx={{ display: 'block', mb: 1.5 }}>{t(language, 'metrics.frequency')}</Typography>
           <ResponsiveContainer width="100%" height={140}>
             <LineChart data={timelineData} margin={{ top: 4, right: 16, bottom: 4, left: 0 }}>
               <CartesianGrid stroke="#2e4060" strokeDasharray="3 3" />
@@ -98,7 +92,7 @@ export default function DetectionMetrics({ summary, events }) {
                 if (!payload?.length) return null
                 return (
                   <div style={{ background: '#1f2833', border: '1px solid #2e4060', borderRadius: 8, padding: '8px 12px', fontSize: '0.75rem', color: '#e5e1d8' }}>
-                    {payload[0].payload.t}: {payload[0].value} events
+                    {payload[0].payload.t}: {payload[0].value} {t(language, 'metrics.events_tip')}
                   </div>
                 )
               }} />

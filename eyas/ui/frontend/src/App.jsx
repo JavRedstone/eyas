@@ -7,6 +7,7 @@ import Box from '@mui/material/Box'
 import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
 import { createEyasTheme } from './theme.js'
+import { t } from './i18n.js'
 import Splash from './components/Splash.jsx'
 import Header from './components/Header.jsx'
 import Sidebar from './components/Sidebar.jsx'
@@ -20,15 +21,17 @@ import AudioReport from './components/tabs/AudioReport.jsx'
 import ClipLibrary from './components/tabs/ClipLibrary.jsx'
 import SettingsTab from './components/tabs/SettingsTab.jsx'
 
-const TABS = [
-  { id: 'timeline',  label: 'Event Timeline',   icon: 'Activity'      },
-  { id: 'alerts',    label: 'Summary & Alerts',  icon: 'AlertTriangle' },
-  { id: 'qa',        label: 'Ask Footage',        icon: 'MessageSquare' },
-  { id: 'metrics',   label: 'Detection Metrics',  icon: 'BarChart2'     },
-  { id: 'audio',     label: 'Audio Report',       icon: 'Volume2'       },
-  { id: 'library',   label: 'Clip Library',       icon: 'Film'          },
-  { id: 'settings',  label: 'Settings',           icon: 'Settings'      },
-]
+function makeTabs(language) {
+  return [
+    { id: 'timeline',  label: t(language, 'tabs.timeline'), icon: 'Activity'      },
+    { id: 'alerts',    label: t(language, 'tabs.alerts'),   icon: 'AlertTriangle' },
+    { id: 'qa',        label: t(language, 'tabs.qa'),       icon: 'MessageSquare' },
+    { id: 'metrics',   label: t(language, 'tabs.metrics'),  icon: 'BarChart2'     },
+    { id: 'audio',     label: t(language, 'tabs.audio'),    icon: 'Volume2'       },
+    { id: 'library',   label: t(language, 'tabs.library'),  icon: 'Film'          },
+    { id: 'settings',  label: t(language, 'tabs.settings'), icon: 'Settings'      },
+  ]
+}
 
 export default function App() {
   const [colorMode, setColorMode] = useState(() => {
@@ -61,6 +64,7 @@ export default function App() {
   const [summary, setSummary]               = useState(null)
   const [chatHistory, setChatHistory]       = useState([])
   const [language, setLanguage]             = useState('English')
+  const tabs = useMemo(() => makeTabs(language), [language])
   const [samples, setSamples]               = useState([])
   const [videoPreviewSrc, setVideoPreviewSrc] = useState('')
   const [clipSrc, setClipSrc]               = useState(null)
@@ -164,36 +168,36 @@ export default function App() {
     setVideoFile(file)
     setVideoRef(null)
     setPreviewSource(URL.createObjectURL(file))
-    setUploadStatus(`Ready: ${file.name}`)
-  }, [])
+    setUploadStatus(t(language, 'app.ready', { name: file.name }))
+  }, [language])
 
   const handleLoadSample = useCallback(async (sampleName) => {
     if (!client || !sampleName) return
     try {
-      setUploadStatus('Loading sample…')
+      setUploadStatus(t(language, 'app.loading_sample'))
       const r = await client.predict('/load_sample', { name: sampleName })
       setVideoRef(r.data[0])
       setVideoFile(null)
       setPreviewSource(getPreviewSrc(r.data[0]))
-      setUploadStatus(`Sample: ${sampleName}`)
+      setUploadStatus(t(language, 'app.sample', { name: sampleName }))
     } catch (e) { setUploadStatus(`Error: ${e.message}`) }
-  }, [client])
+  }, [client, language])
 
   const handleAnalyze = useCallback(async () => {
     if (!client) return
     let gradioFile = getVideoPath(videoRef)
     if (!gradioFile && videoFile) {
-      setStatusMsg('Uploading video…')
+      setStatusMsg(t(language, 'app.uploading'))
       try {
         const up = await client.upload(await prepare_files([videoFile]))
         gradioFile = getVideoPath(up[0])
         setVideoRef(up[0])
         setPreviewSource(getPreviewSrc(up[0]))
-      } catch (e) { setStatusMsg(`Upload failed: ${e.message}`); return }
+      } catch (e) { setStatusMsg(t(language, 'app.upload_failed', { msg: e.message })); return }
     }
-    if (!gradioFile) { setStatusMsg('No video selected.'); return }
+    if (!gradioFile) { setStatusMsg(t(language, 'app.no_video_selected')); return }
     setAnalyzing(true)
-    setStatusMsg('Starting pipeline…')
+    setStatusMsg(t(language, 'app.starting_pipeline'))
     setPipelineSteps([])
     setPipelineProgress(0)
     setAnnotatedVideo(null)
@@ -215,7 +219,7 @@ export default function App() {
       }
     } catch (e) { setStatusMsg(`Error: ${e.message}`) }
     finally      { setAnalyzing(false) }
-  }, [client, videoFile, videoRef])
+  }, [client, videoFile, videoRef, language])
 
   const handleSwitchLanguage = useCallback(async (lang) => {
     if (!client || lang === language) return
@@ -260,17 +264,17 @@ export default function App() {
               sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, minHeight: 0, minWidth: 0 }}>
               <Sidebar
                 samples={samples} videoFile={videoFile} videoRef={videoRef}
-                uploadStatus={uploadStatus}
+                uploadStatus={uploadStatus} language={language}
                 onFileSelect={handleFileSelect} onLoadSample={handleLoadSample}
               />
               <Paper sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-                <PanelHeader title={clipSrc ? 'Event Clip' : annotatedVideo ? 'Annotated Video' : 'Preview'}>
+                <PanelHeader title={clipSrc ? t(language, 'panel.event_clip') : annotatedVideo ? t(language, 'panel.annotated') : t(language, 'panel.preview')}>
                   {clipSrc && (
                     <Typography
                       component="button"
                       onClick={() => setClipSrc(null)}
                       sx={{ ml: 'auto', fontSize: '0.65rem', color: 'text.secondary', cursor: 'pointer', background: 'none', border: 'none', '&:hover': { color: 'text.primary' } }}>
-                      ✕ close clip
+                      {t(language, 'app.close_clip')}
                     </Typography>
                   )}
                 </PanelHeader>
@@ -286,7 +290,7 @@ export default function App() {
                   ) : (
                     <Box sx={{ textAlign: 'center', p: 4 }}>
                       <Typography sx={{ fontSize: '2rem', opacity: 0.2, mb: 1 }}>▶</Typography>
-                      <Typography variant="caption" color="text.secondary">Load a sample or upload a video</Typography>
+                      <Typography variant="caption" color="text.secondary">{t(language, 'app.no_video')}</Typography>
                     </Box>
                   )}
                 </Box>
@@ -305,10 +309,10 @@ export default function App() {
               <AnalysisPanel
                 analyzing={analyzing} statusMsg={statusMsg}
                 pipelineSteps={pipelineSteps} pipelineProgress={pipelineProgress}
-                onAnalyze={handleAnalyze}
+                onAnalyze={handleAnalyze} language={language}
               />
               <Paper sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-                <TabNav tabs={TABS} activeTab={activeTab} setActiveTab={setActiveTab} />
+                <TabNav tabs={tabs} activeTab={activeTab} setActiveTab={setActiveTab} />
                 <Box sx={{ flex: 1, overflowY: 'auto', p: 2.5, minHeight: 0 }}>
                   <AnimatePresence mode="wait">
                     <Box key={activeTab} component={motion.div}
