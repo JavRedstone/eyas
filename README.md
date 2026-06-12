@@ -5,6 +5,7 @@ colorFrom: blue
 colorTo: yellow
 sdk: gradio
 app_file: eyas/app.py
+python_version: 3.12
 app_port: 7860
 pinned: false
 ---
