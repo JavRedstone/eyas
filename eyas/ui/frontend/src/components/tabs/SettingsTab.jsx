@@ -17,7 +17,7 @@ export default function SettingsTab({ client, language, setLanguage }) {
     try {
       await client.predict('/save_language', { language: local })
       setLanguage(local)
-      setStatus('Saved. Language switched.')
+      setStatus('Language switched.')
     } catch (e) { setStatus(`Error: ${e.message}`) }
   }
 
@@ -26,7 +26,7 @@ export default function SettingsTab({ client, language, setLanguage }) {
       <Box>
         <Typography variant="overline" sx={{ display: 'block', mb: 0.5 }}>Language</Typography>
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
-          Changes apply immediately for new pipeline runs.
+          Applies to pipeline output labels, summaries, and audio reports.
         </Typography>
         <ToggleButtonGroup
           value={local}
@@ -38,16 +38,7 @@ export default function SettingsTab({ client, language, setLanguage }) {
               key={lang} value={lang}
               sx={{
                 justifyContent: 'flex-start', gap: 1.5, px: 2, py: 1.25,
-                border: '1px solid !important',
-                borderColor: local === lang ? 'primary.main !important' : 'divider !important',
                 borderRadius: '8px !important',
-                bgcolor: local === lang ? 'rgba(247,208,70,0.08)' : 'transparent',
-                color: local === lang ? 'text.primary' : 'text.secondary',
-                '&.Mui-selected': {
-                  bgcolor: 'rgba(247,208,70,0.08)',
-                  color: 'text.primary',
-                  '&:hover': { bgcolor: 'rgba(247,208,70,0.12)' },
-                },
               }}>
               <Globe size={14} />
               {lang}
@@ -59,7 +50,12 @@ export default function SettingsTab({ client, language, setLanguage }) {
         </ToggleButtonGroup>
       </Box>
 
-      <Button variant="contained" color="primary" onClick={save} startIcon={<Save size={14} />} sx={{ alignSelf: 'flex-start' }}>
+      <Button
+        variant="contained" color="primary"
+        onClick={save}
+        disabled={local === language}
+        startIcon={<Save size={14} />}
+        sx={{ alignSelf: 'flex-start' }}>
         Save Language
       </Button>
 
