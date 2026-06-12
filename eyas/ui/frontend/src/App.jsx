@@ -241,17 +241,17 @@ export default function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-    <AnimatePresence mode="wait">
-      {!splashDone ? (
-        <Splash key="splash" items={splashItems} pct={splashPct} />
-      ) : (
-        <Box key="app" component={motion.div}
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}
-          sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <Header language={language} colorMode={colorMode} onToggleColorMode={toggleColorMode} onSwitchLanguage={handleSwitchLanguage} />
+        <AnimatePresence mode="wait">
+          {!splashDone ? (
+            <Splash key="splash" items={splashItems} pct={splashPct} />
+          ) : (
+            <Box key="app" component={motion.div}
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}
+              sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
 
-          <Header language={language} colorMode={colorMode} onToggleColorMode={toggleColorMode} onSwitchLanguage={handleSwitchLanguage} />
-
-          {/* Resizable two-panel layout */}
+              {/* Resizable two-panel layout */}
           <Box ref={splitContainerRef}
             sx={{ display: 'flex', p: 2, flex: 1, minHeight: 0, overflow: 'hidden', gap: 0 }}>
 
@@ -327,10 +327,11 @@ export default function App() {
               </Paper>
             </Box>
 
-          </Box>
-        </Box>
-      )}
-    </AnimatePresence>
+              </Box>
+            </Box>
+          )}
+        </AnimatePresence>
+      </Box>
     </ThemeProvider>
   )
 }
