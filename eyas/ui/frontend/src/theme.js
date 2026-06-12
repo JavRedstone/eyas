@@ -40,6 +40,7 @@ export function createEyasTheme(mode) {
       divider: div,
     },
     shape: { borderRadius: 12 },
+    zIndex: { appBar: 1400 },
     typography: {
       fontFamily: '"Inter", "ui-sans-serif", system-ui, sans-serif',
       button: { textTransform: 'none', fontWeight: 600 },
