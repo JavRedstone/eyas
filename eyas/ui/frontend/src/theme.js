@@ -3,9 +3,9 @@ import { createTheme } from '@mui/material/styles'
 export function createEyasTheme(mode) {
   const dark = mode === 'dark'
 
-  // Blue primary, yellow secondary — Peregrine/Eyas palette
-  const blue   = { main: dark ? '#4b9eff' : '#1565C0', dark: dark ? '#2d7dd2' : '#003c8f', light: dark ? '#82bfff' : '#5e92f3', contrast: '#ffffff' }
-  const yellow = { main: dark ? '#f7d046' : '#d4a017', dark: dark ? '#c9a52e' : '#a07010', contrast: dark ? '#0b1929' : '#ffffff' }
+  // Yellow primary, blue secondary — Peregrine/Eyas palette
+  const yellow = { main: dark ? '#f7d046' : '#d4a017', dark: dark ? '#c9a52e' : '#a07010', light: dark ? '#fae07a' : '#e8b830', contrast: dark ? '#0b1929' : '#0b1929' }
+  const blue   = { main: dark ? '#4b9eff' : '#1565C0', dark: dark ? '#2d7dd2' : '#003c8f', contrast: '#ffffff' }
   const bg     = { default: dark ? '#0b1929' : '#eef2f7', paper: dark ? '#0f2338' : '#ffffff' }
   const text   = { primary: dark ? '#e5e1d8' : '#0d1b2a', secondary: dark ? '#7a8ea8' : '#4a6080' }
   const div    = dark ? '#1a3352' : '#c8d8ea'
@@ -13,8 +13,8 @@ export function createEyasTheme(mode) {
   return createTheme({
     palette: {
       mode,
-      primary:    { main: blue.main, dark: blue.dark, light: blue.light, contrastText: blue.contrast },
-      secondary:  { main: yellow.main, dark: yellow.dark, contrastText: yellow.contrast },
+      primary:    { main: yellow.main, dark: yellow.dark, light: yellow.light, contrastText: yellow.contrast },
+      secondary:  { main: blue.main, dark: blue.dark, contrastText: blue.contrast },
       background: bg,
       text,
       success: { main: '#34D399' },
@@ -54,8 +54,9 @@ export function createEyasTheme(mode) {
         styleOverrides: {
           root: { borderRadius: 8 },
           containedPrimary: ({ theme }) => ({
+            color: theme.palette.primary.contrastText,
             '&:hover': { backgroundColor: theme.palette.primary.dark },
-            boxShadow: `0 4px 14px ${theme.palette.primary.main}33`,
+            boxShadow: `0 4px 14px ${theme.palette.primary.main}44`,
           }),
           containedSecondary: ({ theme }) => ({
             '&:hover': { backgroundColor: theme.palette.secondary.dark },

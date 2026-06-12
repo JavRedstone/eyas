@@ -217,6 +217,14 @@ export default function App() {
     finally      { setAnalyzing(false) }
   }, [client, videoFile, videoRef])
 
+  const handleSwitchLanguage = useCallback(async (lang) => {
+    if (!client || lang === language) return
+    try {
+      await client.predict('/save_language', { language: lang })
+      setLanguage(lang)
+    } catch {}
+  }, [client, language])
+
   const tabProps = { client, events, outputDir, summary, chatHistory, setChatHistory, language, setLanguage, onSeekVideo: seekAnnotatedVideo, setClipSrc }
 
   // Panel header utility
@@ -241,7 +249,7 @@ export default function App() {
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}
           sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
 
-          <Header language={language} colorMode={colorMode} onToggleColorMode={toggleColorMode} />
+          <Header language={language} colorMode={colorMode} onToggleColorMode={toggleColorMode} onSwitchLanguage={handleSwitchLanguage} />
 
           {/* Resizable two-panel layout */}
           <Box ref={splitContainerRef}
