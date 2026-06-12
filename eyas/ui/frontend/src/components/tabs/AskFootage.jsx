@@ -7,16 +7,18 @@ import Typography from '@mui/material/Typography'
 import TextField from '@mui/material/TextField'
 import IconButton from '@mui/material/IconButton'
 import Chip from '@mui/material/Chip'
+import { t } from '../../i18n.js'
 
-export default function AskFootage({ client, events, chatHistory, setChatHistory }) {
+export default function AskFootage({ client, events, chatHistory, setChatHistory, language = 'English' }) {
   const [query, setQuery]   = useState('')
   const [loading, setLoading] = useState(false)
   const bottomRef = useRef()
+
   const suggestions = [
-    'What activity was detected?',
-    'Were any suspicious events found?',
-    'Which zones had the most activity?',
-    'Summarize the key events',
+    t(language, 'ask.s1'),
+    t(language, 'ask.s2'),
+    t(language, 'ask.s3'),
+    t(language, 'ask.s4'),
   ]
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [chatHistory])
@@ -36,7 +38,7 @@ export default function AskFootage({ client, events, chatHistory, setChatHistory
       })
       const replyHistory = r.data[0] || []
       const answer = extractAssistantReply(replyHistory)
-      setChatHistory(h => [...h, { role: 'assistant', text: answer || 'No response.' }])
+      setChatHistory(h => [...h, { role: 'assistant', text: answer || t(language, 'ask.no_response') }])
     } catch (e) {
       setChatHistory(h => [...h, { role: 'assistant', text: `Error: ${e.message}` }])
     } finally { setLoading(false) }
@@ -46,9 +48,9 @@ export default function AskFootage({ client, events, chatHistory, setChatHistory
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: 420 }}>
-      <Typography variant="overline" sx={{ display: 'block', mb: 1.5 }}>Ask a Question About the Footage</Typography>
+      <Typography variant="overline" sx={{ display: 'block', mb: 1.5 }}>{t(language, 'ask.title')}</Typography>
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
-        Try: "Were there any unusual events?" · "Which zone had the most activity?"
+        {t(language, 'ask.hint')}
       </Typography>
 
       {/* Suggestion chips */}
@@ -76,7 +78,7 @@ export default function AskFootage({ client, events, chatHistory, setChatHistory
       <Box sx={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 1.5, mb: 1.5, minHeight: 0 }}>
         {chatHistory.length === 0 && (
           <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center', mt: 4, display: 'block' }}>
-            No conversation yet. Run a pipeline first, then ask questions.
+            {t(language, 'ask.empty')}
           </Typography>
         )}
         <AnimatePresence initial={false}>
@@ -120,7 +122,7 @@ export default function AskFootage({ client, events, chatHistory, setChatHistory
           value={query}
           onChange={e => setQuery(e.target.value)}
           onKeyDown={handleKey}
-          placeholder="Ask a question about the footage…"
+          placeholder={t(language, 'ask.placeholder')}
           variant="outlined"
           sx={{ '& input': { fontSize: '0.8rem' } }}
         />

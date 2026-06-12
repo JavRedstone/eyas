@@ -6,6 +6,7 @@ import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
 import IconButton from '@mui/material/IconButton'
 import MuiTooltip from '@mui/material/Tooltip'
+import { t } from '../../i18n.js'
 
 function resolveVideoSrc(value) {
   if (!value) return ''
@@ -25,7 +26,7 @@ function resolveVideoSrc(value) {
   return ''
 }
 
-export default function ClipLibrary({ client }) {
+export default function ClipLibrary({ client, language = 'English' }) {
   const [clips, setClips]       = useState([])
   const [status, setStatus]     = useState('')
   const [preview, setPreview]   = useState(null)
@@ -55,7 +56,7 @@ export default function ClipLibrary({ client }) {
     if (!client) return
     try {
       await client.predict('/delete_clip', { choice: name })
-      setStatus(`Deleted: ${name}`)
+      setStatus(t(language, 'library.deleted', { name }))
       setPreview(null)
       setSelected(null)
       refresh()
@@ -66,14 +67,14 @@ export default function ClipLibrary({ client }) {
     if (!client) return
     try {
       await client.predict('/load_clip_for_analysis', { choice: name })
-      setStatus(`Loaded for analysis: ${name}`)
+      setStatus(t(language, 'library.loaded', { name }))
     } catch (e) { setStatus(`Error: ${e.message}`) }
   }
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Typography variant="overline">Stored Clips</Typography>
+        <Typography variant="overline">{t(language, 'library.title')}</Typography>
         <IconButton size="small" onClick={refresh} sx={{ borderRadius: 1 }}>
           <RefreshCw size={13} />
         </IconButton>
@@ -84,7 +85,7 @@ export default function ClipLibrary({ client }) {
       {clips.length === 0 ? (
         <Box sx={{ textAlign: 'center', py: 6, color: 'text.secondary' }}>
           <Film size={32} style={{ margin: '0 auto 12px', display: 'block', opacity: 0.3 }} />
-          <Typography variant="caption">No clips stored yet.</Typography>
+          <Typography variant="caption">{t(language, 'library.empty')}</Typography>
         </Box>
       ) : (
         <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1.5 }}>
@@ -112,13 +113,13 @@ export default function ClipLibrary({ client }) {
                     <Typography variant="caption" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{clip}</Typography>
                   </Box>
                   <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
-                    <MuiTooltip title="Load for analysis">
+                    <MuiTooltip title={t(language, 'library.load')}>
                       <IconButton size="small" onClick={e => { e.stopPropagation(); loadForAnalysis(clip) }}
                         sx={{ color: 'success.main', borderRadius: 1, p: 0.5 }}>
                         <ArrowUpCircle size={12} />
                       </IconButton>
                     </MuiTooltip>
-                    <MuiTooltip title="Delete">
+                    <MuiTooltip title={t(language, 'library.delete')}>
                       <IconButton size="small" onClick={e => { e.stopPropagation(); deleteClip(clip) }}
                         sx={{ color: 'error.main', borderRadius: 1, p: 0.5 }}>
                         <Trash2 size={12} />
@@ -135,7 +136,7 @@ export default function ClipLibrary({ client }) {
       {preview && (
         <Box>
           <Typography variant="overline" sx={{ display: 'block', mb: 1 }}>
-            Preview: <Typography component="span" variant="caption" sx={{ textTransform: 'none', color: 'text.primary', fontWeight: 400 }}>{selected}</Typography>
+            {t(language, 'library.preview_hdr')}<Typography component="span" variant="caption" sx={{ textTransform: 'none', color: 'text.primary', fontWeight: 400 }}>{selected}</Typography>
           </Typography>
           <video src={preview} controls style={{ width: '100%', borderRadius: 12, border: '1px solid #2e4060', background: '#000', maxHeight: 192, display: 'block' }} />
         </Box>

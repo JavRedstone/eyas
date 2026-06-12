@@ -5,22 +5,16 @@ import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
 import LinearProgress from '@mui/material/LinearProgress'
-
-const STEP_LABELS = {
-  load_video:    'Load Video',
-  yolo:          'YOLO Tracking',
-  vlm:           'VLM Captioning',
-  llm_summarize: 'LLM Summary',
-}
+import { t } from '../i18n.js'
 
 const STATE_COLOR = { done: 'success.main', running: 'primary.main', error: 'error.main' }
 
-export default function AnalysisPanel({ analyzing, statusMsg, pipelineSteps, pipelineProgress, onAnalyze }) {
+export default function AnalysisPanel({ analyzing, statusMsg, pipelineSteps, pipelineProgress, onAnalyze, language = 'English' }) {
   return (
     <Paper>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
         <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: 'primary.main' }} />
-        <Typography variant="caption" fontWeight={600} sx={{ color: 'text.primary', letterSpacing: '0.03em' }}>Analysis</Typography>
+        <Typography variant="caption" fontWeight={600} sx={{ color: 'text.primary', letterSpacing: '0.03em' }}>{t(language, 'panel.analysis')}</Typography>
       </Box>
 
       <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
@@ -29,7 +23,7 @@ export default function AnalysisPanel({ analyzing, statusMsg, pipelineSteps, pip
           onClick={onAnalyze} disabled={analyzing}
           startIcon={analyzing ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Play size={16} />}
           sx={{ py: 1.25, fontSize: '0.95rem' }}>
-          {analyzing ? 'Processing…' : 'Analyze'}
+          {analyzing ? t(language, 'analysis.processing') : t(language, 'analysis.analyze')}
         </Button>
 
         {statusMsg && (
@@ -46,7 +40,7 @@ export default function AnalysisPanel({ analyzing, statusMsg, pipelineSteps, pip
               sx={{ mb: 0.5 }}
             />
             <Typography variant="caption" color="text.secondary">
-              Progress: {Math.round(pipelineProgress || 0)}%
+              {t(language, 'analysis.progress', { pct: Math.round(pipelineProgress || 0) })}
             </Typography>
           </Box>
         )}
@@ -65,7 +59,7 @@ export default function AnalysisPanel({ analyzing, statusMsg, pipelineSteps, pip
                   <Box sx={{ minWidth: 0 }}>
                     <Typography variant="caption" fontWeight={500}
                       sx={{ color: STATE_COLOR[step.state] || 'text.secondary', display: 'block' }}>
-                      {STEP_LABELS[step.id] || step.id}
+                      {t(language, `step.${step.id}`) || step.id}
                     </Typography>
                     {step.detail && (
                       <Typography variant="caption" color="text.secondary" noWrap sx={{ fontSize: '0.65rem' }}>
