@@ -56,39 +56,84 @@ Korean UI:
 python app.py --lang ko
 ```
 
-## Frontend development
+## Build workflows
 
-The UI is a React + Vite SPA. Gradio runs as a pure API backend; the built static files are served directly.
+### 1 — Local development (hot reload)
+
+Run the Gradio backend and the Vite dev server side by side. Vite proxies all `/gradio_api` traffic to Gradio on port 7860.
+
+```bash
+# Terminal 1 — Gradio backend
+cd eyas
+python app.py                  # http://localhost:7860
+
+# Terminal 2 — React dev server (hot reload)
+cd eyas/ui/frontend
+npm install
+npm run dev                    # http://localhost:5173
+```
+
+Open `http://localhost:5173`. The Vite server proxies `/gradio_api`, `/run`, and `/upload` to port 7860, so the full pipeline works during development.
+
+### 2 — Production build (static files)
+
+Vite compiles the SPA into `eyas/ui/dist/`. Gradio then serves those files as static assets — no separate Node process needed at runtime.
 
 ```bash
 cd eyas/ui/frontend
-npm install
-npm run dev        # http://localhost:5173 — proxies /gradio_api to port 7860
-npm run build      # outputs to eyas/ui/dist/
+npm run build          # → eyas/ui/dist/
 ```
 
-## Docker
+Then start Gradio normally:
+
+```bash
+cd eyas && python app.py
+# Open http://localhost:7860
+```
+
+### 3 — Docker image
+
+The [Dockerfile](Dockerfile) runs the frontend build and model pre-download as part of `docker build`, so the resulting image is self-contained.
+
+Build order inside Docker:
+1. **System deps** — libgl, Node 20, git-lfs
+2. **`npm ci`** (package.json copied first for layer caching)
+3. **`npm run build`** — outputs `eyas/ui/dist/`
+4. **`llama-cpp-python`** from pre-built CPU wheels (no C++ compilation)
+5. **Python deps** from `requirements.txt`
+6. **App code** copied in
+7. **`download_models.py`** — bakes YOLO and GGUF models into the image layer
 
 ```bash
 docker build -t eyas .
 docker run -p 7860:7860 eyas
+# Open http://localhost:7860
 ```
 
-Pass a Hugging Face token if any models require gated access:
+Pass a Hugging Face token for gated models:
 
 ```bash
 docker build --build-arg HF_TOKEN=hf_xxx -t eyas .
 ```
 
-## Deployment (Hugging Face Spaces)
+### 4 — Hugging Face Spaces
 
-The [Dockerfile](Dockerfile) targets the free CPU tier on HF Spaces:
+The repo has a `space` remote pointing to the HF Space. Pushing to it triggers a Docker build on HF infrastructure (CPU-only free tier).
 
-- `python:3.12-slim` (Debian trixie) base image
-- Node 20 for the frontend build step
-- `llama-cpp-python` installed from pre-built CPU wheels — no C++ compilation, no build timeout
-- YOLO and Nemotron/TinyAya downloaded at image build time via [`scripts/download_models.py`](scripts/download_models.py)
-- MiniCPM-V and VoxCPM2 download on first startup (too large to bake in)
+The `hf-space-deploy` branch is an orphan branch used to keep the HF push history clean and avoid LFS conflicts from the main branch.
+
+```bash
+# First time or after a reset
+git checkout --orphan hf-space-deploy
+git add --all
+git commit -m "deploy"
+git push space hf-space-deploy:main --force
+
+# Subsequent deploys (from main)
+git push space main:main --force
+```
+
+> Large fonts (`.otf`) are tracked via Git LFS on the deploy branch — ensure `git lfs` is installed before pushing.
 
 Live space: [build-small-hackathon/eyas](https://huggingface.co/spaces/build-small-hackathon/eyas)
 
@@ -105,7 +150,7 @@ eyas/
   streaming/              Live camera capture
   storage/                Clip index
   ui/                     Gradio API + React frontend
-    frontend/             React + Vite + Tailwind source
+    frontend/             React + Vite + MUI source
   utils/                  Shared helpers
   scripts/                CLI entry points
   models/                 Local weights (gitignored — auto-downloaded)
