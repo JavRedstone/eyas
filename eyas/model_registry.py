@@ -153,21 +153,40 @@ def _load_models() -> None:
 
 
 def offload_vlm() -> None:
-    """Move the VLM off GPU to free VRAM. Safe to call at any time; no-op if VLM is already on CPU or not loaded."""
+    """Move the VLM off GPU to free VRAM. Safe to call at any time; no-op if already on CPU or not loaded."""
     vlm = get("vlm")
     if vlm is not None and hasattr(vlm, "offload"):
         vlm.offload()
 
 
+def offload_llm() -> None:
+    """Delete the llama.cpp Llama object to free Metal GPU memory.
+    The LLM reloads from disk on the next summarize call."""
+    llm = get("llm")
+    if llm is not None and hasattr(llm, "offload"):
+        llm.offload()
+
+
 def load_tts_on_demand() -> Optional[Any]:
-    """Lazily load TTS, offloading the VLM first so there is enough VRAM.
+    """Lazily load TTS, offloading VLM + LLM first so there is enough VRAM.
     Returns the TTS model instance, or None on failure."""
     with _LOCK:
         existing = _INSTANCES.get("tts")
     if existing is not None:
         return existing
 
+    # Free both PyTorch MPS (VLM) and llama.cpp Metal (LLM) allocations before
+    # loading the TTS model.
     offload_vlm()
+    offload_llm()
+
+    try:
+        import torch
+        if torch.backends.mps.is_available():
+            mps_gib = torch.mps.driver_allocated_memory() / 1024**3
+            print(f"[TTS load] MPS driver memory before TTS load: {mps_gib:.2f} GiB")
+    except Exception:
+        pass
 
     detail = "Loading weights…" if _hf_cached(_TTS_REPO) else "Downloading from HuggingFace…"
     _set("tts", "sync", "loading", detail)
