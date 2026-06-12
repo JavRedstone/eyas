@@ -1,6 +1,6 @@
 # tests
 
-Three-layer test suite. Run from the repo root (`Build_Small_Hackathon/`).
+Three-layer test suite. Run all commands from the repo root.
 
 ## Layers
 
@@ -53,14 +53,14 @@ pytest eyas/tests/ -k "tts and not pipeline" -v
 
 | Variable | Default | Used by |
 |---|---|---|
-| `EYAS_MODEL_PATH` | `models/nemotron-nano-4b.gguf` | `test_reasoning_integration.py` |
+| `EYAS_MODEL_PATH` | `eyas/models/nemotron-nano-4b.gguf` | `test_reasoning_integration.py` |
 | `EYAS_GPU_LAYERS` | `-1` (all layers on GPU) | `test_reasoning_integration.py` |
 | `EYAS_TINYAYA_GGUF_FILE` | `tiny-aya-global-q4_k_m.gguf` | `test_translation.py` |
 | `EYAS_TINYAYA_N_CTX` | `4096` | `test_translation.py` |
 
 ```bash
 # Example: override model path and run only reasoning tests with output
-EYAS_MODEL_PATH=models/mymodel.gguf pytest eyas/tests/model/test_reasoning_integration.py -v -s
+EYAS_MODEL_PATH=eyas/models/mymodel.gguf pytest eyas/tests/model/test_reasoning_integration.py -v -s
 ```
 
 ## TTS audio output
