@@ -1,9 +1,12 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { Client, prepare_files } from '@gradio/client'
 import { AnimatePresence, motion } from 'framer-motion'
+import { ThemeProvider } from '@mui/material/styles'
+import CssBaseline from '@mui/material/CssBaseline'
 import Box from '@mui/material/Box'
 import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
+import { createEyasTheme } from './theme.js'
 import Splash from './components/Splash.jsx'
 import Header from './components/Header.jsx'
 import Sidebar from './components/Sidebar.jsx'
@@ -28,6 +31,18 @@ const TABS = [
 ]
 
 export default function App() {
+  const [colorMode, setColorMode] = useState(() => {
+    try { return localStorage.getItem('eyas-color-mode') || 'dark' } catch { return 'dark' }
+  })
+  const theme = useMemo(() => createEyasTheme(colorMode), [colorMode])
+  function toggleColorMode() {
+    setColorMode(m => {
+      const next = m === 'dark' ? 'light' : 'dark'
+      try { localStorage.setItem('eyas-color-mode', next) } catch {}
+      return next
+    })
+  }
+
   const [client, setClient]                 = useState(null)
   const [splashItems, setSplashItems]       = useState([])
   const [splashPct, setSplashPct]           = useState(0)
@@ -216,6 +231,8 @@ export default function App() {
   )
 
   return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
     <AnimatePresence mode="wait">
       {!splashDone ? (
         <Splash key="splash" items={splashItems} pct={splashPct} />
@@ -224,7 +241,7 @@ export default function App() {
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}
           sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
 
-          <Header language={language} />
+          <Header language={language} colorMode={colorMode} onToggleColorMode={toggleColorMode} />
 
           {/* Resizable two-panel layout */}
           <Box ref={splitContainerRef}
@@ -306,5 +323,6 @@ export default function App() {
         </Box>
       )}
     </AnimatePresence>
+    </ThemeProvider>
   )
 }
