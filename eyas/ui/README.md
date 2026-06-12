@@ -8,19 +8,20 @@ Gradio runs as a **pure API backend** — all its UI components are hidden. The 
 
 ## Entry point
 
+All commands run from the repo root.
+
 ```bash
-python app.py                 # English, port 7860
-python app.py --lang ko       # Korean
-python app.py --port 7960     # custom port
+python eyas/app.py                 # English, port 7860
+python eyas/app.py --lang ko       # Korean
+python eyas/app.py --port 7960     # custom port
 ```
 
 ## Frontend development
 
 ```bash
-cd eyas/ui/frontend
-npm install
-npm run dev      # http://localhost:5173 — proxies /gradio_api → 7860
-npm run build    # output → eyas/ui/dist/
+npm --prefix eyas/ui/frontend install
+npm --prefix eyas/ui/frontend run dev      # http://localhost:5173 — proxies /gradio_api → 7860
+npm --prefix eyas/ui/frontend run build    # output → eyas/ui/dist/
 ```
 
 The Vite dev server proxies all `/gradio_api/*` requests to the running Gradio backend, so both hot-reload dev and production mode use the same API surface.
@@ -41,7 +42,8 @@ The Vite dev server proxies all `/gradio_api/*` requests to the running Gradio b
 
 Default language is English. Switch to Korean via:
 
-- **Settings** tab → select 한국어 → Save (no restart needed)
+- **Header toggle** — `EN` / `한` buttons; takes effect immediately, no restart needed
+- **Settings** tab → select 한국어 → Save
 - `preferences.json`: `"language": "ko"`
 - CLI flag: `--lang ko`
 
@@ -59,9 +61,9 @@ String catalogs live in [`locale.py`](locale.py) (`en` / `ko`). When Korean is a
 | [`gradio_app.py`](gradio_app.py) | All Gradio API endpoints as closures |
 | [`locale.py`](locale.py) | `Strings` class, `LANGUAGE_LABELS`, `localize_text`, `format_event_row` |
 | [`frontend/src/App.jsx`](frontend/src/App.jsx) | Root component — resizable split layout, pipeline state, video refs |
+| [`frontend/src/theme.js`](frontend/src/theme.js) | MUI dark/light theme — Eyas falcon palette |
 | [`frontend/src/components/`](frontend/src/components/) | Header, Sidebar, AnalysisPanel, TabNav |
 | [`frontend/src/components/tabs/`](frontend/src/components/tabs/) | One file per tab |
-| [`frontend/tailwind.config.js`](frontend/tailwind.config.js) | Eyas falcon color theme |
 
 ## Dependencies
 

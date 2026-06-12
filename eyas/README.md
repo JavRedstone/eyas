@@ -35,18 +35,21 @@ video / camera
 
 ## Running
 
+All commands run from the repo root.
+
 ```bash
 # Full visual pipeline on a video file
-python scripts/run_visual_pipeline.py input/sample.mp4
+python eyas/scripts/run_visual_pipeline.py eyas/input/sample.mp4
 
 # Korean overlay labels on the annotated video
-python scripts/run_visual_pipeline.py input/sample.mp4 --language ko
+python eyas/scripts/run_visual_pipeline.py eyas/input/sample.mp4 --language ko
 
 # Gradio API + React UI (http://localhost:7860)
-python app.py
-python app.py --lang ko
-python app.py --port 7960
+python eyas/app.py
+python eyas/app.py --lang ko
+python eyas/app.py --port 7960
 
 # Frontend hot-reload dev server (http://localhost:5173)
-cd ui/frontend && npm run dev
+npm --prefix eyas/ui/frontend install
+npm --prefix eyas/ui/frontend run dev
 ```
