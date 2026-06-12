@@ -72,6 +72,7 @@ app.launch(
     server_port=prefs.get("port"),
     allowed_paths=_ALLOWED,
     prevent_thread_lock=True,
+    ssr_mode=False,
 )
 
 _INDEX_PATH = _STATIC_DIR / "index.html"
