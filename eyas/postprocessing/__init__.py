@@ -69,8 +69,10 @@ def get_voxcpm2_model():
         return _voxcpm2_model, _voxcpm2_sample_rate
     from voxcpm import VoxCPM
 
+    import torch
     _voxcpm2_model = VoxCPM.from_pretrained(
-        "openbmb/VoxCPM2", device="auto", load_denoiser=False, optimize=True
+        "openbmb/VoxCPM2", device="auto", load_denoiser=False,
+        optimize=torch.cuda.is_available(),
     )
     _voxcpm2_sample_rate = _voxcpm2_model.tts_model.sample_rate
     return _voxcpm2_model, _voxcpm2_sample_rate

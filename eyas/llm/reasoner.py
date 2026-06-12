@@ -186,18 +186,20 @@ class Reasoner:
         return result["choices"][0]["message"]["content"].strip()
 
     def _parse_json(self, raw: str, fallback: Dict) -> Dict:
+        base = dict(fallback)
         try:
-            return json.loads(raw)
+            parsed = json.loads(raw)
+            return base | parsed
         except json.JSONDecodeError:
-            # Try to extract the first {...} block if the model added extra text
             start = raw.find("{")
             end = raw.rfind("}") + 1
             if start != -1 and end > start:
                 try:
-                    return json.loads(raw[start:end])
+                    parsed = json.loads(raw[start:end])
+                    return base | parsed
                 except json.JSONDecodeError:
                     pass
-        return dict(fallback)
+        return base
 
     # ------------------------------------------------------------------
     # Public API

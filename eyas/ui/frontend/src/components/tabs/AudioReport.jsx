@@ -15,8 +15,8 @@ function phaseMsg(elapsed, language) {
 
 export default function AudioReport({ client, summary, language = 'English' }) {
   const [audioSrc, setAudioSrc]   = useState(null)
-  const [loading, setLoading]     = useState(false)
   const [statusMsg, setStatusMsg] = useState('')
+  const [loading, setLoading]     = useState(false)
   const [elapsed, setElapsed]     = useState(0)
   const timerRef = useRef(null)
 
