@@ -6,7 +6,7 @@ Local model weight files — **not tracked in git** (gitignored). All models dow
 
 | File | Used by | How it's obtained |
 |---|---|---|
-| `yolo11n.pt` | `object_detection/` | Downloaded by Ultralytics on first use, or by `scripts/download_models.py` |
+| `yolo11n.pt` | `object_detection/` | Downloaded by Ultralytics on first use, or by `eyas/scripts/download_models.py` |
 | `nemotron-nano-4b.gguf` | `llm/` | Override path; default is the HF cache (`Llama.from_pretrained`) |
 | `minicpmv/MiniCPM-V-4_6-F16.gguf` | `video_processing/` | Optional — for the llama-cpp-python VLM backend |
 | `minicpmv/mmproj-model-f16.gguf` | `video_processing/` | Matching vision projector for the GGUF backend |
@@ -21,7 +21,7 @@ Local model weight files — **not tracked in git** (gitignored). All models dow
 
 ## Docker build pre-download
 
-`scripts/download_models.py` runs during `docker build` to bake YOLO and the two GGUF models into the image layer, avoiding cold-start delays.
+`eyas/scripts/download_models.py` runs during `docker build` to bake YOLO and the two GGUF models into the image layer, avoiding cold-start delays.
 
 ## llama-cpp-python VLM backend (optional)
 
@@ -31,7 +31,7 @@ To use MiniCPM-V via llama.cpp instead of Transformers, download both GGUF files
 hf download openbmb/MiniCPM-V-4.6-gguf \
   --include "*F16.gguf" \
   --include "*mmproj*" \
-  --local-dir models/minicpmv
+  --local-dir eyas/models/minicpmv
 ```
 
-Then pass `--vlm-backend llama-cpp-python` to `run_visual_pipeline.py`. See [`docs/LLAMA_CPP.md`](../../docs/LLAMA_CPP.md) for full instructions.
+Then pass `--vlm-backend llama-cpp-python` to `eyas/scripts/run_visual_pipeline.py`. See [`docs/LLAMA_CPP.md`](../../docs/LLAMA_CPP.md) for full instructions.

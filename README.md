@@ -40,20 +40,19 @@ All models download automatically on first run. No API keys required.
 ## Quick start
 
 ```bash
-cd eyas
 python3 -m venv .venv
-source .venv/bin/activate      # macOS / Linux
-# .venv\Scripts\activate       # Windows
+source .venv/bin/activate        # macOS / Linux
+# .venv\Scripts\activate         # Windows
 
-pip install -r requirements.txt
-python app.py
+pip install -r eyas/requirements.txt
+python eyas/app.py
 # Open http://localhost:7860
 ```
 
 Korean UI:
 
 ```bash
-python app.py --lang ko
+python eyas/app.py --lang ko
 ```
 
 ## Build workflows
@@ -64,13 +63,11 @@ Run the Gradio backend and the Vite dev server side by side. Vite proxies all `/
 
 ```bash
 # Terminal 1 — Gradio backend
-cd eyas
-python app.py                  # http://localhost:7860
+python eyas/app.py               # http://localhost:7860
 
 # Terminal 2 — React dev server (hot reload)
-cd eyas/ui/frontend
-npm install
-npm run dev                    # http://localhost:5173
+npm --prefix eyas/ui/frontend install
+npm --prefix eyas/ui/frontend run dev    # http://localhost:5173
 ```
 
 Open `http://localhost:5173`. The Vite server proxies `/gradio_api`, `/run`, and `/upload` to port 7860, so the full pipeline works during development.
@@ -80,14 +77,8 @@ Open `http://localhost:5173`. The Vite server proxies `/gradio_api`, `/run`, and
 Vite compiles the SPA into `eyas/ui/dist/`. Gradio then serves those files as static assets — no separate Node process needed at runtime.
 
 ```bash
-cd eyas/ui/frontend
-npm run build          # → eyas/ui/dist/
-```
-
-Then start Gradio normally:
-
-```bash
-cd eyas && python app.py
+npm --prefix eyas/ui/frontend run build    # → eyas/ui/dist/
+python eyas/app.py
 # Open http://localhost:7860
 ```
 

@@ -6,7 +6,7 @@ React + Vite SPA for the Eyas UI. Gradio acts as a pure API backend; this app is
 
 - **React 18** — component tree
 - **Vite 8** — build tool and dev server
-- **MUI (Material UI v6)** — theming, layout, and all UI components; Eyas falcon dark theme via `src/theme.js`
+- **MUI (Material UI v6)** — theming, layout, and all UI components; dark/light Eyas falcon theme in `src/theme.js`
 - **Framer Motion** — page and panel animations
 - **Recharts** — event scatter chart, bar charts, radial gauge, pie chart
 - **Lucide React** — icons
@@ -14,47 +14,47 @@ React + Vite SPA for the Eyas UI. Gradio acts as a pure API backend; this app is
 
 ## Dev
 
-```bash
-npm install
-npm run dev      # http://localhost:5173
-```
-
-Vite proxies `/gradio_api/*` to `http://localhost:7860` (the running Gradio backend). Start Gradio first:
+Start Gradio first, then the dev server (all from repo root):
 
 ```bash
-# from eyas/
-python app.py
+python eyas/app.py                               # http://localhost:7860
+npm --prefix eyas/ui/frontend install
+npm --prefix eyas/ui/frontend run dev            # http://localhost:5173
 ```
+
+Vite proxies `/gradio_api/*` to `http://localhost:7860`.
 
 ## Build
 
 ```bash
-npm run build    # outputs to ../dist/ (eyas/ui/dist/)
+npm --prefix eyas/ui/frontend run build    # outputs to eyas/ui/dist/
 ```
 
 Gradio serves `dist/` as static files in production.
 
 ## Theme
 
-Defined in [`src/theme.js`](src/theme.js) as a MUI `createTheme()` — inspired by the Peregrine falcon (*Eyas*):
+Defined in [`src/theme.js`](src/theme.js) as a `createEyasTheme(mode)` function — two modes, toggle in the header:
 
-| MUI palette key | Hex | Source |
+| | Dark | Light |
 |---|---|---|
-| `background.default` | `#0e2946` | Dark slate blue — back plumage |
-| `background.paper` | `#1f2833` | Charcoal — head stripes |
-| `primary.main` | `#f7d046` | Bright yellow — cere and talons |
-| `text.primary` | `#e5e1d8` | Soft cream — underbelly |
-| `text.secondary` | `#7a8ea8` | Blue-grey — secondary text |
-| `divider` | `#2e4060` | Border / rule color |
+| `background.default` | `#0b1929` navy | `#fef9e7` warm yellow |
+| `background.paper` | `#0f2338` slate | `#ffffff` white |
+| `primary.main` | `#f7d046` yellow | `#1565C0` blue |
+| `secondary.main` | `#4b9eff` blue | `#d4a017` golden |
+| `text.primary` | `#e5e1d8` cream | `#0d1b2a` navy |
+| `divider` | `#1a3352` | `#dfc85e` |
+
+Mode preference is saved to `localStorage` and respected on reload.
 
 ## Component tree
 
 ```
-App.jsx                    Root — resizable split layout, all pipeline state
-  Header.jsx               App bar — title and active language indicator
+App.jsx                    Root — theme provider, resizable split layout, all pipeline state
+  Header.jsx               App bar — title, EN/한 language toggle, dark/light mode toggle
   Sidebar.jsx              Footage controls — upload zone, sample picker
   AnalysisPanel.jsx        Run pipeline button, step progress, status
-  TabNav.jsx               Tab bar
+  TabNav.jsx               Tab bar (MUI Tabs)
   tabs/
     EventTimeline.jsx      Scatter chart + event table + clip loader
     SummaryAlerts.jsx      Risk gauge, flag pie, summary text
@@ -62,5 +62,5 @@ App.jsx                    Root — resizable split layout, all pipeline state
     DetectionMetrics.jsx   Zone bar chart + event density line chart
     AudioReport.jsx        TTS generation with progress phases
     ClipLibrary.jsx        Stored clip browser
-    SettingsTab.jsx        Language selector
+    SettingsTab.jsx        Language selector with save confirmation
 ```
