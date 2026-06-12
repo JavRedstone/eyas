@@ -15,7 +15,7 @@ export default function SettingsTab({ client, language, setLanguage }) {
   async function save() {
     if (!client) return
     try {
-      await client.predict('/save_language', { language: local })
+      await client.predict('/save_language', { lang_label: local })
       setLanguage(local)
       setStatus('Language switched.')
     } catch (e) { setStatus(`Error: ${e.message}`) }
