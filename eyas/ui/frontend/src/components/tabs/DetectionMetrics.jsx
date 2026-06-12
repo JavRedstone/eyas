@@ -17,6 +17,13 @@ const ZONE_COLORS = {
 
 function zoneColor(z) { return ZONE_COLORS[z?.toLowerCase()] ?? '#7a8ea8' }
 
+function isTakenOrHeld(ev) {
+  if (ev.pickup_confirmed) return true
+  if (ev.held_objects?.length) return true
+  const k = String(ev.kind ?? ev.event_type ?? '').toLowerCase()
+  return k === 'pickup' || k === 'suspicious'
+}
+
 export default function DetectionMetrics({ summary, events, language = 'English' }) {
   const zoneCounts = summary?.zone_counts ?? {}
   const zoneData = Object.entries(zoneCounts).map(([zone, count]) => ({
@@ -28,23 +35,23 @@ export default function DetectionMetrics({ summary, events, language = 'English'
   const bucketSize = 10
   const buckets = {}
   events.forEach(ev => {
-    const t0 = Math.floor(Number(ev.time ?? 0) / bucketSize) * bucketSize
+    const t0 = Math.floor(Number(ev.timestamp ?? ev.time ?? 0) / bucketSize) * bucketSize
     buckets[t0] = (buckets[t0] || 0) + 1
   })
   const timelineData = Object.entries(buckets)
     .sort((a, b) => +a[0] - +b[0])
     .map(([t0, count]) => ({ t: `${t0}s`, count }))
 
-  const totalDetections = Object.values(zoneCounts).reduce((s, v) => s + Number(v), 0)
+  const takenHeldCount = events.filter(isTakenOrHeld).length
+  const activeZones = zoneData.filter(z => z.count > 0).length
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       {/* Stat cards */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1.5 }}>
-        <StatCard label={t(language, 'metrics.total')}  value={totalDetections}                                        color="#f7d046" />
-        <StatCard label={t(language, 'metrics.events')} value={events.length}                                          color="#60A5FA" />
-        <StatCard label={t(language, 'metrics.zones')}  value={zoneData.filter(z => z.count > 0).length}               color="#34D399" />
-        <StatCard label={t(language, 'metrics.avg')}    value={zoneData.length ? (totalDetections / zoneData.length).toFixed(1) : '—'} color="#f7d046" />
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1.5 }}>
+        <StatCard label={t(language, 'metrics.events')} value={events.length}   color="#60A5FA" />
+        <StatCard label={t(language, 'metrics.taken')}  value={takenHeldCount}  color="#EF4444" />
+        <StatCard label={t(language, 'metrics.zones')}  value={activeZones}     color="#34D399" />
       </Box>
 
       {/* Zone bar chart */}

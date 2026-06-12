@@ -311,10 +311,49 @@ class MiniCPMVLM:
         self.model = None
         self.processor = None
         self._loaded = False
+        self._offloaded = False  # True when model is on CPU after offload()
         self.backend = "minicpmv"
 
     # -- model loading -------------------------------------------------------
+    def offload(self) -> None:
+        """Free GPU VRAM. On explicit device: moves weights to CPU (fast restore).
+        With device_map=auto: deletes model object; reloads from HF local cache on next use."""
+        import gc
+        if self.model is None:
+            return
+        try:
+            import torch
+            # Flush all pending GPU work before touching the model object.
+            # On MPS (Apple Silicon) this prevents Metal command-encoder conflicts.
+            if self.device == "mps" and getattr(torch, "backends", None) and torch.backends.mps.is_available():
+                torch.mps.synchronize()
+            elif torch.cuda.is_available():
+                torch.cuda.synchronize()
+            if self.device:
+                self.model.to("cpu")
+                self._offloaded = True
+            else:
+                del self.model
+                self.model = None
+                self._loaded = False
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except Exception:
+            pass
+        gc.collect()
+
     def _ensure_loaded(self) -> None:
+        if self._offloaded:
+            # Restore from CPU back to the target device.
+            try:
+                self.model.to(self.device)
+                self._offloaded = False
+                return
+            except Exception:
+                # Restore failed — fall through to full reload.
+                self._offloaded = False
+                self._loaded = False
+                self.model = None
         if self._loaded:
             return
         import torch

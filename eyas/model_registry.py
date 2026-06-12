@@ -26,7 +26,7 @@ _STATES: Dict[str, ModelState] = {
     "yolo":    ModelState("Object Detector",   "YOLO11n"),
     "vlm":     ModelState("Vision Analyzer",   "MiniCPM-V 4.6"),
     "llm":     ModelState("LLM Reasoner",      "Nemotron-Nano-4B"),
-    "tts":     ModelState("Text-to-Speech",    "VoxCPM2"),
+    "tts":     ModelState("Text-to-Speech",    "VoxCPM2", icon="touch_app", status="on_demand"),
     "tinyaya": ModelState("Translator",        "Tiny Aya Global"),
 }
 _INSTANCES: Dict[str, Any] = {}
@@ -49,7 +49,7 @@ def get_states() -> List[ModelState]:
 
 def all_done() -> bool:
     with _LOCK:
-        return all(m.status in {"ready", "error"} for m in _STATES.values())
+        return all(m.status in {"ready", "error", "on_demand"} for m in _STATES.values())
 
 
 def get(key: str) -> Optional[Any]:
@@ -134,19 +134,8 @@ def _load_models() -> None:
         traceback.print_exc()
         _set("llm", "error", "error", str(exc)[:120])
 
-    # ── TTS (VoxCPM2) ────────────────────────────────────────────────────────
-    if _hf_cached(_TTS_REPO):
-        _set("tts", "sync", "loading", "Loading weights…")
-    else:
-        _set("tts", "sync", "loading", "Downloading from HuggingFace…")
-    try:
-        from postprocessing import get_voxcpm2_model
-        tts_model, _sr = get_voxcpm2_model()
-        with _LOCK:
-            _INSTANCES["tts"] = tts_model
-        _set("tts", "check_circle", "ready", "Ready")
-    except Exception as exc:
-        _set("tts", "error", "error", str(exc)[:120])
+    # TTS (VoxCPM2) is intentionally NOT pre-loaded here.
+    # It loads on demand via load_tts_on_demand() so the VLM can be offloaded first.
 
     # ── Tiny Aya (translation) ───────────────────────────────────────────────
     from postprocessing import TINYAYA_GGUF_REPO, TINYAYA_GGUF_FILE
@@ -161,6 +150,37 @@ def _load_models() -> None:
         _set("tinyaya", "check_circle", "ready", "Ready")
     except Exception as exc:
         _set("tinyaya", "error", "error", str(exc)[:120])
+
+
+def offload_vlm() -> None:
+    """Move the VLM off GPU to free VRAM. Safe to call at any time; no-op if VLM is already on CPU or not loaded."""
+    vlm = get("vlm")
+    if vlm is not None and hasattr(vlm, "offload"):
+        vlm.offload()
+
+
+def load_tts_on_demand() -> Optional[Any]:
+    """Lazily load TTS, offloading the VLM first so there is enough VRAM.
+    Returns the TTS model instance, or None on failure."""
+    with _LOCK:
+        existing = _INSTANCES.get("tts")
+    if existing is not None:
+        return existing
+
+    offload_vlm()
+
+    detail = "Loading weights…" if _hf_cached(_TTS_REPO) else "Downloading from HuggingFace…"
+    _set("tts", "sync", "loading", detail)
+    try:
+        from postprocessing import get_voxcpm2_model
+        tts_model, _sr = get_voxcpm2_model()
+        with _LOCK:
+            _INSTANCES["tts"] = tts_model
+        _set("tts", "check_circle", "ready", "Ready")
+        return tts_model
+    except Exception as exc:
+        _set("tts", "error", "error", str(exc)[:120])
+        return None
 
 
 def start() -> None:

@@ -44,9 +44,26 @@ class VisualPipelineResult:
         )
 
 
-def full_frame_zone(width: int, height: int) -> Zone:
-    """Development default that guarantees any tracked person can trigger."""
-    return Zone(name="review_area", bbox=(0, 0, width, height), kind="shelf")
+def full_frame_zone(width: int, height: int, name: str = "review_area") -> Zone:
+    """Full-frame zone covering the entire video."""
+    return Zone(name=name, bbox=(0, 0, width, height), kind="shelf")
+
+
+def _zone_from_filename(stem: str, width: int, height: int) -> Optional[Zone]:
+    """Parse zone from filename pattern YYYYMMDD_HHMMSS_<zone_name>.
+
+    Returns a full-frame Zone with the parsed name, or None if the filename
+    does not match the convention.
+    """
+    parts = stem.split("_")
+    if (
+        len(parts) >= 3
+        and len(parts[0]) == 8 and parts[0].isdigit()
+        and len(parts[1]) == 6 and parts[1].isdigit()
+    ):
+        zone_name = "_".join(parts[2:])
+        return full_frame_zone(width, height, name=zone_name)
+    return None
 
 
 def draw_tracks(
@@ -213,7 +230,10 @@ def run_visual_pipeline(
     if max_frames is not None:
         total_frames = min(total_frames, max_frames)
 
-    resolved_zones = zones or [full_frame_zone(width, height)]
+    resolved_zones = zones or [
+        _zone_from_filename(source.stem, width, height)
+        or full_frame_zone(width, height)
+    ]
     resolved_device = device or get_device()
     tracker = preloaded_tracker or PersonTracker(
         weights=yolo_weights,

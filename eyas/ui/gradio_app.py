@@ -4,10 +4,14 @@ All gr.* components are hidden; they exist only to register API endpoints.
 The React frontend (ui/dist/) is served by app.py at GET /.
 """
 
+import io
 import json
 import sys
+import tempfile
+import threading
 import traceback
 import time as _time_mod
+import zipfile
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -59,6 +63,57 @@ _SAMPLES_DIR = Path(__file__).parent.parent / "input"
 _SAMPLE_PATHS: Dict[str, str] = {
     p.stem: str(p) for p in sorted(_SAMPLES_DIR.glob("*.mp4"))
 }
+
+# ── Session state (accumulates across multiple video runs) ────────────────────
+_session_lock = threading.Lock()
+_session: Dict = {"runs": [], "events": []}
+
+
+def _session_append_run(run_id: str, video_name: str, output_dir: str,
+                         events: list, summary: dict, annotated_video_path: str) -> None:
+    tagged = [{**e, "source_video": video_name} for e in events]
+    with _session_lock:
+        _session["events"].extend(tagged)
+        _session["runs"].append({
+            "run_id": run_id,
+            "video_name": video_name,
+            "output_dir": output_dir,
+            "annotated_video_path": annotated_video_path,
+            "summary": summary,
+        })
+
+
+def _session_clear() -> None:
+    with _session_lock:
+        _session["runs"].clear()
+        _session["events"].clear()
+
+
+def _session_export_zip() -> str:
+    with _session_lock:
+        runs = list(_session["runs"])
+        all_events = list(_session["events"])
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("all_events.json", json.dumps(all_events, indent=2))
+        for run in runs:
+            prefix = run["run_id"]
+            run_events = [e for e in all_events if e.get("source_video") == run["video_name"]]
+            zf.writestr(f"{prefix}/events.json", json.dumps(run_events, indent=2))
+            summary = run.get("summary")
+            if summary:
+                text = summary.get("summary", "") if isinstance(summary, dict) else str(summary)
+                zf.writestr(f"{prefix}/summary.txt", text)
+            ann = run.get("annotated_video_path")
+            if ann and Path(ann).exists():
+                zf.write(ann, f"{prefix}/{Path(ann).name}")
+
+    tmp = tempfile.NamedTemporaryFile(suffix=".zip", delete=False, prefix="eyas_session_")
+    tmp.write(buf.getvalue())
+    tmp.close()
+    return tmp.name
+
 
 
 def build_app(
@@ -178,7 +233,7 @@ def build_app(
             total: int,
             track_count: int,
             vlm_fired: bool,
-            annotated_frame=None,
+            _=None,
         ) -> None:
             now = _time.time()
             if vlm_fired or now - _last_progress_t[0] >= 0.2:
@@ -251,6 +306,10 @@ def build_app(
         events: List[Dict] = vp.events
         _finish_step(1, "yolo", S.t("pipeline.frames_tracks", frames=vp.frames_processed, tracks=vp.unique_tracks))
         _finish_step(2, "vlm", S.t("pipeline.events_count", count=len(events)))
+
+        # VLM is done — free its GPU memory so TTS and the LLM have more VRAM.
+        _mreg.offload_vlm()
+
         _start_step(3, "llm_summarize")
 
         rows = [
@@ -260,11 +319,11 @@ def build_app(
         live_rows.clear()
         live_rows.extend(rows)
 
-        zone_counts = {"entrance": 0, "counter": 0, "back_door": 0, "aisles": 0}
+        zone_counts: dict = {}
         for ev in events:
-            z = ev.get("zone", "").lower().replace(" ", "_")
-            if z in zone_counts:
-                zone_counts[z] += 1
+            z = ev.get("zone", "").strip().lower().replace(" ", "_")
+            if z:
+                zone_counts[z] = zone_counts.get(z, 0) + 1
 
         yield {**_emit(S.t("status.running_llm")),
                "zone_counts": zone_counts, "output_dir": output_dir}
@@ -314,17 +373,21 @@ def build_app(
         _progress_done[0] = int(vp.frames_processed or _progress_done[0])
         _progress_total[0] = int(vp.frames_processed or _progress_total[0] or _progress_done[0])
 
+        video_name = Path(video_path).name
+        _session_append_run(run_id, video_name, output_dir, events, llm_display, ann_vid_path)
+
         yield {
             "type": "final",
             "status": status,
             "steps": _annotate_steps(),
             "events": events,
+            "video_name": video_name,
             "rows": rows,
             "summary": llm_display["summary"],
             "translation_time": translation_time_str,
             "risk_level": risk_key,
-            "flags": llm_display["flags"],
-            "suspicious_clips": llm["suspicious_clips"],
+            "flags": llm_display.get("flags", []),
+            "suspicious_clips": llm.get("suspicious_clips", []),
             "zone_counts": zone_counts,
             "annotated_video_path": ann_vid_path,
             "output_dir": output_dir,
@@ -367,6 +430,8 @@ def build_app(
         _r = _mreg.get("llm")
         if _r is None:
             return None, S.t("status.llm_unavailable")
+        # Offload VLM to free VRAM before loading TTS, then ensure TTS is loaded.
+        _mreg.load_tts_on_demand()
         try:
             llm = _r.summarize_events(events)
             text = llm.get("summary", "").strip()
@@ -575,5 +640,18 @@ def build_app(
             _lang_in = gr.Textbox()
             _lang_out = gr.Textbox()
             gr.Button("_").click(save_language, inputs=[_lang_in], outputs=[_lang_out], api_name="save_language")
+
+            # Session management
+            def clear_session() -> str:
+                _session_clear()
+                return "cleared"
+
+            def export_session_zip() -> str:
+                return _session_export_zip()
+
+            gr.Button("_").click(clear_session, outputs=[gr.Textbox()], api_name="clear_session")
+
+            _zip_file = gr.File()
+            gr.Button("_").click(export_session_zip, outputs=[_zip_file], api_name="export_session_zip")
 
     return demo
