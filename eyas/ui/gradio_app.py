@@ -22,6 +22,24 @@ if _EYAS_ROOT not in sys.path:
     sys.path.insert(0, _EYAS_ROOT)
 
 import gradio as gr
+
+try:
+    import spaces as _spaces
+except Exception:
+    _spaces = None
+
+
+def _gpu(fn=None, **kwargs):
+    if _spaces is None:
+        if fn is None:
+            def _decorator(inner):
+                return inner
+            return _decorator
+        return fn
+    if fn is None:
+        return _spaces.GPU(**kwargs)
+    return _spaces.GPU(fn)
+
 from storage import manager as storage
 import model_registry as _mreg
 from ui.locale import (
@@ -76,6 +94,7 @@ def build_app(
             })
         return {"done": done, "states": items, "progress_pct": progress_pct, "language_label": LANGUAGE_LABELS.get(_lang[0], "English")}
 
+    @_gpu(duration=300)
     def run_pipeline(video_path: str):
         """Streaming pipeline — yields JSON update objects."""
         import time as _time
@@ -311,6 +330,7 @@ def build_app(
             "output_dir": output_dir,
         }
 
+    @_gpu(duration=120)
     def ask_footage(message: str, history: list, events: list) -> tuple:
         def _append(hist, user_msg, assistant_msg):
             return hist + [
@@ -339,6 +359,7 @@ def build_app(
             timing = ""
         return _append(history, message, reply), "", timing
 
+    @_gpu(duration=120)
     def generate_audio(events: list) -> tuple:
         import numpy as np
         if not events:
