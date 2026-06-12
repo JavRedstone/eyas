@@ -107,26 +107,43 @@ Pass a Hugging Face token for gated models:
 docker build --build-arg HF_TOKEN=hf_xxx -t eyas .
 ```
 
-### 4 — Hugging Face Spaces
+## Pushing changes
 
-The repo has a `space` remote pointing to the HF Space. Pushing to it triggers a Docker build on HF infrastructure (CPU-only free tier).
-
-The `hf-space-deploy` branch is an orphan branch used to keep the HF push history clean and avoid LFS conflicts from the main branch.
+### Push to GitHub
 
 ```bash
-# First time or after a reset
-git checkout --orphan hf-space-deploy
-git add --all
-git commit -m "deploy"
-git push space hf-space-deploy:main --force
+git push origin main
+```
 
-# Subsequent deploys (from main)
+### Push to Hugging Face Spaces
+
+The repo has a `space` remote. Pushing to it triggers a Docker build on HF infrastructure (CPU-only free tier).
+
+```bash
 git push space main:main --force
 ```
 
-> Large fonts (`.otf`) are tracked via Git LFS on the deploy branch — ensure `git lfs` is installed before pushing.
+> Force-push is required because the Space's `main` branch tracks a different history (orphan branch from the initial setup). This is safe — it just overwrites HF's copy.
+
+> Large fonts (`.otf`) are tracked via Git LFS. Ensure `git lfs` is installed before pushing to `space`.
+
+### Push to both at once
+
+```bash
+git push origin main && git push space main:main --force
+```
 
 Live space: [build-small-hackathon/eyas](https://huggingface.co/spaces/build-small-hackathon/eyas)
+
+### 4 — Hugging Face Spaces (build details)
+
+The [Dockerfile](Dockerfile) targets the free CPU tier on HF Spaces:
+
+- `python:3.12-slim` (Debian trixie) base image
+- Node 20 for the frontend build step (`npm run build` baked into the image)
+- `llama-cpp-python` from pre-built CPU wheels — no C++ compilation, no build timeout
+- YOLO and Nemotron/TinyAya downloaded at image build time via `eyas/scripts/download_models.py`
+- MiniCPM-V and VoxCPM2 download on first startup (too large to bake in)
 
 ## Repository layout
 
