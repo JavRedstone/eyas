@@ -316,41 +316,59 @@ class MiniCPMVLM:
 
     # -- model loading -------------------------------------------------------
     def offload(self) -> None:
-        """Free GPU VRAM. On explicit device: moves weights to CPU (fast restore).
-        With device_map=auto: deletes model object; reloads from HF local cache on next use."""
+        """Free GPU VRAM. Reloads from HF local cache on next use."""
         import gc
         if self.model is None:
             return
         try:
             import torch
-            # Flush all pending GPU work before touching the model object.
-            # On MPS (Apple Silicon) this prevents Metal command-encoder conflicts.
             if self.device == "mps" and getattr(torch, "backends", None) and torch.backends.mps.is_available():
+                # On MPS, model.to("cpu") leaves significant residual allocations:
+                # registered buffers, vision encoder state, and attention caches
+                # that transformers doesn't move. The only way to guarantee zero MPS
+                # memory is to delete the object entirely. Processor is kept (CPU-only,
+                # no GPU memory) so we skip re-tokenizing on reload.
+                before = torch.mps.driver_allocated_memory() / 1024**3
                 torch.mps.synchronize()
+                del self.model
+                self.model = None
+                self._loaded = False
+                self._offloaded = False
+                torch.mps.empty_cache()
+                after = torch.mps.driver_allocated_memory() / 1024**3
+                print(f"[VLM offload] MPS driver memory: {before:.2f} GiB → {after:.2f} GiB (freed {before-after:.2f} GiB)")
             elif torch.cuda.is_available():
                 torch.cuda.synchronize()
-            if self.device:
+                if self.device:
+                    self.model.to("cpu")
+                    self._offloaded = True
+                else:
+                    del self.model
+                    self.model = None
+                    self._loaded = False
+                torch.cuda.empty_cache()
+            elif self.device:
                 self.model.to("cpu")
                 self._offloaded = True
             else:
                 del self.model
                 self.model = None
                 self._loaded = False
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
         except Exception:
             pass
         gc.collect()
 
     def _ensure_loaded(self) -> None:
         if self._offloaded:
-            # Restore from CPU back to the target device.
+            # CUDA path: model was moved to CPU, restore to GPU.
             try:
+                import torch
+                if torch.cuda.is_available():
+                    torch.cuda.synchronize()
                 self.model.to(self.device)
                 self._offloaded = False
                 return
             except Exception:
-                # Restore failed — fall through to full reload.
                 self._offloaded = False
                 self._loaded = False
                 self.model = None
@@ -366,7 +384,9 @@ class MiniCPMVLM:
                 "dependencies with: pip install -r requirements.txt"
             ) from exc
 
-        self.processor = AutoProcessor.from_pretrained(self.model_id)
+        if self.processor is None:
+            self.processor = AutoProcessor.from_pretrained(self.model_id)
+        print(f"[VLM load] Loading {self.model_id} onto {self.device or 'auto'}…")
         torch_dtype = self.dtype if self.dtype == "auto" else getattr(torch, self.dtype)
         kwargs = dict(dtype=torch_dtype, attn_implementation=self.attn)
         if self.device:                      # explicit device (e.g. 'mps')

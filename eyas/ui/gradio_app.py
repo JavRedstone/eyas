@@ -68,6 +68,11 @@ _SAMPLE_PATHS: Dict[str, str] = {
 _session_lock = threading.Lock()
 _session: Dict = {"runs": [], "events": []}
 
+# ── Active pipeline tracking (for clean stop/restart on MPS) ─────────────────
+_pipeline_lock = threading.Lock()
+_active_stop_event: Optional[threading.Event] = None
+_active_pipeline_thread: Optional[threading.Thread] = None
+
 
 def _session_append_run(run_id: str, video_name: str, output_dir: str,
                          events: list, summary: dict, annotated_video_path: str) -> None:
@@ -211,6 +216,22 @@ def build_app(
             yield _emit(S.t("status.no_video"), "error")
             return
 
+        import queue as _queue
+        import threading as _threading
+
+        # Cancel any previous pipeline run and wait for it to fully exit.
+        # Without this, the old thread may still be executing VLM inference on
+        # MPS when the new run calls offload_vlm(), causing a Metal command
+        # encoder conflict that aborts the process.
+        global _active_stop_event, _active_pipeline_thread
+        with _pipeline_lock:
+            _prev_stop = _active_stop_event
+            _prev_thread = _active_pipeline_thread
+        if _prev_stop is not None:
+            _prev_stop.set()
+        if _prev_thread is not None and _prev_thread.is_alive():
+            _prev_thread.join(timeout=15.0)
+
         _start_step(0, "load_video")
         yield _emit(S.t("status.loading_video"))
 
@@ -218,9 +239,6 @@ def build_app(
         _start_step(1, "yolo", S.t("pipeline.starting"))
         steps[2] = {"id": "vlm", "state": "pending", "detail": ""}
         yield _emit(S.t("status.running_yolo"))
-
-        import queue as _queue
-        import threading as _threading
 
         run_id = _time_mod.strftime("%Y%m%d_%H%M%S")
         output_dir = str(_RUNS_DIR / run_id)
@@ -247,6 +265,10 @@ def build_app(
                 row = format_event_row(ev, i, S, text_cache=text_cache, stats=translation_stats)
                 live_rows.append(row)
 
+        _stop_event = _threading.Event()
+        with _pipeline_lock:
+            _active_stop_event = _stop_event
+
         def _run() -> None:
             try:
                 result = run_visual_pipeline(
@@ -258,50 +280,60 @@ def build_app(
                     preloaded_tracker=_mreg.get("yolo"),
                     preloaded_vlm=_mreg.get("vlm"),
                     locale=_lang[0],
+                    stop_event=_stop_event,
                 )
                 _q.put(("done", result))
             except Exception as exc:
                 _q.put(("error", f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}"))
 
-        _threading.Thread(target=_run, daemon=True).start()
+        _vp_thread = _threading.Thread(target=_run, daemon=True)
+        with _pipeline_lock:
+            _active_pipeline_thread = _vp_thread
+        _vp_thread.start()
 
         _model_loaded = False
-        while True:
-            try:
-                msg = _q.get(timeout=1.0)
-            except _queue.Empty:
-                if not _model_loaded:
-                    steps[1]["detail"] = S.t("pipeline.loading_weights")
-                    steps[2]["detail"] = S.t("pipeline.loading_weights")
-                    steps[2]["state"] = "running"
-                yield _emit(S.t("status.loading_models") if not _model_loaded else S.t("status.processing"))
-                continue
+        try:
+            while True:
+                try:
+                    msg = _q.get(timeout=1.0)
+                except _queue.Empty:
+                    if not _model_loaded:
+                        steps[1]["detail"] = S.t("pipeline.loading_weights")
+                        steps[2]["detail"] = S.t("pipeline.loading_weights")
+                        steps[2]["state"] = "running"
+                    yield _emit(S.t("status.loading_models") if not _model_loaded else S.t("status.processing"))
+                    continue
 
-            kind = msg[0]
-            if kind == "progress":
-                if not _model_loaded:
-                    _model_loaded = True
-                    step_start[1] = _time.time()
-                _, done, total, track_count, vlm_fired = msg
-                _progress_done[0] = int(done or 0)
-                _progress_total[0] = int(total or 0)
-                pct = f"{done}/{total}" if total else str(done)
-                person_key = "pipeline.persons" if track_count == 1 else "pipeline.persons_plural"
-                person_s = S.t(person_key, count=track_count)
-                steps[1] = {"id": "yolo", "state": "running", "detail": f"{S.t('pipeline.frame', pct=pct)} · {person_s}"}
-                if vlm_fired:
-                    if 2 not in step_start:
-                        step_start[2] = _time.time()
-                    steps[2] = {"id": "vlm", "state": "running", "detail": S.t("pipeline.frame", pct=pct)}
-                yield _emit(S.t("status.processing_frame", pct=pct))
-            elif kind == "done":
-                vp = msg[1]
-                break
-            else:
-                steps[1] = {"id": "yolo", "state": "error", "detail": str(msg[1])[:80]}
-                steps[2] = {"id": "vlm", "state": "error", "detail": ""}
-                yield _emit(S.t("status.pipeline_error", error=msg[1]), "error")
-                return
+                kind = msg[0]
+                if kind == "progress":
+                    if not _model_loaded:
+                        _model_loaded = True
+                        step_start[1] = _time.time()
+                    _, done, total, track_count, vlm_fired = msg
+                    _progress_done[0] = int(done or 0)
+                    _progress_total[0] = int(total or 0)
+                    pct = f"{done}/{total}" if total else str(done)
+                    person_key = "pipeline.persons" if track_count == 1 else "pipeline.persons_plural"
+                    person_s = S.t(person_key, count=track_count)
+                    steps[1] = {"id": "yolo", "state": "running", "detail": f"{S.t('pipeline.frame', pct=pct)} · {person_s}"}
+                    if vlm_fired:
+                        if 2 not in step_start:
+                            step_start[2] = _time.time()
+                        steps[2] = {"id": "vlm", "state": "running", "detail": S.t("pipeline.frame", pct=pct)}
+                    yield _emit(S.t("status.processing_frame", pct=pct))
+                elif kind == "done":
+                    vp = msg[1]
+                    break
+                else:
+                    steps[1] = {"id": "yolo", "state": "error", "detail": str(msg[1])[:80]}
+                    steps[2] = {"id": "vlm", "state": "error", "detail": ""}
+                    yield _emit(S.t("status.pipeline_error", error=msg[1]), "error")
+                    return
+        finally:
+            # Signal the pipeline thread to stop (idempotent if already done).
+            # This fires whether we exit normally, via return/break, or via
+            # GeneratorExit (Gradio cancelling the generator on stop).
+            _stop_event.set()
 
         events: List[Dict] = vp.events
         _finish_step(1, "yolo", S.t("pipeline.frames_tracks", frames=vp.frames_processed, tracks=vp.unique_tracks))
