@@ -20,6 +20,7 @@ import DetectionMetrics from './components/tabs/DetectionMetrics.jsx'
 import AudioReport from './components/tabs/AudioReport.jsx'
 import ClipLibrary from './components/tabs/ClipLibrary.jsx'
 import SettingsTab from './components/tabs/SettingsTab.jsx'
+import ClipViewSelector from './components/ClipViewSelector.jsx'
 
 function makeTabs(language) {
   return [
@@ -78,6 +79,7 @@ export default function App() {
   const [clipSrc, setClipSrc]               = useState(null)
   const [sessionRunCount, setSessionRunCount] = useState(0)
   const [exportingZip, setExportingZip]     = useState(false)
+  const [viewClipId, setViewClipId]         = useState(null)
   const sessionEventsRef    = useRef([])
   const previewUrlRef       = useRef('')
   const annotatedVideoElRef = useRef(null)
@@ -257,6 +259,7 @@ export default function App() {
     const base = sessionEventsRef.current
     const sub = client.submit('/run_pipeline', { video_path: gradioPath })
     activeSubRef.current = sub
+    let itemResults = null
     for await (const msg of sub) {
       if (stopRequestedRef.current) break
       if (msg.type !== 'data') continue
@@ -278,10 +281,16 @@ export default function App() {
         setSessionRunCount(c => c + 1)
         setSummary(u)
         setPipelineProgress(100)
+        itemResults = {
+          summary: u,
+          annotatedVideo: u.annotated_video_path || null,
+          outputDir: u.output_dir || '',
+        }
       }
     }
     activeSubRef.current = null
     if (stopRequestedRef.current) throw new Error('stopped')
+    return itemResults
   }, [client, language])
 
   const handleStop = useCallback(() => {
@@ -302,8 +311,8 @@ export default function App() {
       setProcessingItem({ name: item.name, zone: item.zone })
       setQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'running' } : q))
       try {
-        await processItem(item)
-        setQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'done' } : q))
+        const results = await processItem(item)
+        setQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'done', results } : q))
       } catch (e) {
         if (stopRequestedRef.current) {
           setQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'pending', error: null } : q))
@@ -338,6 +347,7 @@ export default function App() {
     setEvents([])
     setSessionRunCount(0)
     setSummary(null)
+    setViewClipId(null)
     setOutputDir('')
     setAnnotatedVideo(null)
     setChatHistory([])
@@ -367,7 +377,16 @@ export default function App() {
   const allPendingSelected = queue.filter(q => q.status === 'pending').every(q => q.selected !== false)
   const somePendingSelected = queue.some(q => q.status === 'pending' && q.selected !== false)
 
-  const tabProps = { client, events, outputDir, summary, chatHistory, setChatHistory, language, setLanguage, onSeekVideo: seekAnnotatedVideo, setClipSrc }
+  // Scoped view: null = All (session), or a specific queue item id
+  const viewClip = viewClipId ? queue.find(q => q.id === viewClipId) : null
+  const viewEvents = viewClipId
+    ? events.filter(e => e.source_video === viewClip?.name)
+    : events
+  const viewSummary = viewClipId ? (viewClip?.results?.summary ?? null) : summary
+  const viewAnnotatedVideo = viewClipId ? (viewClip?.results?.annotatedVideo ?? null) : annotatedVideo
+  const viewOutputDir = viewClipId ? (viewClip?.results?.outputDir ?? '') : outputDir
+
+  const tabProps = { client, events: viewEvents, outputDir: viewOutputDir, summary: viewSummary, chatHistory, setChatHistory, language, setLanguage, onSeekVideo: seekAnnotatedVideo, setClipSrc }
 
   const PanelHeader = ({ title, children }) => (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
@@ -411,7 +430,7 @@ export default function App() {
                     exportingZip={exportingZip}
                   />
                   <Paper sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-                    <PanelHeader title={clipSrc ? t(language, 'panel.event_clip') : annotatedVideo ? t(language, 'panel.annotated') : t(language, 'panel.preview')}>
+                    <PanelHeader title={clipSrc ? t(language, 'panel.event_clip') : viewAnnotatedVideo ? t(language, 'panel.annotated') : t(language, 'panel.preview')}>
                       {clipSrc && (
                         <Typography
                           component="button"
@@ -421,12 +440,12 @@ export default function App() {
                         </Typography>
                       )}
                     </PanelHeader>
-                    <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: (clipSrc || annotatedVideo || videoPreviewSrc) ? '#000' : 'background.default', borderRadius: '0 0 11px 11px', overflow: 'hidden', minHeight: 0 }}>
+                    <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: (clipSrc || viewAnnotatedVideo || videoPreviewSrc) ? '#000' : 'background.default', borderRadius: '0 0 11px 11px', overflow: 'hidden', minHeight: 0 }}>
                       {clipSrc ? (
                         <video key={clipSrc} src={clipSrc} controls autoPlay style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                      ) : annotatedVideo ? (
-                        <video ref={annotatedVideoElRef}
-                          src={annotatedVideo.startsWith('/gradio_api/file=') ? annotatedVideo : `/gradio_api/file=${annotatedVideo}`}
+                      ) : viewAnnotatedVideo ? (
+                        <video ref={annotatedVideoElRef} key={viewAnnotatedVideo}
+                          src={viewAnnotatedVideo.startsWith('/gradio_api/file=') ? viewAnnotatedVideo : `/gradio_api/file=${viewAnnotatedVideo}`}
                           controls style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                       ) : videoPreviewSrc ? (
                         <video src={videoPreviewSrc} controls muted style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
@@ -458,6 +477,7 @@ export default function App() {
                     language={language}
                   />
                   <Paper sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                    <ClipViewSelector queue={queue} viewClipId={viewClipId} onChange={setViewClipId} />
                     <TabNav tabs={tabs} activeTab={activeTab} setActiveTab={setActiveTab} />
                     <Box sx={{ flex: 1, overflowY: 'auto', p: 2.5, minHeight: 0 }}>
                       <Box sx={{ display: activeTab === 'timeline' ? 'block' : 'none' }}><EventTimeline   {...tabProps} /></Box>

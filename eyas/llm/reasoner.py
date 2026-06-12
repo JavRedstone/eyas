@@ -93,6 +93,24 @@ class Reasoner:
             verbose=False,
         )
 
+    def offload(self) -> None:
+        """Free Metal/GPU memory held by the llama.cpp Llama object.
+        The model reloads automatically from disk on the next summarize call."""
+        if self._model is not None:
+            print("[LLM offload] Freeing llama.cpp Metal memory…")
+            try:
+                self._model.close()
+            except Exception:
+                pass
+            try:
+                del self._model
+            except Exception:
+                pass
+            self._model = None
+            import gc
+            gc.collect()
+            print("[LLM offload] Done.")
+
     @staticmethod
     def _is_observation_schema(ev: Dict) -> bool:
         """True for ObservationEvent dicts (structurer output); False for legacy dicts."""

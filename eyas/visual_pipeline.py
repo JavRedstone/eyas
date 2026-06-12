@@ -214,6 +214,7 @@ def run_visual_pipeline(
     preloaded_tracker=None,
     preloaded_vlm=None,
     locale: str = "en",
+    stop_event=None,
 ) -> VisualPipelineResult:
     """Run the complete visual processing track on one video."""
     source = Path(video_path).expanduser().resolve()
@@ -324,6 +325,8 @@ def run_visual_pipeline(
     frame_index = 0
     try:
         while cap.isOpened() and (max_frames is None or frame_index < max_frames):
+            if stop_event is not None and stop_event.is_set():
+                break
             ok, frame = cap.read()
             if not ok:
                 break
