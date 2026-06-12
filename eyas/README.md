@@ -50,6 +50,6 @@ python eyas/app.py --lang ko
 python eyas/app.py --port 7960
 
 # Frontend hot-reload dev server (http://localhost:5173)
-npm --prefix eyas/ui/frontend install
-npm --prefix eyas/ui/frontend run dev
+cd eyas/ui/frontend && npm install
+cd eyas/ui/frontend && npm run dev
 ```
