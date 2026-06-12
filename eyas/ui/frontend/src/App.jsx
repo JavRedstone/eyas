@@ -220,7 +220,7 @@ export default function App() {
   const handleSwitchLanguage = useCallback(async (lang) => {
     if (!client || lang === language) return
     try {
-      await client.predict('/save_language', { lang_label: lang })
+      await client.predict('/save_language', [lang])
       setLanguage(lang)
     } catch {}
   }, [client, language])
@@ -274,7 +274,7 @@ export default function App() {
                     </Typography>
                   )}
                 </PanelHeader>
-                <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#000', borderRadius: '0 0 11px 11px', overflow: 'hidden', minHeight: 0 }}>
+                <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: (clipSrc || annotatedVideo || videoPreviewSrc) ? '#000' : 'background.default', borderRadius: '0 0 11px 11px', overflow: 'hidden', minHeight: 0 }}>
                   {clipSrc ? (
                     <video key={clipSrc} src={clipSrc} controls autoPlay style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                   ) : annotatedVideo ? (
