@@ -9,6 +9,7 @@ Language is read from preferences.json at startup and can be overridden via CLI 
 
 import argparse
 import json
+import subprocess
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -75,7 +76,11 @@ app.launch(
 
 _INDEX_PATH = _STATIC_DIR / "index.html"
 
-# Mount the React build and override GET / — dist must exist (built by Dockerfile or locally).
+if not _INDEX_PATH.exists():
+    _frontend_dir = Path(__file__).parent / "ui" / "frontend"
+    subprocess.run(["npm", "run", "build"], cwd=str(_frontend_dir), check=True)
+
+# Mount the React build and override GET /.
 app.app.mount("/ui", StaticFiles(directory=str(_STATIC_DIR)), name="ui-static")
 
 
