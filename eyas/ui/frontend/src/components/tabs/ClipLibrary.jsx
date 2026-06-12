@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
-import { RefreshCw, Trash2, ArrowUpCircle, Film } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { RefreshCw, Trash2, ArrowUpCircle, Film, Search } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Box from '@mui/material/Box'
+import InputBase from '@mui/material/InputBase'
 import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
 import IconButton from '@mui/material/IconButton'
@@ -28,9 +29,15 @@ function resolveVideoSrc(value) {
 
 export default function ClipLibrary({ client, language = 'English' }) {
   const [clips, setClips]       = useState([])
+  const [filter, setFilter]     = useState('')
   const [status, setStatus]     = useState('')
   const [preview, setPreview]   = useState(null)
   const [selected, setSelected] = useState(null)
+
+  const visibleClips = useMemo(() => {
+    const q = filter.trim().toLowerCase()
+    return q ? clips.filter(c => c.toLowerCase().includes(q)) : clips
+  }, [clips, filter])
 
   useEffect(() => { refresh() }, [client])
 
@@ -80,9 +87,22 @@ export default function ClipLibrary({ client, language = 'English' }) {
         </IconButton>
       </Box>
 
+      {clips.length > 0 && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1, py: 0.5, border: '1px solid', borderColor: 'divider', borderRadius: 1.5 }}>
+          <Search size={12} style={{ color: '#7a8ea8', flexShrink: 0 }} />
+          <InputBase
+            size="small"
+            placeholder={t(language, 'library.filter')}
+            value={filter}
+            onChange={e => setFilter(e.target.value)}
+            sx={{ fontSize: '0.75rem', flex: 1 }}
+          />
+        </Box>
+      )}
+
       {status && <Typography variant="caption" color="text.secondary">{status}</Typography>}
 
-      {clips.length === 0 ? (
+      {visibleClips.length === 0 && clips.length === 0 ? (
         <Box sx={{ textAlign: 'center', py: 6, color: 'text.secondary' }}>
           <Film size={32} style={{ margin: '0 auto 12px', display: 'block', opacity: 0.3 }} />
           <Typography variant="caption">{t(language, 'library.empty')}</Typography>
@@ -90,7 +110,7 @@ export default function ClipLibrary({ client, language = 'English' }) {
       ) : (
         <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1.5 }}>
           <AnimatePresence>
-            {clips.map((clip, i) => (
+            {visibleClips.map((clip, i) => (
               <Paper
                 key={clip}
                 component={motion.div}

@@ -34,9 +34,10 @@ const STRINGS = {
     'sidebar.no_samples':    'No sample clips found.',
 
     // AnalysisPanel
-    'analysis.analyze':    'Analyze',
-    'analysis.processing': 'Processing…',
-    'analysis.progress':   'Progress: {pct}%',
+    'analysis.analyze':      'Analyze',
+    'analysis.analyze_all':  'Analyze All ({count})',
+    'analysis.processing':   'Processing…',
+    'analysis.progress':     'Progress: {pct}%',
     'step.load_video':     'Load Video',
     'step.yolo':           'YOLO Tracking',
     'step.vlm':            'VLM Captioning',
@@ -99,6 +100,7 @@ const STRINGS = {
     // DetectionMetrics
     'metrics.total':     'Total Detections',
     'metrics.events':    'Events',
+    'metrics.taken':     'Taken / Held',
     'metrics.zones':     'Zones Active',
     'metrics.avg':       'Avg / Zone',
     'metrics.zone_chart':'Zone Counts',
@@ -115,6 +117,15 @@ const STRINGS = {
     'library.preview_hdr': 'Preview: ',
     'library.deleted':     'Deleted: {name}',
     'library.loaded':      'Loaded for analysis: {name}',
+    'library.filter':      'Filter clips…',
+
+    // Session
+    'session.events':        '{count} events · {runs} video(s)',
+    'session.clear':         'Clear Session',
+    'session.clear_confirm': 'Clear all session data?',
+    'session.export':        'Export ZIP',
+    'session.exporting':     'Exporting…',
+    'session.empty':         'No session',
 
     // SettingsTab
     'settings.language':      'Language',
@@ -158,9 +169,10 @@ const STRINGS = {
     'sidebar.no_samples':    '샘플 클립이 없습니다.',
 
     // AnalysisPanel
-    'analysis.analyze':    '분석',
-    'analysis.processing': '처리 중…',
-    'analysis.progress':   '진행률: {pct}%',
+    'analysis.analyze':      '분석',
+    'analysis.analyze_all':  '전체 분석 ({count})',
+    'analysis.processing':   '처리 중…',
+    'analysis.progress':     '진행률: {pct}%',
     'step.load_video':     '영상 불러오기',
     'step.yolo':           'YOLO 추적',
     'step.vlm':            'VLM 캡션',
@@ -223,6 +235,7 @@ const STRINGS = {
     // DetectionMetrics
     'metrics.total':     '전체 탐지',
     'metrics.events':    '이벤트',
+    'metrics.taken':     '탈취 / 소지',
     'metrics.zones':     '활성 구역',
     'metrics.avg':       '구역 평균',
     'metrics.zone_chart':'구역별 탐지 수',
@@ -239,6 +252,15 @@ const STRINGS = {
     'library.preview_hdr': '미리보기: ',
     'library.deleted':     '삭제됨: {name}',
     'library.loaded':      '분석용으로 불러옴: {name}',
+    'library.filter':      '클립 필터링…',
+
+    // Session
+    'session.events':        '{count}개 이벤트 · {runs}개 영상',
+    'session.clear':         '세션 초기화',
+    'session.clear_confirm': '모든 세션 데이터를 초기화하시겠습니까?',
+    'session.export':        'ZIP 내보내기',
+    'session.exporting':     '내보내는 중…',
+    'session.empty':         '세션 없음',
 
     // SettingsTab
     'settings.language':      '언어',
