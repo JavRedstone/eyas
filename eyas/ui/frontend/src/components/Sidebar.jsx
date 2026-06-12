@@ -7,8 +7,9 @@ import Typography from '@mui/material/Typography'
 import Select from '@mui/material/Select'
 import MenuItem from '@mui/material/MenuItem'
 import FormControl from '@mui/material/FormControl'
+import { t } from '../i18n.js'
 
-export default function Sidebar({ samples, videoFile, videoRef, uploadStatus, onFileSelect, onLoadSample }) {
+export default function Sidebar({ samples, videoFile, videoRef, uploadStatus, language = 'English', onFileSelect, onLoadSample }) {
   const inputRef = useRef()
   const hasVideo = videoFile || videoRef
 
@@ -27,30 +28,30 @@ export default function Sidebar({ samples, videoFile, videoRef, uploadStatus, on
       {/* Panel header */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
         <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: 'primary.main' }} />
-        <Typography variant="caption" fontWeight={600} sx={{ color: 'text.primary', letterSpacing: '0.03em' }}>Footage</Typography>
+        <Typography variant="caption" fontWeight={600} sx={{ color: 'text.primary', letterSpacing: '0.03em' }}>{t(language, 'panel.footage')}</Typography>
       </Box>
 
       <Box sx={{ p: 1.5, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
         {samples.length > 0 ? (
           <Box>
-            <Typography variant="overline" sx={{ display: 'block', mb: 0.75, fontSize: '0.65rem' }}>Sample Clips</Typography>
+            <Typography variant="overline" sx={{ display: 'block', mb: 0.75, fontSize: '0.65rem' }}>{t(language, 'sidebar.sample_clips')}</Typography>
             <FormControl size="small" fullWidth>
               <Select
                 defaultValue=""
                 onChange={e => onLoadSample(e.target.value)}
                 displayEmpty
                 sx={{ fontSize: '0.8rem' }}>
-                <MenuItem value=""><em style={{ color: '#7a8ea8' }}>— Choose a sample —</em></MenuItem>
+                <MenuItem value=""><em style={{ color: '#7a8ea8' }}>{t(language, 'sidebar.choose_sample')}</em></MenuItem>
                 {samples.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
               </Select>
             </FormControl>
           </Box>
         ) : (
-          <Typography variant="caption" color="text.secondary">No sample clips found.</Typography>
+          <Typography variant="caption" color="text.secondary">{t(language, 'sidebar.no_samples')}</Typography>
         )}
 
         <Box>
-          <Typography variant="overline" sx={{ display: 'block', mb: 0.75, fontSize: '0.65rem' }}>Upload Video</Typography>
+          <Typography variant="overline" sx={{ display: 'block', mb: 0.75, fontSize: '0.65rem' }}>{t(language, 'sidebar.upload_video')}</Typography>
           <Box
             component={motion.div}
             whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
@@ -71,7 +72,7 @@ export default function Sidebar({ samples, videoFile, videoRef, uploadStatus, on
             <input ref={inputRef} type="file" accept="video/*" style={{ display: 'none' }} onChange={handleChange} />
             <Upload size={20} style={{ margin: '0 auto 8px', color: '#7a8ea8', display: 'block' }} />
             <Typography variant="caption" color="text.secondary">
-              {videoFile ? videoFile.name : 'Drop video or click to upload'}
+              {videoFile ? videoFile.name : t(language, 'sidebar.drop_upload')}
             </Typography>
           </Box>
         </Box>

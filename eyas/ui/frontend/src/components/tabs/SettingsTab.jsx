@@ -5,6 +5,7 @@ import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
+import { t } from '../../i18n.js'
 
 const LANGUAGES = ['English', '한국어']
 
@@ -17,16 +18,16 @@ export default function SettingsTab({ client, language, setLanguage }) {
     try {
       await client.predict('/save_language', [local])
       setLanguage(local)
-      setStatus('Language switched.')
+      setStatus(t(local, 'settings.saved'))
     } catch (e) { setStatus(`Error: ${e.message}`) }
   }
 
   return (
     <Box sx={{ maxWidth: 360, display: 'flex', flexDirection: 'column', gap: 3 }}>
       <Box>
-        <Typography variant="overline" sx={{ display: 'block', mb: 0.5 }}>Language</Typography>
+        <Typography variant="overline" sx={{ display: 'block', mb: 0.5 }}>{t(language, 'settings.language')}</Typography>
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
-          Applies to pipeline output labels, summaries, and audio reports.
+          {t(language, 'settings.language_help')}
         </Typography>
         <ToggleButtonGroup
           value={local}
@@ -56,7 +57,7 @@ export default function SettingsTab({ client, language, setLanguage }) {
         disabled={local === language}
         startIcon={<Save size={14} />}
         sx={{ alignSelf: 'flex-start' }}>
-        Save Language
+        {t(language, 'settings.save')}
       </Button>
 
       {status && <Typography variant="caption" color="text.secondary">{status}</Typography>}

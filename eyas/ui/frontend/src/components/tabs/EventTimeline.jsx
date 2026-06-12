@@ -12,6 +12,7 @@ import TableCell from '@mui/material/TableCell'
 import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
+import { t } from '../../i18n.js'
 
 const KIND_COLORS = {
   person:      '#e87030',
@@ -43,7 +44,7 @@ function ScatterDot({ cx, cy, payload }) {
   return <circle cx={cx} cy={cy} r={5} fill={kindColor(payload.kind)} fillOpacity={0.85} />
 }
 
-export default function EventTimeline({ client, events, outputDir, onSeekVideo, setClipSrc }) {
+export default function EventTimeline({ client, events, outputDir, onSeekVideo, setClipSrc, language = 'English' }) {
   const [loadingClip, setLoading] = useState(false)
   const [loadingIdx, setLoadingIdx] = useState(null)
 
@@ -70,13 +71,13 @@ export default function EventTimeline({ client, events, outputDir, onSeekVideo, 
       {/* Scatter timeline */}
       {scatterData.length > 0 && (
         <Box>
-          <Typography variant="overline" sx={{ display: 'block', mb: 1.5 }}>Event Timeline</Typography>
+          <Typography variant="overline" sx={{ display: 'block', mb: 1.5 }}>{t(language, 'timeline.title')}</Typography>
           <ResponsiveContainer width="100%" height={160}>
             <ScatterChart margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
               <CartesianGrid stroke="#2e4060" strokeDasharray="3 3" />
               <XAxis dataKey="x" name="Time (s)" type="number" domain={['auto', 'auto']}
                 tick={{ fill: '#7a8ea8', fontSize: 10 }} tickLine={false} axisLine={false}
-                label={{ value: 'seconds', position: 'insideBottomRight', offset: -4, fill: '#7a8ea8', fontSize: 10 }} />
+                label={{ value: t(language, 'timeline.x_label'), position: 'insideBottomRight', offset: -4, fill: '#7a8ea8', fontSize: 10 }} />
               <YAxis dataKey="y" type="number" hide domain={[0, scatterData.length + 1]} />
               <Tooltip
                 cursor={{ stroke: '#2e4060' }}
@@ -105,21 +106,21 @@ export default function EventTimeline({ client, events, outputDir, onSeekVideo, 
       {/* Events table */}
       <Box>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-          <Typography variant="overline">Detected Events</Typography>
-          <Typography variant="caption" color="text.secondary">{events.length} events</Typography>
+          <Typography variant="overline">{t(language, 'timeline.detected')}</Typography>
+          <Typography variant="caption" color="text.secondary">{t(language, 'timeline.count', { count: events.length })}</Typography>
         </Box>
         {events.length === 0 ? (
-          <Typography variant="caption" color="text.secondary">No events yet. Run the pipeline first.</Typography>
+          <Typography variant="caption" color="text.secondary">{t(language, 'timeline.empty')}</Typography>
         ) : (
           <TableContainer sx={{ borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell>#</TableCell>
-                  <TableCell>Time</TableCell>
-                  <TableCell>Kind</TableCell>
-                  <TableCell>Zone</TableCell>
-                  <TableCell>Description</TableCell>
+                  <TableCell>{t(language, 'timeline.col_num')}</TableCell>
+                  <TableCell>{t(language, 'timeline.col_time')}</TableCell>
+                  <TableCell>{t(language, 'timeline.col_kind')}</TableCell>
+                  <TableCell>{t(language, 'timeline.col_zone')}</TableCell>
+                  <TableCell>{t(language, 'timeline.col_desc')}</TableCell>
                   <TableCell />
                 </TableRow>
               </TableHead>
@@ -146,7 +147,7 @@ export default function EventTimeline({ client, events, outputDir, onSeekVideo, 
                         {ev.label ?? ev.description ?? '—'}
                       </TableCell>
                       <TableCell>
-                        <MuiTooltip title="Load clip">
+                        <MuiTooltip title={t(language, 'timeline.load_clip')}>
                           <span>
                             <IconButton
                               size="small"
@@ -156,7 +157,7 @@ export default function EventTimeline({ client, events, outputDir, onSeekVideo, 
                               {loadingIdx === i
                                 ? <Loader2 size={10} style={{ animation: 'spin 1s linear infinite' }} />
                                 : <RefreshCw size={10} />}
-                              <span style={{ fontSize: '0.65rem' }}>clip</span>
+                              <span style={{ fontSize: '0.65rem' }}>{t(language, 'timeline.clip_btn')}</span>
                             </IconButton>
                           </span>
                         </MuiTooltip>
