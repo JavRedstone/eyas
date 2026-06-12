@@ -245,7 +245,7 @@ export default function App() {
         <Header language={language} colorMode={colorMode} onToggleColorMode={toggleColorMode} onSwitchLanguage={handleSwitchLanguage} />
         <AnimatePresence mode="wait">
           {!splashDone ? (
-            <Splash key="splash" items={splashItems} pct={splashPct} />
+            <Splash key="splash" items={splashItems} pct={splashPct} language={language} colorMode={colorMode} />
           ) : (
             <Box key="app" component={motion.div}
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}
