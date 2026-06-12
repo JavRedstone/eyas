@@ -39,6 +39,34 @@ An offline-first security camera agent built for the **Build Small Hackathon**. 
 
 All models download automatically on first run. No API keys required.
 
+## Video filename convention
+
+Eyas reads the **zone** and **recording time** from each video's filename. Use this pattern when naming clips before uploading:
+
+```
+YYYYMMDD_HHMMSS_<zone>.mp4
+```
+
+| Part | Format | Example |
+|---|---|---|
+| Date | 8-digit `YYYYMMDD` | `20240608` |
+| Time | 6-digit `HHMMSS` | `120000` |
+| Zone | any string (underscores allowed) | `entrance`, `counter`, `back_door`, `aisles` |
+
+**Examples**
+
+```
+20240608_120000_entrance.mp4   → zone "entrance", recorded 2024-06-08 at 12:00
+20240608_130000_counter.mp4    → zone "counter",  recorded 2024-06-08 at 13:00
+20240609_083000_back_door.mp4  → zone "back_door"
+```
+
+If the filename does not match this pattern the pipeline falls back to a generic `review_area` zone that covers the full frame.
+
+The two bundled sample clips already follow this convention:
+- `eyas/input/20240608_120000_entrance.mp4`
+- `eyas/input/20240608_130000_counter.mp4`
+
 ## Quick start
 
 ```bash
@@ -135,7 +163,7 @@ git branch -D hf-deploy
 
 This creates a single root commit with only the current source tree. Git LFS only needs to upload the Korean font (~16 MB); everything else is either a small text file or gitignored.
 
-> Sample videos (`eyas/input/*.mp4`, `eyas/tests/samples/*.mp4`) are gitignored and not included in the deploy.
+> Sample videos in `eyas/input/` are committed directly (no LFS) so they ship with the HF build. Test fixtures in `eyas/tests/samples/` remain gitignored.
 
 ### Push to both at once
 

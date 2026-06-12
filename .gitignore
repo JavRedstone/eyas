@@ -67,6 +67,6 @@ output/
 # TTS test audio output
 eyas/tests/model/tts_output/
 
-# Sample input/test videos — large test fixtures, not needed for deployment
-eyas/input/*.mp4
+# Sample input videos are small enough to commit directly (no LFS)
+# eyas/input/*.mp4 — intentionally tracked so HF Spaces build includes them
 eyas/tests/samples/*.mp4
