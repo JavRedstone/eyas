@@ -78,6 +78,7 @@ _INDEX_PATH = _STATIC_DIR / "index.html"
 
 if not _INDEX_PATH.exists():
     _frontend_dir = Path(__file__).parent / "ui" / "frontend"
+    subprocess.run(["npm", "ci"], cwd=str(_frontend_dir), check=True)
     subprocess.run(["npm", "run", "build"], cwd=str(_frontend_dir), check=True)
 
 # Mount the React build and override GET /.
