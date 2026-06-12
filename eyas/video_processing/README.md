@@ -48,8 +48,7 @@ The installed binding must include the modern `MTMDChatHandler`. Verify it:
 python -c "from llama_cpp.llama_chat_format import MTMDChatHandler; print('mtmd ready')"
 ```
 
-If that import fails, build the Python binding from source instead of using a
-cached wheel:
+If that import fails, build the Python binding from source:
 
 ```bash
 CMAKE_ARGS="-DGGML_METAL=on -DGGML_ACCELERATE=on" \
@@ -57,19 +56,19 @@ pip install --upgrade --force-reinstall --no-binary llama-cpp-python \
   llama-cpp-python
 ```
 
-Download both F16 GGUF files locally:
+Download both F16 GGUF files locally (run from repo root):
 
 ```bash
 hf download openbmb/MiniCPM-V-4.6-gguf \
   --include "*F16.gguf" \
   --include "*mmproj*" \
-  --local-dir models/minicpmv
+  --local-dir eyas/models/minicpmv
 ```
 
-Run the official F16 GGUF directly from the Hugging Face cache:
+Run the pipeline with the GGUF backend:
 
 ```bash
-python scripts/run_visual_pipeline.py input/test2.mp4 \
+python eyas/scripts/run_visual_pipeline.py eyas/input/sample.mp4 \
   --device mps \
   --vlm-backend llama-cpp-python \
   --llama-filename MiniCPM-V-4_6-F16.gguf \
@@ -79,8 +78,8 @@ python scripts/run_visual_pipeline.py input/test2.mp4 \
 To use a previously downloaded model file, add:
 
 ```bash
---llama-model-path models/minicpmv/MiniCPM-V-4_6-F16.gguf \
---llama-mmproj-path models/minicpmv/mmproj-model-f16.gguf
+  --llama-model-path eyas/models/minicpmv/MiniCPM-V-4_6-F16.gguf \
+  --llama-mmproj-path eyas/models/minicpmv/mmproj-model-f16.gguf
 ```
 
 Start with F16 to preserve accuracy. Benchmark Q8 or Q4 only after comparing
@@ -94,8 +93,8 @@ for the Instruct checkpoint:
 
 ```bash
 llama-mtmd-cli \
-  -m models/minicpmv/MiniCPM-V-4_6-F16.gguf \
-  --mmproj models/minicpmv/mmproj-model-f16.gguf \
+  -m eyas/models/minicpmv/MiniCPM-V-4_6-F16.gguf \
+  --mmproj eyas/models/minicpmv/mmproj-model-f16.gguf \
   -c 8192 --reasoning off --image test.jpg \
   -p "Describe only what is visible."
 ```

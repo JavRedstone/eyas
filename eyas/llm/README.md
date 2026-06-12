@@ -15,7 +15,7 @@ Local LLM reasoning over the event log via llama.cpp (GGUF models).
 
 ## Model
 
-Default: `models/nemotron-nano-4b.gguf`.  
+Default: `eyas/models/nemotron-nano-4b.gguf`.  
 Override with the `EYAS_MODEL_PATH` environment variable.
 
 ## Usage
@@ -24,8 +24,8 @@ Override with the `EYAS_MODEL_PATH` environment variable.
 import json
 from llm.reasoner import Reasoner
 
-events = json.loads(open("tests/samples/events.json").read())
-r = Reasoner("models/nemotron-nano-4b.gguf")
+events = json.loads(open("eyas/tests/samples/events.json").read())
+r = Reasoner("eyas/models/nemotron-nano-4b.gguf")
 result = r.summarize_events(events)
 print(result["risk_level"], result["summary"])
 ```

@@ -5,7 +5,7 @@ Full end-to-end pipeline test — every real component, no stubs.
 ## Flow
 
 ```
-samples/sample.mp4
+eyas/tests/samples/sample.mp4
   → PersonTracker (YOLO)
   → MiniCPMVLM   (real transformers model)
   → EventStructurer
@@ -26,11 +26,11 @@ Each test function is automatically skipped when its prerequisite is missing:
 
 ```bash
 # With all models present
-pytest tests/e2e/ -v -s
+pytest eyas/tests/e2e/ -v -s
 
 # Override GGUF path
-EYAS_MODEL_PATH=models/mymodel.gguf pytest tests/e2e/ -v -s
+EYAS_MODEL_PATH=eyas/models/mymodel.gguf pytest eyas/tests/e2e/ -v -s
 
 # As a standalone script (prints pass/fail to stdout)
-python tests/e2e/test_pipeline_e2e.py
+python eyas/tests/e2e/test_pipeline_e2e.py
 ```

@@ -21,5 +21,5 @@ Fast, dependency-free unit tests. No video files, no model weights, no GPU neede
 ## Run
 
 ```bash
-pytest tests/unit/ -v
+pytest eyas/tests/unit/ -v
 ```
