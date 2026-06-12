@@ -70,9 +70,8 @@ def get_voxcpm2_model():
     from voxcpm import VoxCPM
 
     _voxcpm2_model = VoxCPM.from_pretrained(
-        "openbmb/VoxCPM2", device="auto", load_denoiser=False, optimize=False
-    ) 
-    # TODO: test with optimize=True if python 3.10 or higher
+        "openbmb/VoxCPM2", device="auto", load_denoiser=False, optimize=True
+    )
     _voxcpm2_sample_rate = _voxcpm2_model.tts_model.sample_rate
     return _voxcpm2_model, _voxcpm2_sample_rate
 
