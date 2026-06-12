@@ -220,7 +220,7 @@ export default function App() {
   const handleSwitchLanguage = useCallback(async (lang) => {
     if (!client || lang === language) return
     try {
-      await client.predict('/save_language', { language: lang })
+      await client.predict('/save_language', { lang_label: lang })
       setLanguage(lang)
     } catch {}
   }, [client, language])
