@@ -2,8 +2,8 @@
 title: Eyas — AI Security Camera Agent
 emoji: 🦅
 colorFrom: blue
-colorTo: purple
-sdk: docker
+colorTo: yellow
+sdk: gradio
 app_port: 7860
 pinned: false
 ---
@@ -117,7 +117,9 @@ git push origin main
 
 ### Push to Hugging Face Spaces
 
-The repo has a `space` remote. Pushing to it triggers a Docker build on HF infrastructure (CPU-only free tier).
+The repo has a `space` remote. Pushing to it triggers a Space build on HF infrastructure.
+
+For ZeroGPU, switch the Space to the Gradio SDK in Hugging Face settings, set the hardware to ZeroGPU, and add `EYAS_ZERO_GPU=1` as a Space variable so model loading uses the GPU path.
 
 HF Spaces has a 1 GB LFS storage limit. To avoid pushing the full git history (which includes old model-weight LFS objects), always use an orphan commit when deploying:
 

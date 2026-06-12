@@ -1,4 +1,5 @@
 gradio
+spaces
 opencv-python
 numpy
 pillow
