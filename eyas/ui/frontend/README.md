@@ -18,8 +18,8 @@ Start Gradio first, then the dev server (all from repo root):
 
 ```bash
 python eyas/app.py                               # http://localhost:7860
-cd eyas/ui/frontend && npm install
-cd eyas/ui/frontend && npm run dev            # http://localhost:5173
+(cd eyas/ui/frontend && npm install)
+(cd eyas/ui/frontend && npm run dev)            # http://localhost:5173
 ```
 
 Vite proxies `/gradio_api/*` to `http://localhost:7860`.
@@ -27,7 +27,7 @@ Vite proxies `/gradio_api/*` to `http://localhost:7860`.
 ## Build
 
 ```bash
-cd eyas/ui/frontend && npm run build    # outputs to eyas/ui/dist/
+(cd eyas/ui/frontend && npm run build)    # outputs to eyas/ui/dist/
 ```
 
 Gradio serves `dist/` as static files in production.
