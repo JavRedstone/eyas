@@ -4,22 +4,24 @@ import { motion } from 'framer-motion'
 // Model names and labels come translated from the backend via poll_splash.
 const STRINGS = {
   English: {
-    tagline:     'AI Security Camera Agent',
+    tagline:      'AI Security Camera Agent',
     initializing: 'Initializing',
-    ready:       'ready',
-    error:       'error',
-    skipped:     'skipped',
-    loading:     'loading',
-    pending:     'pending',
+    ready:        'ready',
+    error:        'error',
+    skipped:      'skipped',
+    loading:      'loading',
+    pending:      'pending',
+    waiting:      'waiting',
   },
   '한국어': {
-    tagline:     'AI 보안 카메라 에이전트',
+    tagline:      'AI 보안 카메라 에이전트',
     initializing: '초기화 중',
-    ready:       '준비됨',
-    error:       '오류',
-    skipped:     '사용 불가',
-    loading:     '로딩 중',
-    pending:     '대기 중',
+    ready:        '준비됨',
+    error:        '오류',
+    skipped:      '사용 불가',
+    loading:      '로딩 중',
+    pending:      '대기 중',
+    waiting:      '대기 중',
   },
 }
 

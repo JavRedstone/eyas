@@ -185,6 +185,7 @@ MESSAGES: dict[str, dict[str, str]] = {
         "splash.models.yolo": "Object Detector",
         "splash.models.vlm": "Vision Analyzer",
         "splash.models.llm": "LLM Reasoner",
+        "splash.models.tts": "Text-to-Speech",
         "splash.models.tinyaya": "Translator",
         "status.no_video": "No video uploaded.",
         "status.no_video_selected": "No video selected",
@@ -337,6 +338,7 @@ MESSAGES: dict[str, dict[str, str]] = {
         "splash.models.yolo": "객체 탐지기",
         "splash.models.vlm": "시각 분석기",
         "splash.models.llm": "LLM 추론기",
+        "splash.models.tts": "음성 합성",
         "splash.models.tinyaya": "번역기",
         "status.no_video": "업로드된 영상이 없습니다.",
         "status.no_video_selected": "선택된 영상 없음",
@@ -381,7 +383,7 @@ MESSAGES: dict[str, dict[str, str]] = {
 # Keys that must exist in every locale (for tests)
 REQUIRED_MESSAGE_KEYS = sorted(MESSAGES["en"].keys())
 
-SPLASH_MODEL_KEYS = {"yolo": "splash.models.yolo", "vlm": "splash.models.vlm", "llm": "splash.models.llm", "tinyaya": "splash.models.tinyaya"}
+SPLASH_MODEL_KEYS = {"yolo": "splash.models.yolo", "vlm": "splash.models.vlm", "llm": "splash.models.llm", "tts": "splash.models.tts", "tinyaya": "splash.models.tinyaya"}
 
 
 def normalize_key(value: str) -> str:

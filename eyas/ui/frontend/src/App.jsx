@@ -135,10 +135,15 @@ export default function App() {
   }
 
   const pollSplash = useCallback(async (c) => {
+    let langInitialized = false
     for (let i = 0; i < 60; i++) {
       try {
         const r = await c.predict('/poll_splash', {})
-        const { states, done, progress_pct } = r.data[0]
+        const { states, done, progress_pct, language_label } = r.data[0]
+        if (!langInitialized && language_label) {
+          setLanguage(language_label)
+          langInitialized = true
+        }
         setSplashItems(states || [])
         setSplashPct(progress_pct ?? 0)
         if (done) { setSplashDone(true); return }
