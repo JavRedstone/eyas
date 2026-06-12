@@ -12,6 +12,7 @@ const STRINGS = {
     loading:      'loading',
     pending:      'pending',
     waiting:      'waiting',
+    on_demand:    'on demand',
   },
   '한국어': {
     tagline:      'AI 보안 카메라 에이전트',
@@ -22,6 +23,7 @@ const STRINGS = {
     loading:      '로딩 중',
     pending:      '대기 중',
     waiting:      '대기 중',
+    on_demand:    '요청 시 로드',
   },
 }
 
@@ -101,17 +103,18 @@ function ModelRow({ item, index, colors, language }) {
   const { status, label, detail, model_name } = item
 
   const STATUS_META = {
-    ready:   { color: '#34D399', bg: '#34D39912', ring: '#34D39933' },
-    error:   { color: '#F87171', bg: '#F8717112', ring: '#F8717133' },
-    skipped: { color: colors.muted, bg: `${colors.muted}12`, ring: `${colors.muted}33` },
-    loading: { color: colors.primary, bg: `${colors.primary}12`, ring: `${colors.primary}33` },
-    pending: { color: colors.muted,   bg: 'transparent',         ring: colors.muted },
+    ready:     { color: '#34D399', bg: '#34D39912', ring: '#34D39933' },
+    on_demand: { color: '#60A5FA', bg: '#60A5FA12', ring: '#60A5FA33' },
+    error:     { color: '#F87171', bg: '#F8717112', ring: '#F8717133' },
+    skipped:   { color: colors.muted, bg: `${colors.muted}12`, ring: `${colors.muted}33` },
+    loading:   { color: colors.primary, bg: `${colors.primary}12`, ring: `${colors.primary}33` },
+    pending:   { color: colors.muted,   bg: 'transparent',         ring: colors.muted },
   }
 
   const m = STATUS_META[status] || STATUS_META.pending
-  const isLoading = status === 'loading'
-  const isDone    = status === 'ready' || status === 'skipped'
-  const isError   = status === 'error'
+  const isLoading   = status === 'loading'
+  const isDone      = status === 'ready' || status === 'skipped' || status === 'on_demand'
+  const isError     = status === 'error'
 
   return (
     <motion.div
