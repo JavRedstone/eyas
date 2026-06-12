@@ -74,7 +74,7 @@ def build_app(
                 "detail": s.detail or "",
                 "model_name": s.model_name or "",
             })
-        return {"done": done, "states": items, "progress_pct": progress_pct}
+        return {"done": done, "states": items, "progress_pct": progress_pct, "language_label": LANGUAGE_LABELS.get(_lang[0], "English")}
 
     def run_pipeline(video_path: str):
         """Streaming pipeline — yields JSON update objects."""
