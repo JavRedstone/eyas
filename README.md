@@ -4,6 +4,7 @@ emoji: 🦅
 colorFrom: blue
 colorTo: yellow
 sdk: gradio
+app_file: eyas/app.py
 app_port: 7860
 pinned: false
 ---
