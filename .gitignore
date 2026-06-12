@@ -20,6 +20,7 @@ ENV/
 # Distribution / packaging
 build/
 dist/
+!eyas/ui/dist/
 *.egg-info/
 pip-wheel-metadata/
 
