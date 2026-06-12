@@ -8,6 +8,7 @@ import Tooltip from '@mui/material/Tooltip'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import ToggleButton from '@mui/material/ToggleButton'
 import Divider from '@mui/material/Divider'
+import { t } from '../i18n.js'
 
 const LANGUAGES = [
   { value: 'English', label: 'EN' },
@@ -32,7 +33,7 @@ export default function Header({ language, colorMode, onToggleColorMode, onSwitc
           Eyas
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'none', md: 'block' } }}>
-          AI Security Camera Agent
+          {t(language, 'header.subtitle')}
         </Typography>
 
         <Box sx={{ flexGrow: 1 }} />
