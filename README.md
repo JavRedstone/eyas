@@ -119,18 +119,28 @@ git push origin main
 
 The repo has a `space` remote. Pushing to it triggers a Docker build on HF infrastructure (CPU-only free tier).
 
+HF Spaces has a 1 GB LFS storage limit. To avoid pushing the full git history (which includes old model-weight LFS objects), always use an orphan commit when deploying:
+
 ```bash
-git push space main:main --force
+git checkout --orphan hf-deploy
+git commit -m "Deploy to HF Spaces"
+git push space hf-deploy:main --force
+git checkout main
+git branch -D hf-deploy
 ```
 
-> Force-push is required because the Space's `main` branch tracks a different history (orphan branch from the initial setup). This is safe — it just overwrites HF's copy.
+This creates a single root commit with only the current source tree. Git LFS only needs to upload the Korean font (~16 MB); everything else is either a small text file or gitignored.
 
-> Large fonts (`.otf`) are tracked via Git LFS. Ensure `git lfs` is installed before pushing to `space`.
+> Sample videos (`eyas/input/*.mp4`, `eyas/tests/samples/*.mp4`) are gitignored and not included in the deploy.
 
 ### Push to both at once
 
 ```bash
-git push origin main && git push space main:main --force
+# GitHub — normal push
+git push origin main
+
+# HF Spaces — orphan deploy (see above)
+git checkout --orphan hf-deploy && git commit -m "Deploy to HF Spaces" && git push space hf-deploy:main --force && git checkout main && git branch -D hf-deploy
 ```
 
 Live space: [build-small-hackathon/eyas](https://huggingface.co/spaces/build-small-hackathon/eyas)
