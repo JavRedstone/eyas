@@ -19,9 +19,9 @@ python eyas/app.py --port 7960     # custom port
 ## Frontend development
 
 ```bash
-cd eyas/ui/frontend && npm install
-cd eyas/ui/frontend && npm run dev      # http://localhost:5173 — proxies /gradio_api → 7860
-cd eyas/ui/frontend && npm run build    # output → eyas/ui/dist/
+(cd eyas/ui/frontend && npm install)
+(cd eyas/ui/frontend && npm run dev)      # http://localhost:5173 — proxies /gradio_api → 7860
+(cd eyas/ui/frontend && npm run build)    # output → eyas/ui/dist/
 ```
 
 The Vite dev server proxies all `/gradio_api/*` requests to the running Gradio backend, so both hot-reload dev and production mode use the same API surface.

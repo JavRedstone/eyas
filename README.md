@@ -66,8 +66,8 @@ Run the Gradio backend and the Vite dev server side by side. Vite proxies all `/
 python eyas/app.py               # http://localhost:7860
 
 # Terminal 2 — React dev server (hot reload)
-cd eyas/ui/frontend && npm install
-cd eyas/ui/frontend && npm run dev    # http://localhost:5173
+(cd eyas/ui/frontend && npm install)
+(cd eyas/ui/frontend && npm run dev)    # http://localhost:5173
 ```
 
 Open `http://localhost:5173`. The Vite server proxies `/gradio_api`, `/run`, and `/upload` to port 7860, so the full pipeline works during development.
@@ -77,7 +77,7 @@ Open `http://localhost:5173`. The Vite server proxies `/gradio_api`, `/run`, and
 Vite compiles the SPA into `eyas/ui/dist/`. Gradio then serves those files as static assets — no separate Node process needed at runtime.
 
 ```bash
-cd eyas/ui/frontend && npm run build    # → eyas/ui/dist/
+(cd eyas/ui/frontend && npm run build)    # → eyas/ui/dist/
 python eyas/app.py
 # Open http://localhost:7860
 ```
