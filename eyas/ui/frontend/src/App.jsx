@@ -311,6 +311,32 @@ export default function App() {
     }
   }, [loadSamples, pollSplash])
 
+  // Restore the last session's events + summary after the splash clears.
+  useEffect(() => {
+    if (!client || !splashDone) return
+    client.predict('/get_session_state', {}).then(r => {
+      const state = r.data?.[0]
+      if (!state) return
+      const { runs = [], events = [] } = state
+      if (events.length) {
+        sessionEventsRef.current = events
+        setEvents(events)
+        setSessionRunCount(runs.length)
+      }
+      if (runs.length) {
+        const last = runs[runs.length - 1]
+        const llm = last.summary || {}
+        setSummary({
+          ...llm,
+          annotated_video_path: last.annotated_video_path || null,
+          output_dir: last.output_dir || '',
+        })
+        if (last.annotated_video_path) setAnnotatedVideo(last.annotated_video_path)
+        if (last.output_dir) setOutputDir(last.output_dir)
+      }
+    }).catch(() => {})
+  }, [client, splashDone])
+
   const handleToggleSelected = useCallback((id) => {
     setQueue(prev => prev.map(q => q.id === id ? { ...q, selected: !q.selected } : q))
   }, [])

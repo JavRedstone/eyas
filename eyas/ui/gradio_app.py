@@ -80,7 +80,11 @@ _active_pipeline_thread: Optional[threading.Thread] = None
 
 def _session_append_run(run_id: str, video_name: str, output_dir: str,
                          events: list, summary: dict, annotated_video_path: str) -> None:
-    tagged = [{**e, "source_video": video_name} for e in events]
+    # Tag each event with enough info for the frontend to restore session state.
+    tagged = [
+        {**e, "source_video": video_name, "source_clip_id": run_id, "source_event_index": i}
+        for i, e in enumerate(events)
+    ]
     with _session_lock:
         _session["events"].extend(tagged)
         _session["runs"].append({
@@ -741,6 +745,10 @@ def build_app(
             )
 
             # Session management
+            def get_session_state() -> dict:
+                with _session_lock:
+                    return {"runs": list(_session["runs"]), "events": list(_session["events"])}
+
             def clear_session() -> str:
                 _session_clear()
                 return "cleared"
@@ -748,8 +756,8 @@ def build_app(
             def export_session_zip() -> str:
                 return _session_export_zip()
 
+            gr.Button("_").click(get_session_state, outputs=[gr.JSON()], api_name="get_session_state")
             gr.Button("_").click(clear_session, outputs=[gr.Textbox()], api_name="clear_session")
-
             gr.Button("_").click(export_session_zip, outputs=[gr.JSON()], api_name="export_session_zip")
 
     return demo
