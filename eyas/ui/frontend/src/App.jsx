@@ -572,6 +572,8 @@ export default function App() {
     annotatedVideo: viewAnnotatedVideo,
     annotatedVideoRef: annotatedVideoElRef,
     zoneKoCache,
+    viewClipId,
+    onSwitchToClip: setViewClipId,
   }
 
   const PanelHeader = ({ title, children }) => (

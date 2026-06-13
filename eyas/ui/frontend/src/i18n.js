@@ -57,6 +57,10 @@ const STRINGS = {
     'zone.aisle_2':     'Aisle 2',
     'zone.aisle_3':     'Aisle 3',
     'zone.shelf_a':     'Shelf A',
+    'zone.aisle1':      'Aisle 1',
+    'zone.aisle2':      'Aisle 2',
+    'zone.aisle3':      'Aisle 3',
+    'zone.aisle4':      'Aisle 4',
 
     // AnalysisPanel
     'analysis.analyze':      'Analyze',
@@ -82,6 +86,10 @@ const STRINGS = {
     'timeline.load_clip':    'Load clip',
     'timeline.clip_btn':     'clip',
     'timeline.no_video':     'No video yet',
+    'event.timestamp':       'Timestamp',
+    'event.confidence':      'Confidence',
+    'event.source':          'Source',
+    'event.items':           'Items',
 
     // SummaryAlerts
     'summary.empty':        'No analysis yet. Run the pipeline first.',
@@ -219,6 +227,10 @@ const STRINGS = {
     'zone.aisle_2':     '통로 2',
     'zone.aisle_3':     '통로 3',
     'zone.shelf_a':     '선반 A',
+    'zone.aisle1':      '통로 1',
+    'zone.aisle2':      '통로 2',
+    'zone.aisle3':      '통로 3',
+    'zone.aisle4':      '통로 4',
 
     // AnalysisPanel
     'analysis.analyze':      '분석',
@@ -243,6 +255,10 @@ const STRINGS = {
     'timeline.col_desc':  '설명',
     'timeline.load_clip': '클립 불러오기',
     'timeline.clip_btn':  '클립',
+    'event.timestamp':    '타임스탬프',
+    'event.confidence':   '신뢰도',
+    'event.source':       '소스',
+    'event.items':        '물품',
     'timeline.no_video':  '아직 영상 없음',
 
     // SummaryAlerts

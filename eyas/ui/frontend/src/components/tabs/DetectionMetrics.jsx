@@ -13,6 +13,14 @@ const ZONE_COLORS = {
   'back door': '#34D399',
   'back_door': '#34D399',
   aisles:      '#FBBF24',
+  aisle1:      '#f7d046',
+  aisle2:      '#60A5FA',
+  aisle3:      '#34D399',
+  aisle4:      '#C084FC',
+  'aisle 1':   '#f7d046',
+  'aisle 2':   '#60A5FA',
+  'aisle 3':   '#34D399',
+  'aisle 4':   '#C084FC',
 }
 
 function zoneColor(z) { return ZONE_COLORS[z?.toLowerCase()] ?? '#7a8ea8' }
