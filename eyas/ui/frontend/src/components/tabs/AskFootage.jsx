@@ -47,7 +47,7 @@ export default function AskFootage({ client, events, chatHistory, setChatHistory
   function handleKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask() } }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: 420 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
       <Typography variant="overline" sx={{ display: 'block', mb: 1.5 }}>{t(language, 'ask.title')}</Typography>
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
         {t(language, 'ask.hint')}
