@@ -33,6 +33,30 @@ const STRINGS = {
     'sidebar.upload_video':  'Upload Video',
     'sidebar.drop_upload':   'Drop video or click to upload',
     'sidebar.no_samples':    'No sample clips found.',
+    'sidebar.select_all_pending': 'Select all pending',
+
+    // ClipViewSelector
+    'clip_view.all': 'All',
+
+    // Kind labels (event table chips)
+    'kind.person':      'person',
+    'kind.vehicle':     'vehicle',
+    'kind.animal':      'animal',
+    'kind.intrusion':   'intrusion',
+    'kind.loitering':   'loitering',
+    'kind.pickup':      'pickup',
+    'kind.suspicious':  'suspicious',
+    'kind.observation': 'observation',
+
+    // Zone labels (mirror locale.py ZONES)
+    'zone.entrance':    'Entrance',
+    'zone.counter':     'Counter',
+    'zone.back_door':   'Back Door',
+    'zone.aisles':      'Aisles',
+    'zone.review_area': 'Review Area',
+    'zone.aisle_2':     'Aisle 2',
+    'zone.aisle_3':     'Aisle 3',
+    'zone.shelf_a':     'Shelf A',
 
     // AnalysisPanel
     'analysis.analyze':      'Analyze',
@@ -57,6 +81,7 @@ const STRINGS = {
     'timeline.col_desc':     'Description',
     'timeline.load_clip':    'Load clip',
     'timeline.clip_btn':     'clip',
+    'timeline.no_video':     'No video yet',
 
     // SummaryAlerts
     'summary.empty':        'No analysis yet. Run the pipeline first.',
@@ -170,6 +195,30 @@ const STRINGS = {
     'sidebar.upload_video':  '영상 업로드',
     'sidebar.drop_upload':   '영상을 드래그하거나 클릭하여 업로드',
     'sidebar.no_samples':    '샘플 클립이 없습니다.',
+    'sidebar.select_all_pending': '대기 중 전체 선택',
+
+    // ClipViewSelector
+    'clip_view.all': '전체',
+
+    // Kind labels (event table chips)
+    'kind.person':      '사람',
+    'kind.vehicle':     '차량',
+    'kind.animal':      '동물',
+    'kind.intrusion':   '침입',
+    'kind.loitering':   '배회',
+    'kind.pickup':      '집기',
+    'kind.suspicious':  '의심',
+    'kind.observation': '관찰',
+
+    // Zone labels (mirror locale.py ZONES)
+    'zone.entrance':    '입구',
+    'zone.counter':     '계산대',
+    'zone.back_door':   '뒷문',
+    'zone.aisles':      '통로',
+    'zone.review_area': '검토 구역',
+    'zone.aisle_2':     '통로 2',
+    'zone.aisle_3':     '통로 3',
+    'zone.shelf_a':     '선반 A',
 
     // AnalysisPanel
     'analysis.analyze':      '분석',
@@ -194,6 +243,7 @@ const STRINGS = {
     'timeline.col_desc':  '설명',
     'timeline.load_clip': '클립 불러오기',
     'timeline.clip_btn':  '클립',
+    'timeline.no_video':  '아직 영상 없음',
 
     // SummaryAlerts
     'summary.empty':      '분석 결과가 없습니다. 파이프라인을 먼저 실행하세요.',

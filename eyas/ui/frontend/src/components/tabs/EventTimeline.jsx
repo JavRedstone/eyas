@@ -13,6 +13,7 @@ import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import { t } from '../../i18n.js'
+import { displayKind, displayZone, displayDescription } from '../../display.js'
 
 const KIND_COLORS = {
   person:      '#e87030',
@@ -74,6 +75,7 @@ export default function EventTimeline({
   client, events, outputDir, onSeekVideo,
   annotatedVideo, annotatedVideoRef,
   language = 'English',
+  zoneKoCache = {},
 }) {
   const [loadingClip, setLoading] = useState(false)
   const [loadingIdx, setLoadingIdx] = useState(null)
@@ -110,11 +112,12 @@ export default function EventTimeline({
         x: ts,
         y: vidIdx + stackPos * 0.22,
         kind: deriveKind(ev),
-        label: ev.label ?? ev.description ?? ev.summary ?? '',
+        kindLabel: displayKind(deriveKind(ev), language),
+        label: displayDescription(ev, language),
         videoName: ev.source_video ?? '',
       }
     })
-  }, [events, sourceVideos])
+  }, [events, sourceVideos, language])
 
   const yTicks = useMemo(() => Array.from({ length: numBands }, (_, i) => i + 1), [numBands])
   const chartHeight = Math.max(90, numBands * 56)
@@ -159,7 +162,7 @@ export default function EventTimeline({
     const d = payload[0].payload
     return (
       <div style={{ background: '#1f2833', border: '1px solid #2e4060', borderRadius: 8, padding: '8px 12px', fontSize: '0.75rem', color: '#e5e1d8', maxWidth: 220 }}>
-        <div style={{ fontWeight: 600, marginBottom: 2, color: kindColor(d.kind) }}>{d.kind}</div>
+        <div style={{ fontWeight: 600, marginBottom: 2, color: kindColor(d.kind) }}>{d.kindLabel ?? d.kind}</div>
         <div style={{ color: '#7a8ea8' }}>t = {Number(d.x).toFixed(1)}s</div>
         {d.videoName && multiSource && <div style={{ color: '#7a8ea8', marginTop: 2 }}>{clipLabel(d.videoName)}</div>}
         {d.label && <div style={{ color: '#7a8ea8', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>{d.label}</div>}
@@ -265,12 +268,12 @@ export default function EventTimeline({
                         <TableCell sx={{ fontFamily: 'monospace', color: 'text.secondary', py: 0.5 }}>{i + 1}</TableCell>
                         <TableCell sx={{ fontFamily: 'monospace', py: 0.5 }}>{ts.toFixed(1)}s</TableCell>
                         <TableCell sx={{ py: 0.5 }}>
-                          <Chip label={kind} size="small"
+                          <Chip label={displayKind(kind, language)} size="small"
                             sx={{ background: color + '22', color, border: `1px solid ${color}44`, fontSize: '0.62rem', height: 18 }} />
                         </TableCell>
-                        <TableCell sx={{ color: 'text.secondary', py: 0.5, fontSize: '0.72rem' }}>{ev.zone ?? '—'}</TableCell>
+                        <TableCell sx={{ color: 'text.secondary', py: 0.5, fontSize: '0.72rem' }}>{displayZone(ev.zone, language, zoneKoCache, ev)}</TableCell>
                         <TableCell sx={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', py: 0.5, fontSize: '0.72rem' }}>
-                          {ev.label ?? ev.description ?? '—'}
+                          {displayDescription(ev, language)}
                         </TableCell>
                         {multiSource && (
                           <TableCell sx={{ py: 0.5 }}>
@@ -314,14 +317,14 @@ export default function EventTimeline({
 
           {/* Video panel header with toggle */}
           <Box sx={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 1, px: 1.5, py: 0.75, borderBottom: '1px solid', borderColor: 'divider' }}>
-            <MuiTooltip title="Annotated video">
+            <MuiTooltip title={t(language, 'panel.annotated')}>
               <IconButton size="small"
                 onClick={() => setShowingClip(false)}
                 sx={{ borderRadius: 1, p: 0.5, bgcolor: !showingClip ? 'rgba(247,208,70,0.12)' : 'transparent', color: !showingClip ? 'primary.main' : 'text.secondary' }}>
                 <Video size={13} />
               </IconButton>
             </MuiTooltip>
-            <MuiTooltip title="Event clip">
+            <MuiTooltip title={t(language, 'panel.event_clip')}>
               <span>
                 <IconButton size="small"
                   onClick={() => setShowingClip(true)}
@@ -332,7 +335,7 @@ export default function EventTimeline({
               </span>
             </MuiTooltip>
             <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.62rem', ml: 0.5 }}>
-              {showingClip && localClipSrc ? 'Event clip' : annotatedVideoSrc ? 'Annotated video' : 'No video yet'}
+              {showingClip && localClipSrc ? t(language, 'panel.event_clip') : annotatedVideoSrc ? t(language, 'panel.annotated') : t(language, 'timeline.no_video')}
             </Typography>
           </Box>
 

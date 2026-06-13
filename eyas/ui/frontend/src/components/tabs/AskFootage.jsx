@@ -8,6 +8,7 @@ import TextField from '@mui/material/TextField'
 import IconButton from '@mui/material/IconButton'
 import Chip from '@mui/material/Chip'
 import { t } from '../../i18n.js'
+import { displayChatText } from '../../display.js'
 
 export default function AskFootage({ client, events, chatHistory, setChatHistory, language = 'English' }) {
   const [query, setQuery]   = useState('')
@@ -37,8 +38,19 @@ export default function AskFootage({ client, events, chatHistory, setChatHistory
         events,
       })
       const replyHistory = r.data[0] || []
-      const answer = extractAssistantReply(replyHistory)
-      setChatHistory(h => [...h, { role: 'assistant', text: answer || t(language, 'ask.no_response') }])
+      const englishAnswer = extractAssistantReply(replyHistory)
+      let assistantMsg = { role: 'assistant', text: englishAnswer || t(language, 'ask.no_response') }
+      if (language === '한국어' && client && assistantMsg.text) {
+        try {
+          const lr = await client.predict('/localize_chat', {
+            messages: [assistantMsg],
+            locale: 'ko',
+          })
+          const localized = lr.data[0]?.[0]
+          if (localized?.text_ko) assistantMsg = { ...assistantMsg, text_ko: localized.text_ko }
+        } catch {}
+      }
+      setChatHistory(h => [...h, assistantMsg])
     } catch (e) {
       setChatHistory(h => [...h, { role: 'assistant', text: `Error: ${e.message}` }])
     } finally { setLoading(false) }
@@ -93,7 +105,7 @@ export default function AskFootage({ client, events, chatHistory, setChatHistory
                 borderBottomRightRadius: msg.role === 'user' ? 4 : undefined,
                 borderBottomLeftRadius: msg.role === 'assistant' ? 4 : undefined,
               }}>
-                <Typography variant="caption" sx={{ lineHeight: 1.6 }}>{msg.text}</Typography>
+                <Typography variant="caption" sx={{ lineHeight: 1.6 }}>{displayChatText(msg, language)}</Typography>
               </Paper>
             </Box>
           ))}
