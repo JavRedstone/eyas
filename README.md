@@ -105,7 +105,8 @@ python eyas/app.py --lang ko
 
 ### 1 — Local development (hot reload)
 
-Run the Gradio backend and the Vite dev server side by side. Vite proxies all `/gradio_api` traffic to Gradio on port 7860.
+Run the Gradio backend and the Vite dev server side by side. In development,
+the React app connects directly to Gradio on port 7860.
 
 ```bash
 # Terminal 1 — Gradio backend
@@ -116,7 +117,15 @@ python eyas/app.py               # http://localhost:7860
 (cd eyas/ui/frontend && npm run dev)    # http://localhost:5173
 ```
 
-Open `http://localhost:5173`. The Vite server proxies `/gradio_api`, `/run`, and `/upload` to port 7860, so the full pipeline works during development.
+Open `http://localhost:5173`. The frontend connects to the Gradio backend at
+`http://127.0.0.1:7860`, so both servers must be running.
+
+To use a different backend port, start both sides with matching values:
+
+```bash
+python eyas/app.py --port 7861
+(cd eyas/ui/frontend && VITE_GRADIO_BACKEND_URL=http://127.0.0.1:7861 npm run dev)
+```
 
 ### 2 — Production build (static files)
 

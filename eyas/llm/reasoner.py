@@ -125,9 +125,12 @@ class Reasoner:
         pickup = ev.get("pickup_confirmed", False)
         picked = ev.get("picked_up_items") or []
         pickup_s = ("YES -> " + ", ".join(f"{p['name']} x{p.get('count',1)}" for p in picked)) if pickup else "no"
+        summary = (ev.get("summary") or "").strip()
+        summary_s = f"Summary: {summary} | " if summary else ""
         return (
             f"Event {i}: [Track {ev.get('track_id','?')} | t={ev.get('timestamp','?'):.2f}s] "
             f"Zone: {ev.get('zone','?')} | "
+            f"{summary_s}"
             f"{ev.get('activity','?')} | "
             f"Held: {held_s} | "
             f"Pickup: {pickup_s} | "
@@ -357,4 +360,3 @@ class MiniCPMTextReasoner(Reasoner):
         # Strip Qwen3.5-style thinking block if present before the JSON
         text = re.sub(r"<think>.*?</think>\s*", "", text, flags=re.DOTALL)
         return text
-
