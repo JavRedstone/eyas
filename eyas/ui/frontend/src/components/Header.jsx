@@ -20,14 +20,9 @@ export default function Header({ language, colorMode, onToggleColorMode, onSwitc
   return (
     <AppBar position="sticky">
       <Toolbar sx={{ minHeight: '52px !important', px: 2.5, gap: 1.5 }}>
-        {/* Logo mark */}
-        <Box sx={{
-          width: 26, height: 26, borderRadius: 1.5,
-          bgcolor: 'primary.main',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-        }}>
-          <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'primary.contrastText', opacity: 0.85 }} />
-        </Box>
+        {/* Logo */}
+        <Box component="img" src={`${import.meta.env.BASE_URL}logo.png`} alt="Eyas"
+          sx={{ width: 40, height: 40, objectFit: 'contain', flexShrink: 0 }} />
 
         <Typography variant="subtitle1" fontWeight={700} sx={{ letterSpacing: '-0.01em', color: 'text.primary' }}>
           Eyas
