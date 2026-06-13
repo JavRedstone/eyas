@@ -64,7 +64,8 @@ _mreg.start()
 
 _SAMPLES_DIR = Path(__file__).parent.parent / "input"
 _SAMPLE_PATHS: Dict[str, str] = {
-    p.stem: str(p) for p in sorted(_SAMPLES_DIR.glob("*.mp4"))
+    p.stem: str(p)
+    for p in sorted([*_SAMPLES_DIR.glob("*.mp4"), *_SAMPLES_DIR.glob("*.m4v")])
 }
 
 # ── Session state (accumulates across multiple video runs) ────────────────────

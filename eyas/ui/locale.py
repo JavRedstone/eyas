@@ -26,6 +26,10 @@ ZONES: dict[str, dict[str, str]] = {
         "aisle_2": "Aisle 2",
         "aisle_3": "Aisle 3",
         "shelf_a": "Shelf A",
+        "aisle1": "Aisle 1",
+        "aisle2": "Aisle 2",
+        "aisle3": "Aisle 3",
+        "aisle4": "Aisle 4",
     },
     "ko": {
         "entrance": "입구",
@@ -36,6 +40,10 @@ ZONES: dict[str, dict[str, str]] = {
         "aisle_2": "통로 2",
         "aisle_3": "통로 3",
         "shelf_a": "선반 A",
+        "aisle1": "통로 1",
+        "aisle2": "통로 2",
+        "aisle3": "통로 3",
+        "aisle4": "통로 4",
     },
 }
 

@@ -3,11 +3,17 @@ title: Eyas — AI Security Camera Agent
 emoji: 🦅
 colorFrom: blue
 colorTo: yellow
-sdk: gradio
-app_file: eyas/app.py
-python_version: 3.12
-app_port: 7860
 pinned: false
+sdk: gradio
+sdk_version: 5.38.0
+python_version: "3.12"
+app_file: eyas/app.py
+license: mit
+short_description: Offline AI security camera agent — detect, observe, reason on-device.
+tags:
+  - track:backyard
+  - sponsor:openbmb
+  - sponsor:nvidia
 ---
 
 # Eyas — AI Security Camera Agent
@@ -44,28 +50,38 @@ All models download automatically on first run. No API keys required.
 Eyas reads the **zone** and **recording time** from each video's filename. Use this pattern when naming clips before uploading:
 
 ```
-YYYYMMDD_HHMMSS_<zone>.mp4
+YYYYMMDD_HHMMSS_<zone>.<ext>
 ```
+
+Supported formats: `.mp4`, `.m4v` (and any format readable by OpenCV).
 
 | Part | Format | Example |
 |---|---|---|
-| Date | 8-digit `YYYYMMDD` | `20240608` |
-| Time | 6-digit `HHMMSS` | `120000` |
-| Zone | any string (underscores allowed) | `entrance`, `counter`, `back_door`, `aisles` |
+| Date | 8-digit `YYYYMMDD` | `20260615` |
+| Time | 6-digit `HHMMSS` | `130000` |
+| Zone | any string (underscores allowed) | `aisle1`, `aisle2`, `aisle3`, `aisle4` |
 
 **Examples**
 
 ```
-20240608_120000_entrance.mp4   → zone "entrance", recorded 2024-06-08 at 12:00
-20240608_130000_counter.mp4    → zone "counter",  recorded 2024-06-08 at 13:00
-20240609_083000_back_door.mp4  → zone "back_door"
+20260615_130000_aisle1.m4v  → zone "aisle1", recorded 2026-06-15 at 13:00
+20260615_130000_aisle2.m4v  → zone "aisle2", recorded 2026-06-15 at 13:00
+20260615_130000_aisle3.m4v  → zone "aisle3"
+20260615_130000_aisle4.m4v  → zone "aisle4"
 ```
 
 If the filename does not match this pattern the pipeline falls back to a generic `review_area` zone that covers the full frame.
 
-The two bundled sample clips already follow this convention:
-- `eyas/input/20240608_120000_entrance.mp4`
-- `eyas/input/20240608_130000_counter.mp4`
+The six bundled sample clips already follow this convention:
+
+| File | Zone | Source |
+|---|---|---|
+| `20260615_130000_aisle1.m4v` | `aisle1` | Team-recorded in-store demo |
+| `20260615_130000_aisle2.m4v` | `aisle2` | Team-recorded in-store demo |
+| `20260615_130000_aisle3.m4v` | `aisle3` | Team-recorded in-store demo |
+| `20260615_130000_aisle4.m4v` | `aisle4` | Team-recorded in-store demo |
+| `20260608_120000_entrance.mp4` | `entrance` | Online footage |
+| `20260608_130000_counter.mp4` | `counter` | Online footage |
 
 ## Quick start
 

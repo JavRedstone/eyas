@@ -4,10 +4,14 @@ Sample and test input files used during development.
 
 ## Files
 
-| File | Description |
-|---|---|
-| `sample.mp4` | Short retail-scene clip used for manual pipeline runs |
-| `events.json` | Last event log written by the pipeline (overwritten on each run) |
+| File | Zone | Source |
+|---|---|---|
+| `20260615_130000_aisle1.m4v` | `aisle1` | Team-recorded in-store demo footage |
+| `20260615_130000_aisle2.m4v` | `aisle2` | Team-recorded in-store demo footage |
+| `20260615_130000_aisle3.m4v` | `aisle3` | Team-recorded in-store demo footage |
+| `20260615_130000_aisle4.m4v` | `aisle4` | Team-recorded in-store demo footage |
+| `20260608_120000_entrance.mp4` | `entrance` | Online footage |
+| `20260608_130000_counter.mp4` | `counter` | Online footage |
 
 ## Note
 
