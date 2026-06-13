@@ -39,6 +39,10 @@ function parseFilenameZone(name) {
   return ''
 }
 
+function queueHasVideo(queue, name) {
+  return queue.some(q => q.name === name)
+}
+
 function normalizeVideoKey(name) {
   return (name || '').replace(/\.[^.]+$/, '').toLowerCase()
 }
@@ -448,26 +452,48 @@ export default function App() {
   }, [])
 
   const handleAddFilesToQueue = useCallback((files) => {
-    const items = Array.from(files).map(file => ({
-      id: Math.random().toString(36).slice(2),
-      name: file.name,
-      file,
-      path: null,
-      previewSrc: URL.createObjectURL(file),
-      zone: parseFilenameZone(file.name),
-      status: 'pending',
-      selected: true,
-      error: null,
-    }))
-    setQueue(prev => [...prev, ...items])
-    if (items.length) {
-      setPreviewSource(items[0].previewSrc)
-      setPreviewQueueId(items[0].id)
-    }
-  }, [])
+    setQueue(prev => {
+      const seenInBatch = new Set()
+      const skipped = []
+      const items = []
+
+      for (const file of Array.from(files)) {
+        if (queueHasVideo(prev, file.name) || seenInBatch.has(file.name)) {
+          skipped.push(file.name)
+          continue
+        }
+        seenInBatch.add(file.name)
+        items.push({
+          id: Math.random().toString(36).slice(2),
+          name: file.name,
+          file,
+          path: null,
+          previewSrc: URL.createObjectURL(file),
+          zone: parseFilenameZone(file.name),
+          status: 'pending',
+          selected: true,
+          error: null,
+        })
+      }
+
+      if (skipped.length) {
+        setStatusMsg(t(language, 'app.duplicate_video', { name: [...new Set(skipped)].join(', ') }))
+      }
+      if (items.length) {
+        setPreviewSource(items[0].previewSrc)
+        setPreviewQueueId(items[0].id)
+      }
+
+      return items.length ? [...prev, ...items] : prev
+    })
+  }, [language])
 
   const handleAddSampleToQueue = useCallback(async (sampleName) => {
     if (!client || !sampleName) return
+    if (queueHasVideo(queue, sampleName)) {
+      setStatusMsg(t(language, 'app.duplicate_video', { name: sampleName }))
+      return
+    }
     try {
       const r = await client.predict('/load_sample', { name: sampleName })
       const path = getVideoPath(r.data[0])
@@ -487,7 +513,7 @@ export default function App() {
       setPreviewSource(previewSrc)
       setPreviewQueueId(newId)
     } catch (e) { setStatusMsg(`Error: ${e.message}`) }
-  }, [client])
+  }, [client, queue, language])
 
   const handleRemoveFromQueue = useCallback((id) => {
     setQueue(prev => {

@@ -10,6 +10,7 @@ const STRINGS = {
     'app.sample':            'Sample: {name}',
     'app.no_video_selected': 'No video selected.',
     'app.starting_pipeline': 'Starting pipeline…',
+    'app.duplicate_video':   'Already in queue: {name}',
     'app.close_clip':        '✕ close clip',
     'header.subtitle':       'AI Security Camera Agent',
     'panel.footage':         'Footage',
@@ -61,6 +62,10 @@ const STRINGS = {
     'zone.aisle2':      'Aisle 2',
     'zone.aisle3':      'Aisle 3',
     'zone.aisle4':      'Aisle 4',
+    'zone.cam1':        'Cam 1',
+    'zone.cam2':        'Cam 2',
+    'zone.cam3':        'Cam 3',
+    'zone.cam4':        'Cam 4',
 
     // AnalysisPanel
     'analysis.analyze':      'Analyze',
@@ -172,6 +177,7 @@ const STRINGS = {
     'app.sample':            '샘플: {name}',
     'app.no_video_selected': '선택된 영상이 없습니다.',
     'app.starting_pipeline': '파이프라인 시작 중…',
+    'app.duplicate_video':   '이미 대기열에 있음: {name}',
     'app.close_clip':        '✕ 클립 닫기',
     'header.subtitle':       'AI 보안 카메라 에이전트',
     'panel.footage':         '영상',
@@ -223,6 +229,10 @@ const STRINGS = {
     'zone.aisle2':      '통로 2',
     'zone.aisle3':      '통로 3',
     'zone.aisle4':      '통로 4',
+    'zone.cam1':        '카메라 1',
+    'zone.cam2':        '카메라 2',
+    'zone.cam3':        '카메라 3',
+    'zone.cam4':        '카메라 4',
 
     // AnalysisPanel
     'analysis.analyze':      '분석',

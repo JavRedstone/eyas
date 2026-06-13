@@ -1,7 +1,0 @@
-#!/bin/sh
-
-trailer="Co-Authored-By: OpenAI Codex <codex@openai.com>"
-
-if ! grep -Fqi "$trailer" "$1"; then
-    printf '\n%s\n' "$trailer" >> "$1"
-fi
