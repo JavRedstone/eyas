@@ -122,7 +122,8 @@ export default function App() {
   const activeSubRef        = useRef(null)
   const stopRequestedRef    = useRef(false)
   const videoGridRefs       = useRef([])
-  const syncingRef          = useRef(false)
+  const syncLockRef         = useRef(false)
+  const syncLockTimerRef    = useRef(null)
 
   const makeDragHandler = useCallback((containerRef, setter, direction, lo = 20, hi = 80) =>
     (e) => {
@@ -175,37 +176,41 @@ export default function App() {
     }
   }, [])
 
-  // Grid sync handlers — keep all videos in lockstep on seek/play/pause.
+  // Grid sync handlers — timed lock prevents the echo loop where a programmatic
+  // currentTime assignment fires another seeked event that re-triggers sync.
+  function lockGridSync(ms = 250) {
+    syncLockRef.current = true
+    clearTimeout(syncLockTimerRef.current)
+    syncLockTimerRef.current = setTimeout(() => { syncLockRef.current = false }, ms)
+  }
+
   const handleGridSeeked = useCallback((e, idx) => {
-    if (syncingRef.current) return
-    syncingRef.current = true
+    if (syncLockRef.current) return
     const time = e.target.currentTime
+    lockGridSync()
     videoGridRefs.current.forEach((el, i) => {
       if (i !== idx && el) el.currentTime = time
     })
-    syncingRef.current = false
   }, [])
 
   const handleGridPlay = useCallback((e, idx) => {
-    if (syncingRef.current) return
-    syncingRef.current = true
+    if (syncLockRef.current) return
     const time = e.target.currentTime
+    lockGridSync(100)
     videoGridRefs.current.forEach((el, i) => {
       if (i !== idx && el) {
         el.currentTime = time
         el.play().catch(() => {})
       }
     })
-    syncingRef.current = false
   }, [])
 
   const handleGridPause = useCallback((e, idx) => {
-    if (syncingRef.current) return
-    syncingRef.current = true
+    if (syncLockRef.current) return
+    lockGridSync(100)
     videoGridRefs.current.forEach((el, i) => {
       if (i !== idx && el && !el.paused) el.pause()
     })
-    syncingRef.current = false
   }, [])
 
   useEffect(() => { languageRef.current = language }, [language])
