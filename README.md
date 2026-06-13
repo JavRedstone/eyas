@@ -9,7 +9,7 @@ sdk_version: 5.38.0
 python_version: "3.12"
 app_file: eyas/app.py
 license: mit
-short_description: Offline AI security camera agent — detect, observe, reason on-device.
+short_description: Offline AI security camera agent for retail.
 tags:
   - track:backyard
   - sponsor:openbmb
