@@ -108,6 +108,7 @@ export default function App() {
   const [exportingZip, setExportingZip]     = useState(false)
   const [viewClipId, setViewClipId]         = useState(null)
   const [previewQueueId, setPreviewQueueId] = useState(null)
+  const [sessionSummary, setSessionSummary] = useState(null)
 
   const [topColPct, setTopColPct] = useState(40)
 
@@ -372,6 +373,17 @@ export default function App() {
     }).catch(() => {})
   }, [client, splashDone])
 
+  // After analysis finishes (or session restores) with 2+ done clips, request a
+  // combined multi-cam summary from the LLM so the "All" chip shows an overall narrative.
+  const doneCount = useMemo(() => queue.filter(q => q.status === 'done').length, [queue])
+  useEffect(() => {
+    if (analyzing || !client || doneCount < 2) return
+    client.predict('/summarize_session', {}).then(r => {
+      const result = r.data?.[0]
+      if (result && result.summary) setSessionSummary(result)
+    }).catch(() => {})
+  }, [analyzing, client, doneCount])
+
   const handleToggleSelected = useCallback((id) => {
     setQueue(prev => prev.map(q => q.id === id ? { ...q, selected: !q.selected } : q))
   }, [])
@@ -571,6 +583,7 @@ export default function App() {
     setEvents([])
     setSessionRunCount(0)
     setSummary(null)
+    setSessionSummary(null)
     setViewClipId(null)
     setOutputDir('')
     setAnnotatedVideo(null)
@@ -625,25 +638,36 @@ export default function App() {
     const done = queue.filter(q => q.status === 'done' && q.results?.summary)
     if (!done.length) return summary
     if (done.length === 1) return done[0].results.summary
+
     const riskOrder = { none: 0, low: 1, medium: 2, high: 3, critical: 4 }
     const maxRisk = done.reduce((best, item) => {
       const lvl = item.results.summary?.risk_level || 'none'
       return (riskOrder[lvl] ?? 0) > (riskOrder[best] ?? 0) ? lvl : best
     }, 'none')
-    const narrativeParts = done.map(item => {
-      const label = item.zone || item.name.replace(/\.[^.]+$/, '')
-      const text = (item.results.summary?.summary || '').trim()
-      return text ? `[${label}] ${text}` : null
-    }).filter(Boolean)
+
+    // Per-cam breakdown shown as sections in SummaryAlerts.
+    const per_cam = done.map(item => ({
+      name: item.zone || item.name.replace(/\.[^.]+$/, ''),
+      summary: item.results.summary?.summary || '',
+      flags: item.results.summary?.flags || [],
+      risk_level: item.results.summary?.risk_level || 'none',
+      suspicious_clips: item.results.summary?.suspicious_clips || [],
+    }))
+
+    // Overall narrative: prefer LLM-generated multi-cam summary, fall back to concat.
+    const totalText = sessionSummary?.summary
+      || per_cam.map(c => `[${c.name}] ${c.summary}`).filter(t => t).join('\n\n')
+
     return {
-      summary: narrativeParts.join('\n\n'),
+      summary: totalText,
       flags: [...new Set(done.flatMap(item => item.results.summary?.flags || []))],
       suspicious_clips: done.flatMap(item => item.results.summary?.suspicious_clips || []),
-      risk_level: maxRisk,
+      risk_level: sessionSummary?.risk_level || maxRisk,
       annotated_video_path: done[done.length - 1]?.results?.annotatedVideo || null,
       output_dir: done[done.length - 1]?.results?.outputDir || '',
+      per_cam,
     }
-  }, [queue, summary])
+  }, [queue, summary, sessionSummary])
 
   const viewSummary = viewClipId ? (viewClip?.results?.summary ?? null) : combinedSummary
 
