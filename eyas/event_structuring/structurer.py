@@ -18,7 +18,6 @@ PICKUP_ACTIVITY = re.compile(
     r"\b(?:"
     r"pick(?:s|ing|ed)?(?:\s+\w+){0,3}\s+up|"
     r"tak(?:ing|es?)|"
-    r"select(?:ing|ed)?|"
     r"remov(?:ing|ed)|"
     r"(?:moves?|moving)\s+(?:his|her|their|the)?\s*hand\b.+\bthen\s+holds?"
     r")\b",
@@ -44,7 +43,7 @@ LLAMA_STRONG_PICKUP_TRANSITION = re.compile(
     r"(?:hand|item|object|product|package))\b",
     re.IGNORECASE,
 )
-LLAMA_SPECULATIVE = re.compile(
+SPECULATIVE_PICKUP = re.compile(
     r"\b(?:appears?|possibly|maybe|may|might|could|seems?|suggesting|likely)\b",
     re.IGNORECASE,
 )
@@ -123,6 +122,8 @@ class EventStructurer:
         interaction_trigger: bool = False,
         motion_threshold: float = 0.035,
         post_trigger_s: float = 0.5,
+        pickup_confirmation_hits: int = 2,
+        pickup_release_hits: int = 2,
     ) -> None:
         self.zones = zones
         self.vlm = vlm if vlm is not None else MiniCPMVLM()
@@ -133,12 +134,57 @@ class EventStructurer:
         self.interaction_trigger = interaction_trigger
         self.motion_threshold = max(0.0, motion_threshold)
         self.post_trigger_s = max(0.0, post_trigger_s)
+        self.pickup_confirmation_hits = max(1, pickup_confirmation_hits)
+        self.pickup_release_hits = max(1, pickup_release_hits)
         self.events: List[ObservationEvent] = []
         self.statuses: Dict[int, PersonStatus] = {}
         self._last_semantic: Dict[int, float] = {}
         self._pending_interactions: Dict[int, float] = {}
         self._track_history: Dict[int, Deque[TrackSnapshot]] = {}
+        self._pickup_candidate_hits: Dict[int, int] = {}
+        self._pickup_clear_hits: Dict[int, int] = {}
+        self._pickup_active: Dict[int, bool] = {}
+        self._pending_pickup_events: Dict[int, ObservationEvent] = {}
         self.on_vlm_start: Optional[Callable] = None
+
+    def _confirm_pickup_transition(self, track_id: int, candidate: bool) -> bool:
+        """Emit once per sustained pickup episode, not once per evidence window."""
+        if candidate:
+            self._pickup_clear_hits[track_id] = 0
+            hits = self._pickup_candidate_hits.get(track_id, 0) + 1
+            self._pickup_candidate_hits[track_id] = hits
+            if (
+                not self._pickup_active.get(track_id, False)
+                and hits >= self.pickup_confirmation_hits
+            ):
+                self._pickup_active[track_id] = True
+                self._pending_pickup_events.pop(track_id, None)
+                return True
+            return False
+
+        self._pickup_candidate_hits[track_id] = 0
+        clear_hits = self._pickup_clear_hits.get(track_id, 0) + 1
+        self._pickup_clear_hits[track_id] = clear_hits
+        if clear_hits >= self.pickup_release_hits:
+            self._pickup_active[track_id] = False
+            self._pending_pickup_events.pop(track_id, None)
+        return False
+
+    def finalize_pending_pickups(self) -> None:
+        """Confirm a lone strong candidate when no second review was available."""
+        for track_id, event in list(self._pending_pickup_events.items()):
+            if self._pickup_candidate_hits.get(track_id) != 1:
+                continue
+            event.pickup_confirmed = True
+            event.confirmation_timestamp = event.timestamp
+            if not event.picked_up_items:
+                event.picked_up_items = [{"name": "retail item", "count": 1}]
+            status = self.statuses.get(track_id)
+            if status is not None:
+                status.confirmed_pickups = self._merge_items(
+                    status.confirmed_pickups, event.picked_up_items
+                )
+        self._pending_pickup_events.clear()
 
     def _zone_for(self, track: Track) -> Optional[Zone]:
         x1, _, x2, y2 = track.bbox
@@ -164,18 +210,24 @@ class EventStructurer:
             history.popleft()
 
     def _evidence_crops(self, track_id: int) -> List[np.ndarray]:
-        """Crop ordered snapshots to one shared region so item motion is visible."""
+        """Crop each snapshot tightly around the person plus nearby hand context."""
         snapshots = list(self._track_history.get(track_id, ()))
         if not snapshots:
             return []
-        height, width = snapshots[-1].frame.shape[:2]
-        x1 = max(0, min(snapshot.bbox[0] for snapshot in snapshots) - self.crop_pad)
-        y1 = max(0, min(snapshot.bbox[1] for snapshot in snapshots) - self.crop_pad)
-        x2 = min(width, max(snapshot.bbox[2] for snapshot in snapshots) + self.crop_pad)
-        y2 = min(
-            height, max(snapshot.bbox[3] for snapshot in snapshots) + self.crop_pad
-        )
-        return [snapshot.frame[y1:y2, x1:x2] for snapshot in snapshots]
+        crops = []
+        for snapshot in snapshots:
+            height, width = snapshot.frame.shape[:2]
+            x1, y1, x2, y2 = snapshot.bbox
+            box_width = max(1, x2 - x1)
+            box_height = max(1, y2 - y1)
+            horizontal_pad = min(self.crop_pad, max(24, int(box_width * 0.2)))
+            vertical_pad = min(self.crop_pad, max(24, int(box_height * 0.1)))
+            left = max(0, x1 - horizontal_pad)
+            top = max(0, y1 - vertical_pad)
+            right = min(width, x2 + horizontal_pad)
+            bottom = min(height, y2 + vertical_pad)
+            crops.append(snapshot.frame[top:bottom, left:right])
+        return crops
 
     def _motion_score(self, track_id: int) -> float:
         """Return the changed-pixel ratio between the latest two evidence crops."""
@@ -280,7 +332,10 @@ class EventStructurer:
 
             pickup_transition = bool(PICKUP_TRANSITION.search(observation.activity))
             activity_pickup = (
-                self._activity_indicates_pickup(observation.activity)
+                (
+                    self._activity_indicates_pickup(observation.activity)
+                    and not SPECULATIVE_PICKUP.search(observation.activity)
+                )
                 or pickup_transition
             )
             if observation.backend == "llama-cpp-python":
@@ -289,21 +344,27 @@ class EventStructurer:
                 )
                 unhedged_pickup = (
                     self._activity_indicates_pickup(observation.activity)
-                    and not LLAMA_SPECULATIVE.search(observation.activity)
+                    and not SPECULATIVE_PICKUP.search(observation.activity)
                 )
                 # Strong before-to-after hand evidence counts even when llama
                 # cautiously says "suggesting." Generic "appears to hold" does not.
                 activity_pickup = strong_transition or unhedged_pickup
-            pickup_confirmed = observation.pickup_confirmed or activity_pickup
+            pickup_candidate = observation.pickup_confirmed or activity_pickup
+            pickup_confirmed = self._confirm_pickup_transition(
+                person_id, pickup_candidate
+            )
             picked_up_items = list(observation.picked_up_items)
             if pickup_confirmed and not picked_up_items:
                 picked_up_items = list(observation.held_objects)
             strong_pickup_evidence = (
                 observation.pickup_confirmed
                 or pickup_transition
+                or activity_pickup
             )
             if pickup_confirmed and not picked_up_items and strong_pickup_evidence:
                 picked_up_items = [{"name": "retail item", "count": 1}]
+            if not pickup_confirmed:
+                picked_up_items = []
             record_pickup = pickup_confirmed and bool(picked_up_items)
 
             status.description = observation.description or status.description
@@ -336,6 +397,8 @@ class EventStructurer:
                 bbox=list(track.bbox),
                 confidence=round(track.confidence, 3),
             )
+            if pickup_candidate and not pickup_confirmed:
+                self._pending_pickup_events[person_id] = event
             self.events.append(event)
             fired.append(event)
         return fired

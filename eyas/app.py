@@ -21,7 +21,7 @@ from fastapi.staticfiles import StaticFiles
 from ui.gradio_app import build_app
 
 _PREFS = Path(__file__).parent / "preferences.json"
-_DEFAULTS = {"language": "en"}
+_DEFAULTS = {"language": "en", "port": 7860}
 _STATIC_DIR = Path(__file__).parent / "ui" / "dist"
 
 
@@ -44,7 +44,7 @@ def _parse_args(prefs: dict) -> dict:
         "--port",
         type=int,
         default=None,
-        help="Gradio server port. Default: automatically choose from 7860-7959.",
+        help="Gradio server port. Default: 7860.",
     )
     # parse_known_args so gradio CLI args don't break module import
     args, _ = parser.parse_known_args()
