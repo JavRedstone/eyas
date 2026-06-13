@@ -1,6 +1,6 @@
 gradio
 spaces
-opencv-python
+opencv-python-headless
 numpy
 pillow
 torch
