@@ -1,6 +1,6 @@
 # Eyas — Demo Script
 
-Filmed at Joy Convenience Store. Four aisle cameras, real footage, no edits.
+Filmed at Joy Convenience Store — our teammate's family's shop and the real-world target this was built for. Four aisle cameras, real footage, no edits.
 
 Target runtime: **3–4 minutes**.
 
@@ -23,7 +23,7 @@ Target runtime: **3–4 minutes**.
 
 Open on the empty left video panel.
 
-> "This is what a convenience store owner stares at when something goes missing — hours of footage, no way to know where to start."
+> "This is what our teammate's family stares at when something goes missing from the store — hours of footage, no way to know where to start."
 
 Show the splash screen / empty state. Let it breathe for a beat.
 
@@ -95,7 +95,7 @@ Click **Detection Metrics**.
 
 Show the per-zone bar chart and the event density timeline. Point to the busiest aisle bar.
 
-> "For a store owner this is an operational tool as much as a security one — which aisle needs more attention, which shift was busiest."
+> "For our teammate's family this is an operational tool as much as a security one — which aisle needs more attention, which shift was busiest."
 
 ---
 

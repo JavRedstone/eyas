@@ -628,6 +628,10 @@ export default function App() {
         queue,
       })
       applyLocalizationResult(loc)
+      // sessionSummary is the LLM cross-cam narrative; it isn't in the localization
+      // path above, so clear it so combinedSummary falls back to the now-translated
+      // per-cam queue summaries instead of showing stale English text.
+      setSessionSummary(null)
     } catch {}
   }, [client, language, events, summary, chatHistory, queue, refreshLocalization, applyLocalizationResult])
 

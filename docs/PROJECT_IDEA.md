@@ -86,7 +86,7 @@ Video is not the product — the event log is. The UI's focus is fast, verifiabl
 ---
 
 ## 6. Why this is good for Backyard AI
-- Real user: a single convenience store owner
+- Real user: our teammate's family, who runs Joy Convenience Store
 - Real workflow: routine CCTV review and incident lookup
 - Clear time savings: 30–60 minutes → ~2 minutes per investigation
 - Offline-first: can run without cloud APIs (bonus eligibility)
@@ -172,6 +172,6 @@ Everything in the MVP must-have list shipped. Notable additions beyond the MVP s
 - **Custom React SPA**: replaced Gradio UI entirely; resizable split panels, scatter-chart timeline, animated splash screen, drag-handle sidebar
 - **Multi-camera session**: batch-process multiple clips and produce a unified cross-camera summary with per-zone breakdowns
 - **Bilingual support**: English / Korean hot-swap without restart; Korean overlay labels on annotated video
-- **Field tested**: demo filmed at Joy Convenience Store on four real aisle cameras; the store owner reviewed their own footage using the system
+- **Field tested**: demo filmed at Joy Convenience Store (our teammate's family's shop) on four real aisle cameras; the family reviewed their own footage using the system
 
 Skipped (as planned): facial recognition, real-time streaming, inventory integrations, complex multi-camera synchronization.

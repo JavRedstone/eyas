@@ -11,8 +11,8 @@
 > Build something for a real person you actually know. Solve a specific problem that measurably improves their day.
 
 - [x] **Specific, real problem** — Small retail and property owners rely on CCTV but have no affordable tool to automatically review footage for theft, loitering, and unusual activity. Reviewing hours of footage manually is impractical.
-- [x] **Intended for a real person** — Built for a local shop owner who wanted to stop scrubbing through overnight recordings by hand. The tool runs on their existing laptop with no subscription or cloud account required.
-- [x] **Evidence of real use** — Demo video filmed at Joy Convenience Store showing the pipeline running on actual aisle footage (four cameras: aisle 1–4). Store owner reviewed the event timeline and per-zone activity summary on their own footage.
+- [x] **Intended for a real person** — Built for our teammate's family, who runs Joy Convenience Store and wanted to stop scrubbing through overnight recordings by hand. The tool runs on their existing laptop with no subscription or cloud account required.
+- [x] **Evidence of real use** — Demo video filmed at Joy Convenience Store (our teammate's family's shop). Pipeline runs on actual aisle footage from four cameras; the family reviewed the event timeline and per-zone activity summary on their own footage.
 - [x] **Honest fit with the small-model constraint** — Every model is well under 32 B params. Total loaded weight at runtime is ~6 GB (GGUF Q4 LLMs + VLM). Runs on a laptop CPU; GPU optional.
 - [x] **Polished Gradio app** — Custom React + MUI frontend served via `gr.Server`; resizable split panels, event timeline, Q&A, audio brief, clip library.
 

@@ -18,7 +18,7 @@ tags:
 
 # Eyas — AI Security Camera Agent
 
-An offline-first security camera agent built for the **Build Small Hackathon**. Upload a CCTV clip and Eyas runs a full detection → observation → reasoning pipeline on local small models, then presents the results in an interactive split-panel UI.
+Eyas is an on-device security camera agent built for our teammate's family's convenience store — it runs person tracking, event detection, and LLM reasoning over CCTV footage to surface theft, loitering, and suspicious activity as a structured, searchable log. No cloud required.
 
 ## Features
 

@@ -6,9 +6,9 @@
 
 ## Why this project
 
-The problem is embarrassingly concrete. A convenience store owner we know has CCTV cameras covering the entrance, counter, and back door. When something goes missing or a dispute arises, reviewing footage means sitting with a laptop and scrubbing through four to eight hours of video. It takes 30–60 minutes of tedious skimming to find a two-minute window.
+The problem is embarrassingly concrete. One of our teammates has family who runs Joy Convenience Store, a small retail shop with CCTV cameras covering the aisles, entrance, and counter. When something goes missing or a dispute arises, reviewing footage means sitting with a laptop and scrubbing through four to eight hours of video. It takes 30–60 minutes of tedious skimming to find a two-minute window.
 
-The usual pitch for "AI security cameras" is a cloud subscription that ships footage off-site, stores it indefinitely, and charges per camera per month. That is not what a small shop owner wants to sign up for.
+The usual pitch for "AI security cameras" is a cloud subscription that ships footage off-site, stores it indefinitely, and charges per camera per month. That is not what a family-run shop wants to sign up for.
 
 The question we started with: can a chain of genuinely small models — the kind that fit on a laptop — do something useful with CCTV footage, entirely locally?
 
@@ -92,7 +92,7 @@ The hackathon requires a Gradio app. It does not require a Gradio *UI*.
 
 Gradio's `gr.Server` lets you serve static files from a path while still exposing all the pipeline logic as Gradio API endpoints. The React frontend communicates with Gradio via `@gradio/client` exactly as the default UI would; from Gradio's perspective nothing is different.
 
-This was worth doing. The default Gradio UI makes tabbed analysis tools look like form submissions. A proper SPA with resizable split panels, a scatter-chart event timeline, and a live-updating pipeline progress view changes how the tool *feels* to use. The shop owner we built this for understood what the annotated video and event table were within 30 seconds. That would not have happened with a Gradio Dataframe and a Gradio Video component on the same page.
+This was worth doing. The default Gradio UI makes tabbed analysis tools look like form submissions. A proper SPA with resizable split panels, a scatter-chart event timeline, and a live-updating pipeline progress view changes how the tool *feels* to use. Our teammate's family — the people we built this for — understood what the annotated video and event table were within 30 seconds. That would not have happened with a Gradio Dataframe and a Gradio Video component on the same page.
 
 The cost: the custom UI takes real time to build and debug. We spent roughly a third of the build time on the frontend. For a hackathon that comes at the expense of more model experimentation, but we think it was right for the Backyard AI track, where "polished Gradio app" is an explicit judging criterion.
 
@@ -124,7 +124,7 @@ The cost: the custom UI takes real time to build and debug. We spent roughly a t
 
 ## Field test — Joy Convenience Store
 
-We filmed the demo at Joy Convenience Store, a small retail shop. This was the actual store owner we had in mind when we designed the system, and it was the first time we ran Eyas on footage recorded in a real operating store rather than our own test clips.
+We filmed the demo at Joy Convenience Store — our teammate's family's shop and the real-world target the system was designed for. It was the first time we ran Eyas on footage from an actual operating store rather than our own test clips.
 
 Four camera angles were covered: aisle 1, aisle 2, aisle 3, and aisle 4 (the main shopping corridor). We named each clip using the filename convention (`20260615_130000_aisle1.m4v`, etc.) so the zone labels map automatically without any configuration.
 
@@ -132,7 +132,7 @@ Four camera angles were covered: aisle 1, aisle 2, aisle 3, and aisle 4 (the mai
 
 The pipeline handled the real-world conditions better than expected. Store CCTV is typically high-angle, wide-FOV, compressed H.264 — different from the online footage we had been testing on. YOLO tracked people reliably despite the unflattering angle; the bounding-box padding helped the VLM get enough context from the tighter crops.
 
-The most useful output in the store context turned out to be the per-zone activity count in the Detection Metrics tab. The store owner could immediately see which aisle had the most foot traffic and which periods were quiet. This is the kind of operational question — "how busy was aisle 3 this afternoon?" — that does not require a full event narrative to answer.
+The most useful output in the store context turned out to be the per-zone activity count in the Detection Metrics tab. Our teammate's family could immediately see which aisle had the most foot traffic and which periods were quiet. This is the kind of operational question — "how busy was aisle 3 this afternoon?" — that does not require a full event narrative to answer.
 
 The event timeline resonated as a communication tool. Showing a scatter chart of timestamped events and then clicking through to a six-second clip for each one made the footage review feel like a triage task rather than a search task. The owner could review a full afternoon session in under three minutes.
 
