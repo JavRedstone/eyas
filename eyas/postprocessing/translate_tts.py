@@ -17,11 +17,15 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+import os
+
 from eyas.postprocessing import (
     TINYAYA_SUPPORTED_LANGUAGES,
     VOXCPM2_SUPPORTED_LANGUAGES,
     get_tinyaya_model,
     get_voxcpm2_model,
+    get_voxcpm2_model_nano,
+    VOXCPM2_NANO_SAMPLE_RATE,
 )
 
 
@@ -169,6 +173,23 @@ def translate_many(
     return mapping, stats
 
 
+def _use_nanovllm() -> bool:
+    """True on bare CUDA (dedicated GPU). False on ZeroGPU, MPS, or CPU.
+
+    nanovllm starts persistent worker processes that hold a GPU reference.
+    ZeroGPU only provides GPU access inside @spaces.GPU windows, so the workers
+    would lose the device after the first call returns.
+    """
+    zero_gpu = os.getenv("EYAS_ZERO_GPU", "").strip().lower() in {"1", "true", "yes", "on"}
+    if zero_gpu:
+        return False
+    try:
+        import torch
+        return torch.cuda.is_available()
+    except ImportError:
+        return False
+
+
 def tts(text: str, target_lang: str = "English", voice: str = "A young woman, gentle and sweet voice") -> Iterator[tuple[int, np.ndarray]]:
     # https://huggingface.co/openbmb/VoxCPM2
 
@@ -180,6 +201,15 @@ def tts(text: str, target_lang: str = "English", voice: str = "A young woman, ge
 
     if voice:
         text = f"({voice}){text}"
+
+    if _use_nanovllm():
+        try:
+            server = get_voxcpm2_model_nano()
+            for chunk in server.generate(target_text=text):
+                yield VOXCPM2_NANO_SAMPLE_RATE, chunk.astype(np.float32)
+            return
+        except RuntimeError:
+            pass  # nano-vllm-voxcpm not installed; fall through to standard backend
 
     model, sample_rate = get_voxcpm2_model()
     for chunk in model.generate_streaming(text=text):

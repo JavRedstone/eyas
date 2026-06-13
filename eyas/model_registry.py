@@ -191,12 +191,18 @@ def load_tts_on_demand() -> Optional[Any]:
     detail = "Loading weights…" if _hf_cached(_TTS_REPO) else "Downloading from HuggingFace…"
     _set("tts", "sync", "loading", detail)
     try:
-        from postprocessing import get_voxcpm2_model
-        tts_model, _sr = get_voxcpm2_model()
+        from postprocessing.translate_tts import _use_nanovllm
+        if _use_nanovllm():
+            from postprocessing import get_voxcpm2_model_nano
+            tts_instance = get_voxcpm2_model_nano()
+            _set("tts", "check_circle", "ready", "Ready (nanovllm)")
+        else:
+            from postprocessing import get_voxcpm2_model
+            tts_instance, _sr = get_voxcpm2_model()
+            _set("tts", "check_circle", "ready", "Ready")
         with _LOCK:
-            _INSTANCES["tts"] = tts_model
-        _set("tts", "check_circle", "ready", "Ready")
-        return tts_model
+            _INSTANCES["tts"] = tts_instance
+        return tts_instance
     except Exception as exc:
         _set("tts", "error", "error", str(exc)[:120])
         return None

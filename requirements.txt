@@ -9,4 +9,5 @@ torchaudio
 transformers
 ultralytics
 voxcpm
+nano-vllm-voxcpm
 python-dotenv>=1.0
