@@ -7,7 +7,7 @@ import Button from '@mui/material/Button'
 import LinearProgress from '@mui/material/LinearProgress'
 import { t } from '../../i18n.js'
 
-export default function AudioReport({ client, summary, language = 'English' }) {
+export default function AudioReport({ client, events = [], summary, language = 'English' }) {
   const [audioSrc, setAudioSrc]   = useState(null)
   const [statusMsg, setStatusMsg] = useState('')
   const [loading, setLoading]     = useState(false)
@@ -30,7 +30,7 @@ export default function AudioReport({ client, summary, language = 'English' }) {
     setStatusMsg('')
     setAudioSrc(null)
     try {
-      const eventsArr = summary?.events ?? []
+      const eventsArr = events.length ? events : (summary?.events ?? [])
       const r = await client.predict('/generate_audio', { events: eventsArr })
       const [fd, msg] = r.data
       if (fd) {
