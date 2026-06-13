@@ -1,6 +1,8 @@
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import { CheckCircle, XCircle, Loader2, Layers } from 'lucide-react'
+import { t } from '../i18n.js'
+import { displayZone } from '../display.js'
 
 const STATUS_COLOR = {
   done:    '#34D399',
@@ -47,7 +49,7 @@ function ViewChip({ label, icon, selected, color, borderColor, onClick }) {
   )
 }
 
-export default function ClipViewSelector({ queue = [], viewClipId, onChange }) {
+export default function ClipViewSelector({ queue = [], viewClipId, onChange, language = 'English', zoneKoCache = {} }) {
   const nonPending = queue.filter(q => q.status !== 'pending')
   if (!nonPending.length) return null
 
@@ -63,7 +65,7 @@ export default function ClipViewSelector({ queue = [], viewClipId, onChange }) {
       }}
     >
       <ViewChip
-        label="All"
+        label={t(language, 'clip_view.all')}
         icon={<Layers size={10} style={{ flexShrink: 0 }} />}
         selected={viewClipId === null}
         onClick={() => onChange(null)}
@@ -74,7 +76,7 @@ export default function ClipViewSelector({ queue = [], viewClipId, onChange }) {
       {nonPending.map(item => {
         const isSelected = viewClipId === item.id
         const label = item.zone
-          ? item.zone
+          ? displayZone(item.zone, language, zoneKoCache)
           : item.name.replace(/\.[^.]+$/, '').slice(-18)
         const statusColor = STATUS_COLOR[item.status]
         return (

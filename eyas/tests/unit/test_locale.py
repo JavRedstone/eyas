@@ -17,8 +17,13 @@ from ui.locale import (
     format_event_row,
     format_translation_time,
     is_known_activity,
+    is_known_zone,
+    localize_chat_for_display,
+    localize_events_for_display,
     localize_llm_result,
+    localize_summary_for_display,
     localize_text,
+    localize_zone_labels,
     pipeline_steps_default,
 )
 
@@ -218,3 +223,117 @@ class TestFormatEventRow:
         assert row[2] == "집기"
         assert row[5] == "검토 구역"
         assert row[7] == "KO:bottle"
+
+
+class TestLocalizeEventsForDisplay:
+    def setup_method(self):
+        clear_translation_cache()
+
+    def test_english_passthrough(self):
+        ev = {"description": "person walking", "zone": "entrance"}
+        result, stats = localize_events_for_display([ev], "en")
+        assert result[0] == ev
+        assert "description_ko" not in result[0]
+        assert stats is None
+
+    def test_korean_known_zone_catalog(self, monkeypatch):
+        def fake_translate(text, target_lang="Korean", use_gpu=True):
+            return f"KO:{text}"
+
+        monkeypatch.setattr("postprocessing.translate_tts.translate", fake_translate)
+        ev = {
+            "description": "person at door",
+            "zone": "entrance",
+        }
+        result, stats = localize_events_for_display([ev], "ko")
+        assert result[0]["zone_ko"] == "입구"
+        assert result[0]["description_ko"] == "KO:person at door"
+        assert stats is not None
+
+    def test_korean_unknown_zone_translated(self, monkeypatch):
+        def fake_translate(text, target_lang="Korean", use_gpu=True):
+            return f"KO:{text}"
+
+        monkeypatch.setattr("postprocessing.translate_tts.translate", fake_translate)
+        ev = {"description": "activity", "zone": "custom_zone"}
+        result, _ = localize_events_for_display([ev], "ko")
+        assert result[0]["zone_ko"] == "KO:custom_zone"
+
+
+class TestLocalizeZoneLabels:
+    def setup_method(self):
+        clear_translation_cache()
+
+    def test_english_identity(self):
+        mapping, stats = localize_zone_labels(["entrance", "custom"], "en")
+        assert mapping == {"entrance": "entrance", "custom": "custom"}
+        assert stats is None
+
+    def test_korean_known_and_unknown(self, monkeypatch):
+        def fake_translate(text, target_lang="Korean", use_gpu=True):
+            return f"KO:{text}"
+
+        monkeypatch.setattr("postprocessing.translate_tts.translate", fake_translate)
+        mapping, stats = localize_zone_labels(["entrance", "custom_zone"], "ko")
+        assert mapping["entrance"] == "입구"
+        assert mapping["custom_zone"] == "KO:custom_zone"
+        assert stats is not None
+
+    def test_is_known_zone(self):
+        assert is_known_zone("back_door")
+        assert not is_known_zone("custom_zone")
+
+
+class TestLocalizeSummaryForDisplay:
+    def setup_method(self):
+        clear_translation_cache()
+
+    def test_english_passthrough(self):
+        summary = {"summary": "Overnight was quiet.", "flags": ["loitering near door"]}
+        result, stats = localize_summary_for_display(summary, "en")
+        assert result["summary"] == "Overnight was quiet."
+        assert "summary_ko" not in result
+        assert stats is None
+
+    def test_korean_adds_ko_fields(self, monkeypatch):
+        def fake_translate(text, target_lang="Korean", use_gpu=True):
+            return f"KO:{text}"
+
+        monkeypatch.setattr("postprocessing.translate_tts.translate", fake_translate)
+        summary = {"summary": "Overnight was quiet.", "flags": ["loitering near door"]}
+        result, stats = localize_summary_for_display(summary, "ko")
+        assert result["summary"] == "Overnight was quiet."
+        assert result["summary_ko"] == "KO:Overnight was quiet."
+        assert result["flags"] == ["loitering near door"]
+        assert result["flags_ko"] == ["KO:loitering near door"]
+        assert stats is not None
+
+
+class TestLocalizeChatForDisplay:
+    def setup_method(self):
+        clear_translation_cache()
+
+    def test_english_passthrough(self):
+        messages = [
+            {"role": "user", "text": "Anything unusual?"},
+            {"role": "assistant", "text": "No issues detected."},
+        ]
+        result, stats = localize_chat_for_display(messages, "en")
+        assert result == messages
+        assert stats is None
+
+    def test_korean_translates_assistant_only(self, monkeypatch):
+        def fake_translate(text, target_lang="Korean", use_gpu=True):
+            return f"KO:{text}"
+
+        monkeypatch.setattr("postprocessing.translate_tts.translate", fake_translate)
+        messages = [
+            {"role": "user", "text": "Anything unusual?"},
+            {"role": "assistant", "text": "No issues detected."},
+        ]
+        result, stats = localize_chat_for_display(messages, "ko")
+        assert result[0]["text"] == "Anything unusual?"
+        assert "text_ko" not in result[0]
+        assert result[1]["text"] == "No issues detected."
+        assert result[1]["text_ko"] == "KO:No issues detected."
+        assert stats is not None

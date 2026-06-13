@@ -44,6 +44,24 @@ function normalizeVideoKey(name) {
   return (name || '').replace(/\.[^.]+$/, '').toLowerCase()
 }
 
+function eventKoKey(ev) {
+  return `${ev.source_clip_id ?? ''}:${ev.source_event_index ?? ''}`
+}
+
+function mergeEventKoFields(incoming, existing) {
+  const koByKey = new Map(
+    existing.map(e => [eventKoKey(e), e]).filter(([k]) => k !== ':'),
+  )
+  return incoming.map(ev => {
+    const prev = koByKey.get(eventKoKey(ev))
+    if (!prev) return ev
+    const out = { ...ev }
+    if (prev.description_ko) out.description_ko = prev.description_ko
+    if (prev.zone_ko) out.zone_ko = prev.zone_ko
+    return out
+  })
+}
+
 function eventBelongsToClip(event, clip) {
   if (!clip) return true
   if (event.source_clip_id === clip.id) return true
@@ -81,6 +99,7 @@ export default function App() {
   const [summary, setSummary]               = useState(null)
   const [chatHistory, setChatHistory]       = useState([])
   const [language, setLanguage]             = useState('English')
+  const [zoneKoCache, setZoneKoCache]         = useState({})
   const tabs = useMemo(() => makeTabs(language), [language])
   const [samples, setSamples]               = useState([])
   const [videoPreviewSrc, setVideoPreviewSrc] = useState('')
@@ -95,6 +114,7 @@ export default function App() {
   const topRowRef  = useRef(null)
 
   const sessionEventsRef    = useRef([])
+  const languageRef           = useRef(language)
   const previewUrlRef       = useRef('')
   const annotatedVideoElRef = useRef(null)
   const activeSubRef        = useRef(null)
@@ -130,6 +150,98 @@ export default function App() {
     if (!el) return
     el.currentTime = time
     if (el.paused) el.play().catch(() => {})
+  }, [])
+
+  useEffect(() => { languageRef.current = language }, [language])
+
+  const refreshLocalization = useCallback(async (lang, snapshot) => {
+    const {
+      events: evts = [],
+      summary: sum = null,
+      chat = [],
+      queue: q = queue,
+    } = snapshot
+
+    if (!client || lang !== '한국어') {
+      setZoneKoCache({})
+      return { events: evts, summary: sum, chat, queueUpdates: [] }
+    }
+
+    const locale = 'ko'
+    let enrichedEvents = evts
+    let enrichedSummary = sum
+    let enrichedChat = chat
+    const tasks = []
+
+    if (evts.length) {
+      tasks.push(
+        client.predict('/localize_events', { events: evts, locale })
+          .then(r => { enrichedEvents = r.data[0] ?? evts })
+          .catch(() => {}),
+      )
+    }
+
+    const zones = [...new Set(q.map(item => item.zone).filter(Boolean))]
+    if (zones.length) {
+      tasks.push(
+        client.predict('/localize_zones', { zones, locale })
+          .then(r => setZoneKoCache(r.data[0] ?? {}))
+          .catch(() => setZoneKoCache({})),
+      )
+    } else {
+      setZoneKoCache({})
+    }
+
+    if (sum) {
+      tasks.push(
+        client.predict('/localize_summary', { summary: sum, locale })
+          .then(r => { enrichedSummary = { ...sum, ...(r.data[0] ?? {}) } })
+          .catch(() => {}),
+      )
+    }
+
+    if (chat.length) {
+      tasks.push(
+        client.predict('/localize_chat', { messages: chat, locale })
+          .then(r => { enrichedChat = r.data[0] ?? chat })
+          .catch(() => {}),
+      )
+    }
+
+    const queueUpdates = await Promise.all(
+      q.filter(item => item.results?.summary).map(async item => {
+        try {
+          const r = await client.predict('/localize_summary', {
+            summary: item.results.summary,
+            locale,
+          })
+          return {
+            id: item.id,
+            summary: { ...item.results.summary, ...(r.data[0] ?? {}) },
+          }
+        } catch {
+          return { id: item.id, summary: item.results.summary }
+        }
+      }),
+    )
+
+    await Promise.all(tasks)
+    return { events: enrichedEvents, summary: enrichedSummary, chat: enrichedChat, queueUpdates }
+  }, [client, queue])
+
+  const applyLocalizationResult = useCallback((result) => {
+    setEvents(result.events)
+    sessionEventsRef.current = result.events
+    if (result.summary) setSummary(result.summary)
+    if (result.chat) setChatHistory(result.chat)
+    if (result.queueUpdates?.length) {
+      const byId = new Map(result.queueUpdates.map(u => [u.id, u.summary]))
+      setQueue(prev => prev.map(q => (
+        byId.has(q.id)
+          ? { ...q, results: { ...q.results, summary: byId.get(q.id) } }
+          : q
+      )))
+    }
   }, [])
 
   function getVideoPath(fileRef) {
@@ -171,6 +283,7 @@ export default function App() {
         const { states, done, progress_pct, language_label } = r.data[0]
         if (!langInitialized && language_label) {
           setLanguage(language_label)
+          try { await c.predict('/save_language', [language_label]) } catch {}
           langInitialized = true
         }
         setSplashItems(states || [])
@@ -288,32 +401,43 @@ export default function App() {
       if (u.pipeline_steps || u.steps) setPipelineSteps(u.pipeline_steps || u.steps)
       if (typeof u.progress_pct === 'number') setPipelineProgress(u.progress_pct)
       if (u.events?.length) {
-        const tagged = u.events.map((e, i) => ({
+        let tagged = u.events.map((e, i) => ({
           ...e,
           source_video: videoName,
           source_clip_id: item.id,
           source_event_index: i,
           ...(u.output_dir ? { source_output_dir: u.output_dir } : {}),
         }))
+        tagged = mergeEventKoFields(tagged, sessionEventsRef.current)
         setEvents([...base, ...tagged])
       }
       if (u.output_dir)           setOutputDir(u.output_dir)
       if (u.annotated_video_path) setAnnotatedVideo(u.annotated_video_path)
       if (u.type === 'final') {
-        const tagged = (u.events || []).map((e, i) => ({
+        let tagged = (u.events || []).map((e, i) => ({
           ...e,
           source_video: videoName,
           source_clip_id: item.id,
           source_event_index: i,
           ...(u.output_dir ? { source_output_dir: u.output_dir } : {}),
         }))
+        let finalSummary = { ...u }
+        const loc = await refreshLocalization(languageRef.current, {
+          events: tagged,
+          summary: finalSummary,
+          chat: chatHistory,
+          queue,
+        })
+        tagged = loc.events
+        if (loc.summary) finalSummary = loc.summary
         sessionEventsRef.current = [...base, ...tagged]
         setEvents(sessionEventsRef.current)
         setSessionRunCount(c => c + 1)
-        setSummary(u)
+        setSummary(finalSummary)
+        if (loc.chat) setChatHistory(loc.chat)
         setPipelineProgress(100)
         itemResults = {
-          summary: u,
+          summary: finalSummary,
           annotatedVideo: u.annotated_video_path || null,
           outputDir: u.output_dir || '',
         }
@@ -322,7 +446,7 @@ export default function App() {
     activeSubRef.current = null
     if (stopRequestedRef.current) throw new Error('stopped')
     return itemResults
-  }, [client, language])
+  }, [client, queue, refreshLocalization, chatHistory])
 
   const handleStop = useCallback(() => {
     if (stopping) return
@@ -368,8 +492,16 @@ export default function App() {
     try {
       await client.predict('/save_language', [lang])
       setLanguage(lang)
+      languageRef.current = lang
+      const loc = await refreshLocalization(lang, {
+        events,
+        summary,
+        chat: chatHistory,
+        queue,
+      })
+      applyLocalizationResult(loc)
     } catch {}
-  }, [client, language])
+  }, [client, language, events, summary, chatHistory, queue, refreshLocalization, applyLocalizationResult])
 
   const handleClearSession = useCallback(async () => {
     if (!window.confirm(t(language, 'session.clear_confirm'))) return
@@ -434,11 +566,12 @@ export default function App() {
     outputDir: viewOutputDir,
     summary: viewSummary,
     chatHistory, setChatHistory,
-    language, setLanguage,
+    language, setLanguage: handleSwitchLanguage,
     onSeekVideo: seekAnnotatedVideo,
     setClipSrc,
     annotatedVideo: viewAnnotatedVideo,
     annotatedVideoRef: annotatedVideoElRef,
+    zoneKoCache,
   }
 
   const PanelHeader = ({ title, children }) => (
@@ -572,7 +705,7 @@ export default function App() {
               <Box sx={{ flex: 1, display: 'flex', minHeight: 0, gap: 0 }}>
 
                 <Paper sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-                  <ClipViewSelector queue={queue} viewClipId={viewClipId} onChange={setViewClipId} />
+                  <ClipViewSelector queue={queue} viewClipId={viewClipId} onChange={setViewClipId} language={language} zoneKoCache={zoneKoCache} />
 
                   <Box sx={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
                     <SidebarTabs tabs={tabs} activeTab={activeTab} setActiveTab={setActiveTab} />

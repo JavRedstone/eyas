@@ -4,6 +4,7 @@ import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
 import Chip from '@mui/material/Chip'
 import { t } from '../../i18n.js'
+import { displaySummaryText } from '../../display.js'
 
 function riskConfig(risk, language) {
   const configs = {
@@ -23,9 +24,9 @@ export default function SummaryAlerts({ summary, language = 'English' }) {
 
   const risk   = (summary.risk_level ?? 'none').toLowerCase()
   const rc     = riskConfig(risk, language)
-  const flags  = normalizeFlags(summary.flags ?? [], language)
+  const flags  = normalizeFlags(summary, language)
   const suspiciousClips = Array.isArray(summary.suspicious_clips) ? summary.suspicious_clips : []
-  const text   = summary.summary ?? summary.overnight_summary ?? ''
+  const text   = displaySummaryText(summary, language)
   const transT = summary.translation_time_ms
 
   const gaugeData = [
@@ -144,10 +145,14 @@ function inferFlagKey(value) {
   return 'flag.other'
 }
 
-function normalizeFlags(flags, language) {
-  return flags.map(flag => {
+function normalizeFlags(summary, language) {
+  const english = summary.flags ?? []
+  const korean = summary.flags_ko
+  const source = (language === '한국어' && korean?.length) ? korean : english
+  return source.map((flag, i) => {
+    const englishFlag = english[i]
     if (typeof flag === 'string') {
-      const key = inferFlagKey(flag)
+      const key = inferFlagKey(typeof englishFlag === 'string' ? englishFlag : flag)
       return { label: t(language, key), detail: flag, text: flag, flagType: t('English', key) }
     }
     const detail = flag.description ?? flag.detail ?? flag.text ?? JSON.stringify(flag)
