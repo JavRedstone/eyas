@@ -14,13 +14,7 @@ from event_structuring.structurer import EventStructurer, PersonStatus, Zone
 from object_detection.detector import PersonTracker, Track
 from video_processing.process import LlamaCppMiniCPMVLM, MiniCPMVLM
 from utils.device import get_device
-from utils.overlay_text import (
-    FONT_HEIGHT_DETAIL,
-    FONT_HEIGHT_MAIN,
-    FONT_HEIGHT_PICKUP,
-    FrameTextOverlay,
-    OverlayLabels,
-)
+from utils.overlay_text import OverlayLabels
 from utils.paths import models_dir
 from utils.video import create_video_writer, get_video_info
 
@@ -73,112 +67,52 @@ def draw_tracks(
     statuses: Optional[Dict[int, PersonStatus]] = None,
     labels: Optional[OverlayLabels] = None,
 ):
-    """Draw current YOLO person tracks and semantic statuses."""
-    label_strings = labels or OverlayLabels("en")
+    """Draw current YOLO person tracks without text labels."""
     rendered = frame.copy()
-    text_overlay = FrameTextOverlay(rendered)
     for track in tracks:
         x1, y1, x2, y2 = track.bbox
-        status = statuses.get(track.track_id) if statuses else None
-        description = status.description if status and status.description else ""
-        label = label_strings.person_label(track.track_id, description)
-        text_overlay.draw(
-            label,
-            (x1, max(18, y1 - 7)),
-            (0, 255, 0),
-            font_height=FONT_HEIGHT_MAIN,
-        )
-        detail_lines = []
-        if status and status.current_activity:
-            detail_lines.append(
-                (label_strings.activity_line(status.current_activity), (255, 255, 0))
-            )
-        if status and status.current_held_objects:
-            detail_lines.append(
-                (label_strings.holding_line(status.current_held_objects), (0, 255, 255))
-            )
-        if status and status.confirmed_pickups:
-            detail_lines.append(
-                (label_strings.pickup_line(status.confirmed_pickups), (0, 0, 255))
-            )
-
-        line_gap = 22
-        required_below = line_gap * len(detail_lines)
-        if y2 + required_below + 8 < rendered.shape[0]:
-            detail_positions = [
-                y2 + line_gap * (index + 1) for index in range(len(detail_lines))
-            ]
-        else:
-            # Keep labels visible when the person box reaches the bottom edge.
-            detail_positions = [
-                max(18, y2 - line_gap * (len(detail_lines) - index))
-                for index in range(len(detail_lines))
-            ]
-        for (text, color), text_y in zip(detail_lines, detail_positions):
-            text_overlay.draw(
-                text,
-                (x1, text_y),
-                color,
-                font_height=FONT_HEIGHT_DETAIL,
-            )
-    text_overlay.apply()
-
-    for track in tracks:
-        x1, y1, x2, y2 = track.bbox
-        cv2.rectangle(rendered, (x1, y1), (x2, y2), (0, 255, 0), 2)
+        cv2.rectangle(rendered, (x1, y1), (x2, y2), (0, 255, 0), 4)
     return rendered
 
 
-def overlay_confirmed_pickups(
-    video_path: Path,
+def render_annotated_video(
+    source_path: Path,
+    output_path: Path,
+    frame_tracks: List[List[Track]],
     events,
     display_seconds: float = 1.5,
     labels: Optional[OverlayLabels] = None,
 ) -> None:
-    """Overlay confirmed pickups at their corrected action timestamps."""
-    overlay = labels or OverlayLabels("en")
+    """Render one current-track box: green normally and red for pickups."""
     confirmed = [event for event in events if event.pickup_confirmed]
-    if not confirmed or not video_path.exists():
+    if not source_path.exists():
         return
-    cap = cv2.VideoCapture(str(video_path))
+    cap = cv2.VideoCapture(str(source_path))
     fps, width, height = get_video_info(cap)
-    temp_path = video_path.with_name(f"{video_path.stem}_review{video_path.suffix}")
-    writer = create_video_writer(str(temp_path), fps, width, height)
+    writer = create_video_writer(str(output_path), fps, width, height)
     frame_index = 0
     try:
-        while cap.isOpened():
+        while cap.isOpened() and frame_index < len(frame_tracks):
             ok, frame = cap.read()
             if not ok:
                 break
             t = frame_index / fps
-            active = [
-                event
+            active_track_ids = {
+                event.track_id
                 for event in confirmed
                 if event.timestamp <= t <= event.timestamp + display_seconds
-            ]
-            if active:
-                text_overlay = FrameTextOverlay(frame)
-                for event in active:
-                    x1, y1, x2, y2 = event.bbox
-                    label = overlay.pickup_line(event.picked_up_items)
-                    text_y = y1 - 12 if y1 > 35 else min(height - 12, y2 + 28)
-                    text_overlay.draw(
-                        label,
-                        (x1, text_y),
-                        (0, 0, 255),
-                        font_height=FONT_HEIGHT_PICKUP,
-                        thickness=3,
-                    )
-                text_overlay.apply()
-            for event in active:
-                x1, y1, x2, y2 = event.bbox
-                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 255), 4)
+            }
+            for track in frame_tracks[frame_index]:
+                x1, y1, x2, y2 = track.bbox
+                is_pickup = track.track_id in active_track_ids
+                color = (0, 0, 255) if is_pickup else (0, 255, 0)
+                thickness = 6 if is_pickup else 4
+                cv2.rectangle(frame, (x1, y1), (x2, y2), color, thickness)
             writer.write(frame)
             frame_index += 1
     finally:
         cap.release()
         writer.release()
-    temp_path.replace(video_path)
 
 
 def run_visual_pipeline(
@@ -242,6 +176,9 @@ def run_visual_pipeline(
         conf=confidence,
         device=resolved_device,
     )
+    reset_tracker = getattr(tracker, "reset", None)
+    if callable(reset_tracker):
+        reset_tracker()
     if preloaded_vlm is not None:
         vlm = preloaded_vlm
     elif vlm_backend == "llama-cpp-python":
@@ -322,6 +259,7 @@ def run_visual_pipeline(
         writer = create_video_writer(str(annotated_path), fps, width, height)
 
     seen_tracks = set()
+    frame_tracks: List[List[Track]] = []
     frame_index = 0
     try:
         while cap.isOpened() and (max_frames is None or frame_index < max_frames):
@@ -332,6 +270,7 @@ def run_visual_pipeline(
                 break
             t = frame_index / fps
             tracks = tracker.track(frame)
+            frame_tracks.append(list(tracks))
             seen_tracks.update(track.track_id for track in tracks)
             frame_index += 1
             _frame_info[:] = [frame_index, total_frames or 0, len(tracks)]
@@ -360,9 +299,10 @@ def run_visual_pipeline(
         if writer is not None:
             writer.release()
 
+    structurer.finalize_pending_pickups()
     if writer is not None:
-        overlay_confirmed_pickups(
-            annotated_path, structurer.events, labels=overlay_labels
+        render_annotated_video(
+            source, annotated_path, frame_tracks, structurer.events, labels=overlay_labels
         )
 
     events_path = out_dir / "events.json"

@@ -79,6 +79,10 @@ The pipeline runs in a background thread; Gradio streams progress updates to the
 4. On completion, the final update includes `annotated_video_path`, `summary`, and `output_dir`
 5. Subsequent tab actions (Q&A, audio, clip load) call individual Gradio endpoints
 
+## Multi-camera session
+
+The frontend maintains a session layer on top of individual pipeline runs. Multiple clips (one per camera angle) can be queued and processed sequentially. Events from each clip are merged into a unified session event list tagged with their source zone. After all clips complete, a `summarize_session` endpoint aggregates the cross-camera event log into a combined summary with per-camera breakdowns. The Summary & Alerts tab renders both the total summary and the per-camera detail sections.
+
 ## Video encoding
 
 All `VideoWriter` instances use the `avc1` (H.264) fourcc — required for browser-compatible MP4 playback. The default `mp4v` codec produces FMP4 which most browsers do not support inline.

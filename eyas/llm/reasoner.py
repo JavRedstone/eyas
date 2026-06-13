@@ -108,6 +108,7 @@ class Reasoner:
                 pass
             self._model = None
             import gc
+
             gc.collect()
             print("[LLM offload] Done.")
 
@@ -121,16 +122,27 @@ class Reasoner:
         conf = ev.get("confidence", "?")
         conf_s = f"{conf:.2f}" if isinstance(conf, float) else str(conf)
         held = ev.get("held_objects") or []
-        held_s = ", ".join(f"{h['name']} x{h.get('count',1)}" for h in held) if held else "-"
+        held_s = (
+            ", ".join(f"{h['name']} x{h.get('count', 1)}" for h in held)
+            if held
+            else "-"
+        )
         pickup = ev.get("pickup_confirmed", False)
         picked = ev.get("picked_up_items") or []
-        pickup_s = ("YES -> " + ", ".join(f"{p['name']} x{p.get('count',1)}" for p in picked)) if pickup else "no"
+        pickup_s = (
+            ("YES -> " + ", ".join(f"{p['name']} x{p.get('count', 1)}" for p in picked))
+            if pickup
+            else "no"
+        )
+        summary = (ev.get("summary") or "").strip()
+        summary_s = f"Summary: {summary} | " if summary else ""
         ts = ev.get("timestamp", "?")
         ts_s = f"{ts:.2f}s" if isinstance(ts, (int, float)) else str(ts)
         return (
-            f"Event {i}: {cam_label}[Track {ev.get('track_id','?')} | t={ts_s}] "
-            f"Zone: {ev.get('zone','?')} | "
-            f"{ev.get('activity','?')} | "
+            f"Event {i}: {cam_label}[Track {ev.get('track_id', '?')} | t={ts_s}] "
+            f"Zone: {ev.get('zone', '?')} | "
+            f"{summary_s}"
+            f"{ev.get('activity', '?')} | "
             f"Held: {held_s} | "
             f"Pickup: {pickup_s} | "
             f"Conf: {conf_s}"
@@ -167,7 +179,9 @@ class Reasoner:
                 lines.append("Identified people (by camera):")
                 for src in sorted(cam_track_desc):
                     for tid in sorted(cam_track_desc[src]):
-                        lines.append(f"  [{src} Track {tid}]: {cam_track_desc[src][tid]}")
+                        lines.append(
+                            f"  [{src} Track {tid}]: {cam_track_desc[src][tid]}"
+                        )
                 lines.append("")
 
             for i, ev in enumerate(events):
@@ -201,7 +215,9 @@ class Reasoner:
                 lines.append(self._format_legacy(i, ev))
         return "\n".join(lines)
 
-    def _trim_events(self, events: List[Dict], max_chars: int = 3000, multi_cam: bool = False) -> List[Dict]:
+    def _trim_events(
+        self, events: List[Dict], max_chars: int = 3000, multi_cam: bool = False
+    ) -> List[Dict]:
         """Return as many trailing events as fit within max_chars when formatted."""
         if not events:
             return events
@@ -209,7 +225,10 @@ class Reasoner:
         if len(formatted) <= max_chars:
             return events
         for start in range(1, len(events)):
-            if len(self._format_events(events[start:], multi_cam=multi_cam)) <= max_chars:
+            if (
+                len(self._format_events(events[start:], multi_cam=multi_cam))
+                <= max_chars
+            ):
                 return events[start:]
         return events[-1:]
 
@@ -261,8 +280,8 @@ class Reasoner:
         multi_cam = len(sources) > 1 and any(sources)
 
         trimmed = self._trim_events(events, multi_cam=multi_cam)
-        start_t = (trimmed[0].get("start_time") or trimmed[0].get("timestamp") or "?")
-        end_t = (trimmed[-1].get("end_time") or trimmed[-1].get("timestamp") or "?")
+        start_t = trimmed[0].get("start_time") or trimmed[0].get("timestamp") or "?"
+        end_t = trimmed[-1].get("end_time") or trimmed[-1].get("timestamp") or "?"
         period = f"{start_t}–{end_t}"
         event_log = self._format_events(trimmed, multi_cam=multi_cam)
 
@@ -293,6 +312,7 @@ class Reasoner:
 # MiniCPM-V-backed text reasoner (reuses the already-loaded VLM weights)
 # ---------------------------------------------------------------------------
 
+
 class MiniCPMTextReasoner(Reasoner):
     """Text-only reasoner backed by a standalone MiniCPM language model.
 
@@ -303,11 +323,11 @@ class MiniCPMTextReasoner(Reasoner):
     Selected via the EYAS_LLM_MODE env var (default: "normal").
     """
 
-    NORMAL  = "normal"
+    NORMAL = "normal"
     BOOSTED = "boosted"
 
     REPOS: Dict[str, str] = {
-        NORMAL:  "openbmb/MiniCPM5-1B",
+        NORMAL: "openbmb/MiniCPM5-1B",
         BOOSTED: "openbmb/MiniCPM4.1-8B",
     }
 
@@ -318,7 +338,9 @@ class MiniCPMTextReasoner(Reasoner):
         dtype: str = "auto",
     ) -> None:
         if mode not in self.REPOS:
-            raise ValueError(f"Unknown LLM mode {mode!r}. Choose 'normal' or 'boosted'.")
+            raise ValueError(
+                f"Unknown LLM mode {mode!r}. Choose 'normal' or 'boosted'."
+            )
         self._model_path = self.REPOS[mode]
         self._n_ctx = 0
         self._n_gpu_layers = 0
@@ -334,6 +356,7 @@ class MiniCPMTextReasoner(Reasoner):
         if self._loaded:
             return
         import torch
+
         try:
             from transformers import AutoModelForCausalLM, AutoTokenizer
         except ImportError as exc:
@@ -345,7 +368,9 @@ class MiniCPMTextReasoner(Reasoner):
         self._tokenizer = AutoTokenizer.from_pretrained(repo, trust_remote_code=True)
         torch_dtype = getattr(torch, self.dtype) if self.dtype != "auto" else "auto"
         self._hf_model = AutoModelForCausalLM.from_pretrained(
-            repo, torch_dtype=torch_dtype, trust_remote_code=True,
+            repo,
+            torch_dtype=torch_dtype,
+            trust_remote_code=True,
         )
         if self.device:
             self._hf_model = self._hf_model.to(self.device)
@@ -360,6 +385,7 @@ class MiniCPMTextReasoner(Reasoner):
         temperature: float = 0.2,
     ) -> str:
         import re
+
         self._load_model()
         messages = [
             {"role": "system", "content": SYSTEM_PROMPT},
@@ -384,9 +410,10 @@ class MiniCPMTextReasoner(Reasoner):
         if temperature > 0:
             gen_kwargs["temperature"] = temperature
         gen = self._hf_model.generate(input_ids, **gen_kwargs)
-        trimmed = gen[:, input_ids.shape[1]:]
-        text = self._tokenizer.batch_decode(trimmed, skip_special_tokens=True)[0].strip()
+        trimmed = gen[:, input_ids.shape[1] :]
+        text = self._tokenizer.batch_decode(trimmed, skip_special_tokens=True)[
+            0
+        ].strip()
         # Strip Qwen3.5-style thinking block if present before the JSON
         text = re.sub(r"<think>.*?</think>\s*", "", text, flags=re.DOTALL)
         return text
-

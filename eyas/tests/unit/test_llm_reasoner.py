@@ -94,6 +94,21 @@ class TestFormatEvents:
     def test_empty_list_produces_empty_string(self):
         assert Reasoner("dummy.gguf")._format_events([]) == ""
 
+    def test_observation_summary_is_passed_to_llm(self):
+        event = {
+            "track_id": 2,
+            "timestamp": 4.03,
+            "zone": "aisle1",
+            "activity": "walking",
+            "summary": "Person approaches a shelf and takes an item.",
+            "held_objects": [],
+            "picked_up_items": [],
+            "pickup_confirmed": True,
+            "confidence": 0.87,
+        }
+        formatted = Reasoner("dummy.gguf")._format_events([event])
+        assert "Summary: Person approaches a shelf and takes an item." in formatted
+
 
 # ---------------------------------------------------------------------------
 # _trim_events

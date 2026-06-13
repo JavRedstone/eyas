@@ -6,6 +6,7 @@ import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
 import LinearProgress from '@mui/material/LinearProgress'
 import { t } from '../../i18n.js'
+import { resolveGradioFile } from '../../backend.js'
 
 export default function AudioReport({ client, summary, language = 'English' }) {
   const [audioSrc, setAudioSrc]   = useState(null)
@@ -34,7 +35,7 @@ export default function AudioReport({ client, summary, language = 'English' }) {
       const r = await client.predict('/generate_audio', { events: eventsArr })
       const [fd, msg] = r.data
       if (fd) {
-        const src = fd.url ?? (fd.path ? `/gradio_api/file=${fd.path}` : null)
+        const src = resolveGradioFile(fd)
         if (src) { setAudioSrc(src); setStatusMsg(msg || '') }
         else setStatusMsg(t(language, 'audio.no_audio'))
       } else {

@@ -34,6 +34,23 @@ _MODELS_DIR = Path(__file__).parent.parent / "models"
 
 # COCO class id for 'person'. YOLO11 default weights are COCO-80.
 PERSON_CLASS_ID = 0
+_DUPLICATE_TRACK_IOU = 0.85
+
+
+def _bbox_iou(
+    first: Tuple[int, int, int, int],
+    second: Tuple[int, int, int, int],
+) -> float:
+    x1 = max(first[0], second[0])
+    y1 = max(first[1], second[1])
+    x2 = min(first[2], second[2])
+    y2 = min(first[3], second[3])
+    intersection = max(0, x2 - x1) * max(0, y2 - y1)
+    if intersection == 0:
+        return 0.0
+    first_area = max(0, first[2] - first[0]) * max(0, first[3] - first[1])
+    second_area = max(0, second[2] - second[0]) * max(0, second[3] - second[1])
+    return intersection / max(1, first_area + second_area - intersection)
 
 
 @dataclass
@@ -90,6 +107,14 @@ class PersonTracker:
         self.conf = conf
         self.device = device
 
+    def reset(self) -> None:
+        """Clear persisted tracking state before processing another video."""
+        predictor = getattr(self.model, "predictor", None)
+        for tracker in getattr(predictor, "trackers", ()) or ():
+            reset = getattr(tracker, "reset", None)
+            if callable(reset):
+                reset()
+
     def _parse(self, result) -> List[Track]:
         """Convert one Ultralytics Result into a list of Track objects."""
         tracks: List[Track] = []
@@ -100,9 +125,10 @@ class PersonTracker:
         ids = boxes.id.int().cpu().tolist()
         xyxy = boxes.xyxy.cpu().tolist()
         confs = boxes.conf.cpu().tolist()
+        candidates: List[Track] = []
         for tid, box, cf in zip(ids, xyxy, confs):
             x1, y1, x2, y2 = (int(round(v)) for v in box)
-            tracks.append(
+            candidates.append(
                 Track(
                     track_id=int(tid),
                     label="person",
@@ -110,6 +136,13 @@ class PersonTracker:
                     bbox=(x1, y1, x2, y2),
                 )
             )
+        for candidate in sorted(candidates, key=lambda track: track.confidence, reverse=True):
+            if any(
+                _bbox_iou(candidate.bbox, existing.bbox) >= _DUPLICATE_TRACK_IOU
+                for existing in tracks
+            ):
+                continue
+            tracks.append(candidate)
         return tracks
 
     def track(self, frame: np.ndarray) -> List[Track]:

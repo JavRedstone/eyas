@@ -62,9 +62,16 @@ class TestParsePersonObservation:
     def test_explicit_holding_phrase_populates_held_object(self):
         obs = parse_person_observation(
             '{"description":"a person holding a small red object",'
-            '"activity":"walking","held_objects":[]}'
+            '"activity":"walking"}'
         )
         assert obs.held_objects == [{"name": "small red object", "count": 1}]
+
+    def test_explicit_empty_held_objects_is_authoritative(self):
+        obs = parse_person_observation(
+            '{"description":"a person carrying bag. hand reaches for retail item",'
+            '"activity":"walking","held_objects":[]}'
+        )
+        assert obs.held_objects == []
 
     def test_negated_holding_phrase_does_not_populate_held_object(self):
         obs = parse_person_observation(

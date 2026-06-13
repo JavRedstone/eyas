@@ -10,7 +10,7 @@ React + Vite SPA for the Eyas UI. Gradio acts as a pure API backend; this app is
 - **Framer Motion** — page and panel animations
 - **Recharts** — event scatter chart, bar charts, radial gauge, pie chart
 - **Lucide React** — icons
-- **@gradio/client** — connects to the Gradio API at `/gradio_api`
+- **@gradio/client** — connects directly to the Gradio backend
 
 ## Dev
 
@@ -22,7 +22,14 @@ python eyas/app.py                               # http://localhost:7860
 (cd eyas/ui/frontend && npm run dev)            # http://localhost:5173
 ```
 
-Vite proxies `/gradio_api/*` to `http://localhost:7860`.
+During development the frontend connects to `http://127.0.0.1:7860`. Override
+the backend URL when needed:
+
+```bash
+VITE_GRADIO_BACKEND_URL=http://127.0.0.1:7861 npm run dev
+```
+
+Production builds connect to the same origin that serves the frontend.
 
 ## Build
 

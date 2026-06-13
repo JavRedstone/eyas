@@ -8,11 +8,4 @@ export default defineConfig({
     outDir: '../dist',
     emptyOutDir: true,
   },
-  server: {
-    proxy: {
-      '/gradio_api': 'http://localhost:7860',
-      '/run': 'http://localhost:7860',
-      '/upload': 'http://localhost:7860',
-    },
-  },
 })
