@@ -103,7 +103,12 @@ def _load_models() -> None:
     try:
         from video_processing.process import MiniCPMVLM
         dtype = "float16" if device in {"mps", "cuda"} else "auto"
-        vlm = MiniCPMVLM(device=device, dtype=dtype)
+        vlm = MiniCPMVLM(
+            device=device,
+            dtype=dtype,
+            max_image_size=672,
+            max_new_tokens=256,
+        )
         # Load weights during application startup so the first pipeline run
         # does not pay the model-loading cost.
         vlm._ensure_loaded()

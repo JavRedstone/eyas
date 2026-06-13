@@ -11,7 +11,7 @@ _REPO_ROOT = Path(__file__).parent.parent.parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from eyas.object_detection.detector import Track, crop
+from eyas.object_detection.detector import Track, _bbox_iou, crop
 
 ultralytics = pytest.importorskip.__module__  # just to note the pattern below
 
@@ -41,6 +41,14 @@ class TestTrack:
     def test_confidence_preserved(self):
         t = Track(track_id=5, label="person", confidence=0.75, bbox=(0, 0, 50, 50))
         assert t.as_dict()["confidence"] == 0.75
+
+
+class TestBoundingBoxIou:
+    def test_identical_boxes_fully_overlap(self):
+        assert _bbox_iou((10, 10, 50, 50), (10, 10, 50, 50)) == 1.0
+
+    def test_separate_boxes_do_not_overlap(self):
+        assert _bbox_iou((0, 0, 10, 10), (20, 20, 30, 30)) == 0.0
 
 
 class TestCrop:

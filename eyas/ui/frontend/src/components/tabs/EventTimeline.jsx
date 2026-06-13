@@ -15,6 +15,7 @@ import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import { t } from '../../i18n.js'
 import { displayKind, displayZone, displayDescription } from '../../display.js'
+import { gradioFileUrl, resolveGradioFile } from '../../backend.js'
 
 const KIND_COLORS = {
   person:      '#e87030',
@@ -57,25 +58,6 @@ function fmtTime(ts) {
 function ScatterDot({ cx, cy, payload }) {
   if (cx == null || cy == null) return null
   return <circle cx={cx} cy={cy} r={5} fill={kindColor(payload.kind)} fillOpacity={0.85} stroke="none" />
-}
-
-function resolveVideoSrc(value) {
-  if (!value) return ''
-  if (typeof value === 'string') {
-    if (value.startsWith('/gradio_api/file=')) return value
-    if (value.startsWith('http')) {
-      try { return new URL(value).pathname } catch {}
-    }
-    return `/gradio_api/file=${value}`
-  }
-  if (value.video) return resolveVideoSrc(value.video)
-  if (Array.isArray(value) && value.length > 0) return resolveVideoSrc(value[0])
-  if (value.path) return `/gradio_api/file=${value.path}`
-  if (value.url) {
-    try { return new URL(value.url).pathname } catch {}
-    return value.url
-  }
-  return ''
 }
 
 function EventDetail({ ev, language, zoneKoCache, multiSource }) {
@@ -234,7 +216,7 @@ export default function EventTimeline({
     setLoadingIdx(displayIdx)
     try {
       const r = await client.predict('/load_event_clip', { clip_index: idx, output_dir: clipDir })
-      const src = resolveVideoSrc(r.data[0])
+      const src = resolveGradioFile(r.data[0])
       if (src) {
         setLocalClipSrc(src)
         setShowingClip(true)
@@ -348,7 +330,7 @@ export default function EventTimeline({
   }
 
   const annotatedVideoSrc = annotatedVideo
-    ? (annotatedVideo.startsWith('/gradio_api/file=') ? annotatedVideo : `/gradio_api/file=${annotatedVideo}`)
+    ? gradioFileUrl(annotatedVideo)
     : null
 
   const handleChartClick = (state) => {
@@ -601,9 +583,7 @@ export default function EventTimeline({
             }}>
               {doneClips.map((item, idx) => {
                 const av = item.results?.annotatedVideo
-                const src = av
-                  ? (av.startsWith('/gradio_api/file=') ? av : `/gradio_api/file=${av}`)
-                  : null
+                const src = av ? gradioFileUrl(av) : null
                 const label = item.zone || item.name.replace(/\.[^.]+$/, '')
                 const isHighlighted = highlightedAnnotatedClipId === item.id
                 return (
@@ -626,6 +606,7 @@ export default function EventTimeline({
                       <video
                         ref={el => { annotatedGridRefs.current[idx] = el }}
                         src={src}
+                        preload="metadata"
                         controls
                         style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
                         onSeeked={e => handleAnnotatedGridSeeked(e, idx)}
@@ -655,6 +636,7 @@ export default function EventTimeline({
                   ref={showingClip ? undefined : annotatedVideoRef}
                   key={activeSrc}
                   src={activeSrc}
+                  preload="metadata"
                   controls
                   onLoadedMetadata={(e) => {
                     if (pendingSeekRef.current !== null && !showingClip) {

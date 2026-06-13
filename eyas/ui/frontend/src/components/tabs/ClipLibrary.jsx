@@ -8,24 +8,7 @@ import Typography from '@mui/material/Typography'
 import IconButton from '@mui/material/IconButton'
 import MuiTooltip from '@mui/material/Tooltip'
 import { t } from '../../i18n.js'
-
-function resolveVideoSrc(value) {
-  if (!value) return ''
-  if (typeof value === 'string') {
-    if (value.startsWith('/gradio_api/file=')) return value
-    if (value.startsWith('http')) {
-      try { return new URL(value).pathname } catch {}
-    }
-    return `/gradio_api/file=${value}`
-  }
-  if (value.video) return resolveVideoSrc(value.video)
-  if (value.path) return `/gradio_api/file=${value.path}`
-  if (value.url) {
-    try { return new URL(value.url).pathname } catch {}
-    return value.url
-  }
-  return ''
-}
+import { resolveGradioFile } from '../../backend.js'
 
 export default function ClipLibrary({ client, language = 'English' }) {
   const [clips, setClips]       = useState([])
@@ -54,7 +37,7 @@ export default function ClipLibrary({ client, language = 'English' }) {
     setSelected(name)
     try {
       const r = await client.predict('/preview_clip', { choice: name })
-      const src = resolveVideoSrc(r.data[0])
+      const src = resolveGradioFile(r.data[0])
       if (src) setPreview(src)
     } catch (e) { setStatus(`Error: ${e.message}`) }
   }
