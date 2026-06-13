@@ -165,6 +165,7 @@ export default function EventTimeline({
   zoneKoCache = {},
   viewClipId = null,
   onSwitchToClip,
+  onHighlightGridClip = null,
 }) {
   const [loadingClip, setLoading] = useState(false)
   const [loadingIdx, setLoadingIdx] = useState(null)
@@ -240,6 +241,13 @@ export default function EventTimeline({
     e.stopPropagation()
     setShowingClip(false)
     const clipId = ev.source_clip_id
+    // In All-view with a grid, highlight the clip's tile and seek all grid videos
+    // without switching away from All view.
+    if (!viewClipId && onHighlightGridClip) {
+      onHighlightGridClip(clipId, ts)
+      onSeekVideo?.(ts)
+      return
+    }
     const needsSwitch = onSwitchToClip && clipId && clipId !== viewClipId
     if (needsSwitch) {
       pendingSeekRef.current = ts

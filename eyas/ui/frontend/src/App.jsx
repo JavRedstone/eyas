@@ -109,6 +109,7 @@ export default function App() {
   const [viewClipId, setViewClipId]         = useState(null)
   const [previewQueueId, setPreviewQueueId] = useState(null)
   const [sessionSummary, setSessionSummary] = useState(null)
+  const [highlightedGridClipId, setHighlightedGridClipId] = useState(null)
 
   const [topColPct, setTopColPct] = useState(40)
 
@@ -120,6 +121,8 @@ export default function App() {
   const annotatedVideoElRef = useRef(null)
   const activeSubRef        = useRef(null)
   const stopRequestedRef    = useRef(false)
+  const videoGridRefs       = useRef([])
+  const syncingRef          = useRef(false)
 
   const makeDragHandler = useCallback((containerRef, setter, direction, lo = 20, hi = 80) =>
     (e) => {
@@ -147,10 +150,62 @@ export default function App() {
   const onTopColDrag = useMemo(() => makeDragHandler(topRowRef, setTopColPct, 'col', 25, 70), [makeDragHandler])
 
   const seekAnnotatedVideo = useCallback((time) => {
+    // Seek all grid videos when they are mounted
+    videoGridRefs.current.forEach(el => {
+      if (!el) return
+      el.currentTime = time
+      if (el.paused) el.play().catch(() => {})
+    })
+    // Seek the EventTimeline's own video player
     const el = annotatedVideoElRef.current
     if (!el) return
     el.currentTime = time
     if (el.paused) el.play().catch(() => {})
+  }, [])
+
+  // Highlight a specific grid clip and seek all grid videos to a timestamp.
+  const handleHighlightGridClip = useCallback((clipId, time) => {
+    setHighlightedGridClipId(clipId)
+    if (time != null) {
+      videoGridRefs.current.forEach(el => {
+        if (!el) return
+        el.currentTime = time
+        if (el.paused) el.play().catch(() => {})
+      })
+    }
+  }, [])
+
+  // Grid sync handlers — keep all videos in lockstep on seek/play/pause.
+  const handleGridSeeked = useCallback((e, idx) => {
+    if (syncingRef.current) return
+    syncingRef.current = true
+    const time = e.target.currentTime
+    videoGridRefs.current.forEach((el, i) => {
+      if (i !== idx && el) el.currentTime = time
+    })
+    syncingRef.current = false
+  }, [])
+
+  const handleGridPlay = useCallback((e, idx) => {
+    if (syncingRef.current) return
+    syncingRef.current = true
+    const time = e.target.currentTime
+    videoGridRefs.current.forEach((el, i) => {
+      if (i !== idx && el) {
+        el.currentTime = time
+        el.play().catch(() => {})
+      }
+    })
+    syncingRef.current = false
+  }, [])
+
+  const handleGridPause = useCallback((e, idx) => {
+    if (syncingRef.current) return
+    syncingRef.current = true
+    videoGridRefs.current.forEach((el, i) => {
+      if (i !== idx && el && !el.paused) el.pause()
+    })
+    syncingRef.current = false
   }, [])
 
   useEffect(() => { languageRef.current = language }, [language])
@@ -585,6 +640,7 @@ export default function App() {
     setSummary(null)
     setSessionSummary(null)
     setViewClipId(null)
+    setHighlightedGridClipId(null)
     setOutputDir('')
     setAnnotatedVideo(null)
     setChatHistory([])
@@ -671,6 +727,14 @@ export default function App() {
 
   const viewSummary = viewClipId ? (viewClip?.results?.summary ?? null) : combinedSummary
 
+  // Clips with completed analysis and an annotated video src — used for the All-view grid.
+  const doneClips = useMemo(
+    () => queue.filter(q => q.status === 'done' && q.previewSrc),
+    [queue],
+  )
+  // Show a multi-cam grid in the top footage panel when no single clip is selected.
+  const isGridView = !viewClipId && !clipSrc && doneClips.length >= 2
+
   const tabProps = {
     client,
     events: viewEvents,
@@ -685,6 +749,7 @@ export default function App() {
     zoneKoCache,
     viewClipId,
     onSwitchToClip: setViewClipId,
+    onHighlightGridClip: handleHighlightGridClip,
   }
 
   const PanelHeader = ({ title, children }) => (
@@ -753,7 +818,11 @@ export default function App() {
                 <Box style={{ flex: 100 - topColPct }}
                   sx={{ display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0 }}>
                   <Paper sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-                    <PanelHeader title={clipSrc ? t(language, 'panel.event_clip') : t(language, 'panel.preview')}>
+                    <PanelHeader title={
+                      isGridView ? t(language, 'panel.all_cams')
+                        : clipSrc ? t(language, 'panel.event_clip')
+                        : t(language, 'panel.preview')
+                    }>
                       {clipSrc && (
                         <Typography
                           component="button"
@@ -764,8 +833,8 @@ export default function App() {
                       )}
                     </PanelHeader>
 
-                    {/* Source selector strip */}
-                    {queue.length > 0 && (
+                    {/* Source selector strip — hidden in grid view since all clips are visible */}
+                    {!isGridView && queue.length > 0 && (
                       <Box sx={{ flexShrink: 0, display: 'flex', gap: 0.5, px: 1.5, py: 0.75, borderBottom: '1px solid', borderColor: 'divider', overflowX: 'auto', '&::-webkit-scrollbar': { display: 'none' } }}>
                         {queue.map(item => {
                           const isActive = !clipSrc && previewQueueId === item.id
@@ -798,18 +867,66 @@ export default function App() {
                       </Box>
                     )}
 
-                    <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: (clipSrc || videoPreviewSrc) ? '#000' : 'background.default', borderRadius: '0 0 11px 11px', overflow: 'hidden', minHeight: 0 }}>
-                      {clipSrc ? (
-                        <video key={clipSrc} src={clipSrc} controls autoPlay style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                      ) : videoPreviewSrc ? (
-                        <video src={videoPreviewSrc} controls muted style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                      ) : (
-                        <Box sx={{ textAlign: 'center', p: 4 }}>
-                          <Typography sx={{ fontSize: '2rem', opacity: 0.2, mb: 1 }}>▶</Typography>
-                          <Typography variant="caption" color="text.secondary">{t(language, 'app.no_video')}</Typography>
-                        </Box>
-                      )}
-                    </Box>
+                    {isGridView ? (
+                      /* ── Multi-cam grid (All view with 2+ done clips) ── */
+                      <Box sx={{
+                        flex: 1, minHeight: 0, bgcolor: '#000', p: 0.75,
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(2, 1fr)',
+                        gridAutoRows: '1fr',
+                        gap: 0.75,
+                        overflow: 'hidden',
+                        borderRadius: '0 0 11px 11px',
+                      }}>
+                        {doneClips.map((item, idx) => {
+                          const isHighlighted = highlightedGridClipId === item.id
+                          const label = item.zone || item.name.replace(/\.[^.]+$/, '')
+                          return (
+                            <Box key={item.id} sx={{
+                              position: 'relative',
+                              borderRadius: 1,
+                              overflow: 'hidden',
+                              outline: '2px solid',
+                              outlineColor: isHighlighted ? 'primary.main' : 'transparent',
+                              transition: 'outline-color 0.2s',
+                            }}>
+                              <Typography variant="caption" sx={{
+                                position: 'absolute', top: 5, left: 7, zIndex: 1,
+                                color: '#fff', bgcolor: 'rgba(0,0,0,0.6)',
+                                px: 0.75, py: 0.2, borderRadius: 0.5,
+                                fontFamily: 'monospace', fontSize: '0.6rem',
+                                lineHeight: 1.5, pointerEvents: 'none',
+                              }}>
+                                {label}
+                              </Typography>
+                              <video
+                                ref={el => { videoGridRefs.current[idx] = el }}
+                                src={item.previewSrc || ''}
+                                controls
+                                style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+                                onSeeked={e => handleGridSeeked(e, idx)}
+                                onPlay={e => handleGridPlay(e, idx)}
+                                onPause={e => handleGridPause(e, idx)}
+                              />
+                            </Box>
+                          )
+                        })}
+                      </Box>
+                    ) : (
+                      /* ── Single video (single-clip view or pre-analysis preview) ── */
+                      <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: (clipSrc || videoPreviewSrc) ? '#000' : 'background.default', borderRadius: '0 0 11px 11px', overflow: 'hidden', minHeight: 0 }}>
+                        {clipSrc ? (
+                          <video key={clipSrc} src={clipSrc} controls autoPlay style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                        ) : videoPreviewSrc ? (
+                          <video src={videoPreviewSrc} controls muted style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                        ) : (
+                          <Box sx={{ textAlign: 'center', p: 4 }}>
+                            <Typography sx={{ fontSize: '2rem', opacity: 0.2, mb: 1 }}>▶</Typography>
+                            <Typography variant="caption" color="text.secondary">{t(language, 'app.no_video')}</Typography>
+                          </Box>
+                        )}
+                      </Box>
+                    )}
                   </Paper>
                 </Box>
               </Box>
