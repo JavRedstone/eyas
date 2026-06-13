@@ -100,31 +100,19 @@ export default function SummaryAlerts({ summary, language = 'English' }) {
         </Paper>
       </Box>
 
-      {/* Per-camera breakdown */}
+      {/* Per-camera breakdown — full SummaryAlerts output copied for each clip */}
       {perCam.length > 0 && (
         <Box>
-          <Typography variant="overline" sx={{ display: 'block', mb: 1 }}>{t(language, 'summary.per_cam')}</Typography>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            {perCam.map((cam, i) => {
-              const camRc = riskConfig((cam.risk_level || 'none').toLowerCase(), language)
-              return (
-                <Paper key={i} sx={{ p: 1.5, bgcolor: 'rgba(20,45,79,0.4)', border: '1px solid', borderColor: 'divider' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.75 }}>
-                    <Typography variant="caption" fontWeight={700} sx={{ color: 'primary.main', fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      {cam.name}
-                    </Typography>
-                    <Box sx={{ px: 0.75, py: 0.125, borderRadius: 0.75, bgcolor: `${camRc.color}22`, border: `1px solid ${camRc.color}55` }}>
-                      <Typography variant="caption" sx={{ color: camRc.color, fontSize: '0.6rem', fontFamily: 'monospace' }}>
-                        {camRc.label}
-                      </Typography>
-                    </Box>
-                  </Box>
-                  <Typography variant="body2" sx={{ fontSize: '0.75rem', color: 'text.secondary', lineHeight: 1.6 }}>
-                    {cam.summary || <span style={{ color: '#7a8ea8' }}>{t(language, 'summary.no_summary')}</span>}
-                  </Typography>
-                </Paper>
-              )
-            })}
+          <Typography variant="overline" sx={{ display: 'block', mb: 1.5 }}>{t(language, 'summary.per_cam')}</Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {perCam.map((cam, i) => (
+              <Paper key={i} sx={{ p: 2, bgcolor: 'rgba(14,30,54,0.6)', border: '1px solid', borderColor: 'divider' }}>
+                <Typography variant="caption" fontWeight={700} sx={{ display: 'block', mb: 1.5, color: 'primary.main', fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                  — {cam.name} —
+                </Typography>
+                <SummaryAlerts summary={cam} language={language} />
+              </Paper>
+            ))}
           </Box>
         </Box>
       )}
