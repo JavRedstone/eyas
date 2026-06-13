@@ -9,5 +9,7 @@ torchaudio
 transformers
 ultralytics
 voxcpm
-nano-vllm-voxcpm
+# nano-vllm-voxcpm is intentionally omitted: its flash-attn dep requires torch
+# at compile time and breaks pip on CPU-only build machines (including HF Spaces).
+# On a bare CUDA server: pip install nano-vllm-voxcpm (set EYAS_ZERO_GPU=0)
 python-dotenv>=1.0
