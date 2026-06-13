@@ -483,6 +483,11 @@ def display_risk(key: str, locale: str = DEFAULT_LOCALE) -> str:
     return risks.get(norm, key)
 
 
+def is_known_zone(key: str) -> bool:
+    norm = normalize_key(key)
+    return norm in ZONES["en"]
+
+
 def is_known_activity(key: str) -> bool:
     norm = normalize_key(key)
     return norm in ACTIVITIES["en"]
@@ -511,13 +516,14 @@ def _cached_localize(
         text_cache[text] = text
         return text
     translated, row_stats = localize_text(text, locale)
-    text_cache[text] = translated
+    if translated != text:
+        text_cache[text] = translated
     if stats is not None and row_stats is not None:
         merged = stats.merge(row_stats)
         stats.elapsed_s = merged.elapsed_s
         stats.cache_hits = merged.cache_hits
         stats.cache_misses = merged.cache_misses
-    return translated
+    return translated if translated != text else text
 
 
 def format_event_row(
@@ -621,6 +627,63 @@ def localize_llm_result(llm: dict, locale: str) -> tuple[dict, "TranslateStats |
         return llm, None
 
 
+def localize_summary_for_display(
+    summary: dict,
+    locale: str,
+) -> tuple[dict, "TranslateStats | None"]:
+    """Attach summary_ko and flags_ko without mutating English canonical fields."""
+    if locale != "ko" or not summary:
+        return dict(summary) if summary else {}, None
+
+    translated, stats = localize_llm_result(summary, locale)
+    out = dict(summary)
+    ko_summary = translated.get("summary", "")
+    if ko_summary and ko_summary != summary.get("summary", ""):
+        out["summary_ko"] = ko_summary
+    ko_flags = translated.get("flags")
+    if ko_flags and ko_flags != summary.get("flags"):
+        out["flags_ko"] = ko_flags
+    return out, stats
+
+
+def localize_chat_for_display(
+    messages: list[dict],
+    locale: str,
+) -> tuple[list[dict], "TranslateStats | None"]:
+    """Translate assistant message text for Korean UI; user messages unchanged."""
+    if locale != "ko" or not messages:
+        return [dict(m) for m in messages], None
+
+    from postprocessing.translate_tts import TranslateStats, translate_many
+
+    to_translate: set[str] = set()
+    for msg in messages:
+        if msg.get("role") != "assistant":
+            continue
+        text = (msg.get("text") or msg.get("content") or "").strip()
+        if text:
+            to_translate.add(text)
+
+    if not to_translate:
+        return [dict(m) for m in messages], None
+
+    try:
+        mapping, stats = translate_many(to_translate, "Korean")
+    except Exception:
+        return [dict(m) for m in messages], None
+
+    enriched: list[dict] = []
+    for msg in messages:
+        out = dict(msg)
+        if msg.get("role") == "assistant":
+            text = (msg.get("text") or msg.get("content") or "").strip()
+            ko = mapping.get(text)
+            if ko and ko != text:
+                out["text_ko"] = ko
+        enriched.append(out)
+    return enriched, stats
+
+
 def batch_translate_freeform(
     texts: set[str],
     locale: str,
@@ -643,6 +706,90 @@ def batch_translate_freeform(
         return cache, stats
     except Exception:
         return identity, None
+
+
+def localize_zone_labels(
+    zones: list[str],
+    locale: str,
+) -> tuple[dict[str, str], "TranslateStats | None"]:
+    """Return localized labels for zone keys; unknown keys go through TinyAya."""
+    unique = {z for z in zones if z and str(z).strip()}
+    if locale != "ko" or not unique:
+        return {z: z for z in unique}, None
+
+    from postprocessing.translate_tts import TranslateStats, translate_many
+
+    result: dict[str, str] = {}
+    to_translate: set[str] = set()
+    for z in unique:
+        norm = normalize_key(z)
+        if norm in ZONES.get("ko", {}):
+            result[z] = display_zone(z, "ko")
+        else:
+            to_translate.add(z)
+
+    stats = TranslateStats()
+    if to_translate:
+        try:
+            mapping, batch_stats = translate_many(to_translate, "Korean")
+            result.update(mapping)
+            stats = stats.merge(batch_stats)
+        except Exception:
+            for z in to_translate:
+                result.setdefault(z, z)
+
+    if stats.cache_hits == 0 and stats.cache_misses == 0:
+        return result, None
+    return result, stats
+
+
+def localize_events_for_display(
+    events: list[dict],
+    locale: str,
+    *,
+    text_cache: dict[str, str] | None = None,
+    stats: "TranslateStats | None" = None,
+) -> tuple[list[dict], "TranslateStats | None"]:
+    """Attach description_ko and zone_ko for Korean UI display."""
+    if locale != "ko":
+        return [dict(ev) for ev in events], stats
+
+    from postprocessing.translate_tts import TranslateStats
+
+    cache = text_cache if text_cache is not None else {}
+    accum = stats if stats is not None else TranslateStats()
+    unknown_zones = {
+        str(ev.get("zone", "")).strip()
+        for ev in events
+        if ev.get("zone") and not is_known_zone(str(ev.get("zone", "")))
+    }
+    zone_map, zone_stats = localize_zone_labels(list(unknown_zones), locale)
+    if zone_stats is not None:
+        merged = accum.merge(zone_stats)
+        accum.elapsed_s = merged.elapsed_s
+        accum.cache_hits = merged.cache_hits
+        accum.cache_misses = merged.cache_misses
+
+    enriched: list[dict] = []
+    for ev in events:
+        out = dict(ev)
+        desc = (ev.get("label") or ev.get("description") or "").strip()
+        if desc:
+            ko = _cached_localize(desc, locale, cache, accum)
+            if ko != desc:
+                out["description_ko"] = ko
+
+        zone_raw = str(ev.get("zone", "")).strip()
+        if zone_raw:
+            if is_known_zone(zone_raw):
+                out["zone_ko"] = display_zone(zone_raw, "ko")
+            else:
+                out["zone_ko"] = zone_map.get(zone_raw, zone_raw)
+        enriched.append(out)
+
+    if stats is None and accum.cache_hits == 0 and accum.cache_misses == 0:
+        return enriched, None
+    return enriched, accum if stats is None else stats
 
 
 def pipeline_steps_default() -> list[tuple[str, str, str]]:

@@ -8,6 +8,7 @@ Wrap translation APIs or local models and a TTS backend.
 
 from collections.abc import Iterator
 import sys
+import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -41,6 +42,7 @@ class TranslateStats:
 
 
 _translation_cache: dict[tuple[str, str], str] = {}
+_tinyaya_lock = threading.Lock()
 
 
 def clear_translation_cache() -> None:
@@ -94,12 +96,13 @@ def _call_translation_model(
     strict: bool,
     use_gpu: bool,
 ) -> str:
-    response = get_tinyaya_model(use_gpu=use_gpu).create_chat_completion(
-        messages=_translation_messages(text, target_lang, strict=strict),
-        max_tokens=4096,
-        temperature=0,
-        top_p=0.95,
-    )
+    with _tinyaya_lock:
+        response = get_tinyaya_model(use_gpu=use_gpu).create_chat_completion(
+            messages=_translation_messages(text, target_lang, strict=strict),
+            max_tokens=4096,
+            temperature=0,
+            top_p=0.95,
+        )
     return response["choices"][0]["message"]["content"].strip()
 
 

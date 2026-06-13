@@ -51,8 +51,12 @@ from ui.locale import (
     Strings,
     format_event_row,
     format_translation_time,
+    localize_chat_for_display,
+    localize_events_for_display,
     localize_llm_result,
+    localize_summary_for_display,
     localize_text,
+    localize_zone_labels,
     pipeline_steps_default,
 )
 
@@ -197,6 +201,7 @@ def build_app(
                 "progress_done": done,
                 "progress_total": total,
                 "progress_pct": progress_pct,
+                "video_name": Path(video_path).name,
             }
 
         def _start_step(idx: int, step_id: str, detail: str = "") -> None:
@@ -403,24 +408,31 @@ def build_app(
         _progress_total[0] = int(vp.frames_processed or _progress_total[0] or _progress_done[0])
 
         video_name = Path(video_path).name
-        _session_append_run(run_id, video_name, output_dir, events, llm_display, ann_vid_path)
+        _session_append_run(run_id, video_name, output_dir, events, llm, ann_vid_path)
 
-        yield {
+        final_payload: dict = {
             "type": "final",
             "status": status,
             "steps": _annotate_steps(),
             "events": events,
             "video_name": video_name,
             "rows": rows,
-            "summary": llm_display["summary"],
+            "summary": llm.get("summary", ""),
             "translation_time": translation_time_str,
             "risk_level": risk_key,
-            "flags": llm_display.get("flags", []),
+            "flags": llm.get("flags", []),
             "suspicious_clips": llm.get("suspicious_clips", []),
             "zone_counts": zone_counts,
             "annotated_video_path": ann_vid_path,
             "output_dir": output_dir,
         }
+        if _lang[0] == "ko":
+            if llm_display.get("summary") and llm_display["summary"] != llm.get("summary", ""):
+                final_payload["summary_ko"] = llm_display["summary"]
+            if llm_display.get("flags") and llm_display["flags"] != llm.get("flags", []):
+                final_payload["flags_ko"] = llm_display["flags"]
+
+        yield final_payload
 
     @_gpu(duration=120)
     def ask_footage(message: str, history: list, events: list) -> tuple:
@@ -442,10 +454,9 @@ def build_app(
                 return _append(history, message, reply), "", ""
             result = _r.answer_query(events, message)
             reply = result["answer"]
-            reply, stats = localize_text(reply, _lang[0])
             if result.get("clips"):
                 reply += "\n\n" + S.t("status.related_clips", clips=", ".join(result["clips"]))
-            timing = format_translation_time(S, stats)
+            timing = ""
         except Exception as exc:
             reply = S.t("status.llm_error", error=f"{type(exc).__name__}: {exc}")
             timing = ""
@@ -583,6 +594,26 @@ def build_app(
         except Exception as exc:
             return S.t("status.prefs_error", error=exc)
 
+    def localize_events(events: list, locale: str = "") -> list:
+        loc = locale if locale in ("en", "ko") else _lang[0]
+        enriched, _ = localize_events_for_display(events or [], loc)
+        return enriched
+
+    def localize_zones(zones: list, locale: str = "") -> dict:
+        loc = locale if locale in ("en", "ko") else _lang[0]
+        mapping, _ = localize_zone_labels(zones or [], loc)
+        return mapping
+
+    def localize_summary(summary: dict, locale: str = "") -> dict:
+        loc = locale if locale in ("en", "ko") else _lang[0]
+        enriched, _ = localize_summary_for_display(summary or {}, loc)
+        return enriched
+
+    def localize_chat(messages: list, locale: str = "") -> list:
+        loc = locale if locale in ("en", "ko") else _lang[0]
+        enriched, _ = localize_chat_for_display(messages or [], loc)
+        return enriched
+
     # ── Gradio Blocks — minimal hidden components for API endpoints ──────────
 
     with gr.Blocks(title=S.t("app.title")) as demo:
@@ -669,6 +700,44 @@ def build_app(
             _lang_in = gr.Textbox()
             _lang_out = gr.Textbox()
             gr.Button("_").click(save_language, inputs=[_lang_in], outputs=[_lang_out], api_name="save_language")
+
+            # Event / zone / summary / chat localization for Korean UI
+            _loc_locale = gr.Textbox()
+            _loc_evts = gr.JSON()
+            _loc_evts_out = gr.JSON()
+            gr.Button("_").click(
+                localize_events,
+                inputs=[_loc_evts, _loc_locale],
+                outputs=[_loc_evts_out],
+                api_name="localize_events",
+            )
+
+            _loc_zones = gr.JSON()
+            _loc_zones_out = gr.JSON()
+            gr.Button("_").click(
+                localize_zones,
+                inputs=[_loc_zones, _loc_locale],
+                outputs=[_loc_zones_out],
+                api_name="localize_zones",
+            )
+
+            _loc_summary = gr.JSON()
+            _loc_summary_out = gr.JSON()
+            gr.Button("_").click(
+                localize_summary,
+                inputs=[_loc_summary, _loc_locale],
+                outputs=[_loc_summary_out],
+                api_name="localize_summary",
+            )
+
+            _loc_chat = gr.JSON()
+            _loc_chat_out = gr.JSON()
+            gr.Button("_").click(
+                localize_chat,
+                inputs=[_loc_chat, _loc_locale],
+                outputs=[_loc_chat_out],
+                api_name="localize_chat",
+            )
 
             # Session management
             def clear_session() -> str:
