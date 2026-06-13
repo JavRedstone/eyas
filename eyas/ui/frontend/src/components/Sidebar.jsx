@@ -103,7 +103,7 @@ export default function Sidebar({
                   sx={{ p: 0.5, color: 'text.disabled', '&.Mui-checked': { color: 'primary.main' }, '&.MuiCheckbox-indeterminate': { color: 'primary.main' } }}
                 />
                 <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-                  Select all pending
+                  {t(language, 'sidebar.select_all_pending')}
                 </Typography>
               </Box>
             )}
