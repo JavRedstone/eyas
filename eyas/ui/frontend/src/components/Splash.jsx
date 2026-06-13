@@ -56,17 +56,15 @@ export default function Splash({ items = [], pct = 0, language = 'English', colo
       <div style={{ width: '100%', maxWidth: 448, padding: '0 24px' }}>
 
         {/* Wordmark */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 40 }}>
-          <div style={{ position: 'relative', width: 36, height: 36 }}>
-            <div style={{ position: 'absolute', inset: 0, borderRadius: 12, background: `${colors.primary}1a`, border: `1px solid ${colors.border}` }} />
-            <motion.div style={{ position: 'absolute', inset: 0, borderRadius: 12, border: `1px solid ${colors.ring}` }}
-              animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 2, repeat: Infinity }} />
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ width: 10, height: 10, borderRadius: '50%', background: colors.primary }} />
-            </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 40 }}>
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <img src={`${import.meta.env.BASE_URL}logo.png`} alt="Eyas"
+              style={{ width: 56, height: 56, objectFit: 'contain', display: 'block' }} />
+            <motion.div style={{ position: 'absolute', inset: -4, borderRadius: 16, border: `1px solid ${colors.ring}`, pointerEvents: 'none' }}
+              animate={{ opacity: [0.3, 0.8, 0.3] }} transition={{ duration: 2.2, repeat: Infinity }} />
           </div>
           <div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 600, letterSpacing: '-0.01em', color: colors.text }}>Eyas</div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 700, letterSpacing: '-0.01em', color: colors.text }}>Eyas</div>
             <div style={{ fontSize: '0.75rem', color: colors.muted }}>{t(language, 'tagline')}</div>
           </div>
         </div>
