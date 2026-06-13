@@ -231,3 +231,5 @@ scripts/download_models.py  Model pre-download for Docker build
 - [Architecture](docs/ARCHITECTURE.md) — pipeline diagram and component breakdown
 - [AI Theft Detection](docs/AI_THEFT_DETECTION.md) — capabilities, limits, and best practices
 - [Project Idea](docs/PROJECT_IDEA.md) — original concept and scope
+
+Agent-assisted changes are attributed in their commit metadata.
