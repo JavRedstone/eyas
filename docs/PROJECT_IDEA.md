@@ -115,6 +115,7 @@ Not just object detection or surveillance UI — this turns hours of footage int
 - event log generation and JSON store (or SQLite)
 - timeline UI in Gradio with clip previews
 - "ask footage" chat that queries the event log
+- codex commits / traces 
 
 ### Nice-to-have
 - VLM explanations for selected clips
