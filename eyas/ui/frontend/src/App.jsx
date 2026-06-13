@@ -727,13 +727,18 @@ export default function App() {
 
   const viewSummary = viewClipId ? (viewClip?.results?.summary ?? null) : combinedSummary
 
-  // Clips with completed analysis and an annotated video src — used for the All-view grid.
+  // All clips that have a previewSrc (raw feeds) — shown in the top footage panel grid.
+  const gridClips = useMemo(
+    () => queue.filter(q => q.previewSrc),
+    [queue],
+  )
+  // Done clips with annotated videos — passed to EventTimeline for its bottom grid.
   const doneClips = useMemo(
-    () => queue.filter(q => q.status === 'done' && q.previewSrc),
+    () => queue.filter(q => q.status === 'done' && q.results?.annotatedVideo),
     [queue],
   )
   // Show a multi-cam grid in the top footage panel when no single clip is selected.
-  const isGridView = !viewClipId && !clipSrc && doneClips.length >= 2
+  const isGridView = !viewClipId && !clipSrc && gridClips.length >= 2
 
   const tabProps = {
     client,
@@ -750,6 +755,7 @@ export default function App() {
     viewClipId,
     onSwitchToClip: setViewClipId,
     onHighlightGridClip: handleHighlightGridClip,
+    doneClips,
   }
 
   const PanelHeader = ({ title, children }) => (
@@ -868,7 +874,7 @@ export default function App() {
                     )}
 
                     {isGridView ? (
-                      /* ── Multi-cam grid (All view with 2+ done clips) ── */
+                      /* ── Multi-cam grid (All view with 2+ loaded clips) ── */
                       <Box sx={{
                         flex: 1, minHeight: 0, bgcolor: '#000', p: 0.75,
                         display: 'grid',
@@ -878,7 +884,7 @@ export default function App() {
                         overflow: 'hidden',
                         borderRadius: '0 0 11px 11px',
                       }}>
-                        {doneClips.map((item, idx) => {
+                        {gridClips.map((item, idx) => {
                           const isHighlighted = highlightedGridClipId === item.id
                           const label = item.zone || item.name.replace(/\.[^.]+$/, '')
                           return (
