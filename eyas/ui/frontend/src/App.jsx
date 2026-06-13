@@ -40,6 +40,16 @@ function parseFilenameZone(name) {
   return ''
 }
 
+function normalizeVideoKey(name) {
+  return (name || '').replace(/\.[^.]+$/, '').toLowerCase()
+}
+
+function eventBelongsToClip(event, clip) {
+  if (!clip) return true
+  if (event.source_clip_id === clip.id) return true
+  return normalizeVideoKey(event.source_video) === normalizeVideoKey(clip.name)
+}
+
 export default function App() {
   const [colorMode, setColorMode] = useState(() => {
     try { return localStorage.getItem('eyas-color-mode') || 'dark' } catch { return 'dark' }
@@ -282,13 +292,25 @@ export default function App() {
       if (u.pipeline_steps || u.steps) setPipelineSteps(u.pipeline_steps || u.steps)
       if (typeof u.progress_pct === 'number') setPipelineProgress(u.progress_pct)
       if (u.events?.length) {
-        const tagged = u.events.map(e => ({ ...e, source_video: u.video_name ?? videoName }))
+        const tagged = u.events.map((e, i) => ({
+          ...e,
+          source_video: videoName,
+          source_clip_id: item.id,
+          source_event_index: i,
+          ...(u.output_dir ? { source_output_dir: u.output_dir } : {}),
+        }))
         setEvents([...base, ...tagged])
       }
       if (u.output_dir)           setOutputDir(u.output_dir)
       if (u.annotated_video_path) setAnnotatedVideo(u.annotated_video_path)
       if (u.type === 'final') {
-        const tagged = (u.events || []).map(e => ({ ...e, source_video: u.video_name ?? videoName }))
+        const tagged = (u.events || []).map((e, i) => ({
+          ...e,
+          source_video: videoName,
+          source_clip_id: item.id,
+          source_event_index: i,
+          ...(u.output_dir ? { source_output_dir: u.output_dir } : {}),
+        }))
         sessionEventsRef.current = [...base, ...tagged]
         setEvents(sessionEventsRef.current)
         setSessionRunCount(c => c + 1)
@@ -400,7 +422,7 @@ export default function App() {
   const somePendingSelected = queue.some(q => q.status === 'pending' && q.selected !== false)
 
   const viewClip           = viewClipId ? queue.find(q => q.id === viewClipId) : null
-  const viewEvents         = viewClipId ? events.filter(e => e.source_video === viewClip?.name) : events
+  const viewEvents         = viewClipId ? events.filter(e => eventBelongsToClip(e, viewClip)) : events
   const viewSummary        = viewClipId ? (viewClip?.results?.summary ?? null) : summary
   const viewAnnotatedVideo = viewClipId ? (viewClip?.results?.annotatedVideo ?? null) : annotatedVideo
   const viewOutputDir      = viewClipId ? (viewClip?.results?.outputDir ?? '') : outputDir
