@@ -7,7 +7,6 @@ The React frontend (ui/dist/) is served by app.py at GET /.
 import io
 import json
 import sys
-import tempfile
 import threading
 import traceback
 import time as _time_mod
@@ -94,7 +93,8 @@ def _session_clear() -> None:
         _session["events"].clear()
 
 
-def _session_export_zip() -> str:
+def _session_export_zip() -> dict:
+    import base64
     with _session_lock:
         runs = list(_session["runs"])
         all_events = list(_session["events"])
@@ -114,10 +114,7 @@ def _session_export_zip() -> str:
             if ann and Path(ann).exists():
                 zf.write(ann, f"{prefix}/{Path(ann).name}")
 
-    tmp = tempfile.NamedTemporaryFile(suffix=".zip", delete=False, prefix="eyas_session_")
-    tmp.write(buf.getvalue())
-    tmp.close()
-    return tmp.name
+    return {"data": base64.b64encode(buf.getvalue()).decode()}
 
 
 
@@ -684,7 +681,6 @@ def build_app(
 
             gr.Button("_").click(clear_session, outputs=[gr.Textbox()], api_name="clear_session")
 
-            _zip_file = gr.File()
-            gr.Button("_").click(export_session_zip, outputs=[_zip_file], api_name="export_session_zip")
+            gr.Button("_").click(export_session_zip, outputs=[gr.JSON()], api_name="export_session_zip")
 
     return demo
