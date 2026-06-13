@@ -1,6 +1,6 @@
 # Eyas — Offline CCTV Security Assistant
 
-Real-time retail loss-prevention pipeline: video → person tracking → VLM observation → event structuring → LLM reasoning → alerts.
+Retail loss-prevention pipeline: video → person tracking → VLM observation → event structuring → LLM reasoning → alerts. Tested in-store at Joy Convenience Store; sample clips (`aisle1`–`aisle4`) were filmed there.
 
 ## Pipeline
 

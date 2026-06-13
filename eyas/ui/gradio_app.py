@@ -513,6 +513,23 @@ def build_app(
         except Exception as exc:
             return None, f"Audio error: {type(exc).__name__}: {exc}"
 
+    @_gpu(duration=120)
+    def summarize_session() -> dict:
+        """Run the LLM over all session events (multi-cam) and return a combined summary."""
+        with _session_lock:
+            all_events = list(_session["events"])
+        if not all_events:
+            return {}
+        _r = _mreg.get("llm")
+        if _r is None:
+            return {}
+        try:
+            _r._load_model()
+            return _r.summarize_events(all_events)
+        except Exception as exc:
+            print(f"[summarize_session] error: {exc}")
+            return {}
+
     def get_samples() -> list:
         return list(_SAMPLE_PATHS.keys())
 
@@ -778,5 +795,6 @@ def build_app(
             gr.Button("_").click(get_session_state, outputs=[gr.JSON()], api_name="get_session_state")
             gr.Button("_").click(clear_session, outputs=[gr.Textbox()], api_name="clear_session")
             gr.Button("_").click(export_session_zip, outputs=[gr.JSON()], api_name="export_session_zip")
+            gr.Button("_").click(summarize_session, outputs=[gr.JSON()], api_name="summarize_session")
 
     return demo

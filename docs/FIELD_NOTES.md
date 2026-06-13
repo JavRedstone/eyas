@@ -122,6 +122,28 @@ The cost: the custom UI takes real time to build and debug. We spent roughly a t
 
 ---
 
+## Field test — Joy Convenience Store
+
+We filmed the demo at Joy Convenience Store, a small retail shop. This was the actual store owner we had in mind when we designed the system, and it was the first time we ran Eyas on footage recorded in a real operating store rather than our own test clips.
+
+Four camera angles were covered: aisle 1, aisle 2, aisle 3, and aisle 4 (the main shopping corridor). We named each clip using the filename convention (`20260615_130000_aisle1.m4v`, etc.) so the zone labels map automatically without any configuration.
+
+**What we learned from running on real footage:**
+
+The pipeline handled the real-world conditions better than expected. Store CCTV is typically high-angle, wide-FOV, compressed H.264 — different from the online footage we had been testing on. YOLO tracked people reliably despite the unflattering angle; the bounding-box padding helped the VLM get enough context from the tighter crops.
+
+The most useful output in the store context turned out to be the per-zone activity count in the Detection Metrics tab. The store owner could immediately see which aisle had the most foot traffic and which periods were quiet. This is the kind of operational question — "how busy was aisle 3 this afternoon?" — that does not require a full event narrative to answer.
+
+The event timeline resonated as a communication tool. Showing a scatter chart of timestamped events and then clicking through to a six-second clip for each one made the footage review feel like a triage task rather than a search task. The owner could review a full afternoon session in under three minutes.
+
+Multi-clip analysis (loading all four aisle clips and running them as a batch session) worked as intended — events from each camera are tagged with their zone, and the Summary & Alerts tab produces a unified report across all cameras simultaneously. The per-camera breakdown within the summary helped attribute activity to specific aisles.
+
+One real-world friction point: the store's recording software names clips with a proprietary timestamp format that does not match our `YYYYMMDD_HHMMSS_<zone>` convention. We had to rename the files before upload. This reinforced that a drag-and-drop renaming step or a more flexible filename parser would be a valuable addition.
+
+The demo video was recorded at Joy Convenience Store using these four aisle clips as the input.
+
+---
+
 ## Model and tool credits
 
 - [YOLO11n](https://github.com/ultralytics/ultralytics) — Ultralytics

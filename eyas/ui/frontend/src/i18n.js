@@ -17,6 +17,7 @@ const STRINGS = {
     'panel.annotated':       'Annotated Video',
     'panel.preview':         'Preview',
     'panel.analysis':        'Analysis',
+    'panel.all_cams':        'All Cameras',
 
     // Tabs
     'tabs.timeline': 'Event Timeline',
@@ -24,7 +25,6 @@ const STRINGS = {
     'tabs.qa':       'Ask Footage',
     'tabs.metrics':  'Detection Metrics',
     'tabs.audio':    'Audio Report',
-    'tabs.library':  'Clip Library',
     'tabs.settings': 'Settings',
 
     // Sidebar
@@ -97,6 +97,8 @@ const STRINGS = {
     'summary.translation':  'Translation: {ms}ms',
     'summary.flag_types':   'Flag Types',
     'summary.overnight':    'Overnight Summary',
+    'summary.total':        'Total Summary',
+    'summary.per_cam':      'Per Camera',
     'summary.no_summary':   'No summary available.',
     'summary.concerns':     'Potential Concerns ({count})',
     'summary.suspicious':   'Suspicious Clips ({count})',
@@ -143,18 +145,8 @@ const STRINGS = {
     'metrics.frequency': 'Event Frequency Over Time',
     'metrics.events_tip':'events',
 
-    // ClipLibrary
-    'library.title':       'Stored Clips',
-    'library.empty':       'No clips stored yet.',
-    'library.load':        'Load for analysis',
-    'library.delete':      'Delete',
-    'library.preview_hdr': 'Preview: ',
-    'library.deleted':     'Deleted: {name}',
-    'library.loaded':      'Loaded for analysis: {name}',
-    'library.filter':      'Filter clips…',
-    'library.select_preview': 'Select a clip to preview',
-
     // Session
+    'session.event':         '1 event · {runs} video(s)',
     'session.events':        '{count} events · {runs} video(s)',
     'session.clear':         'Clear Session',
     'session.clear_confirm': 'Clear all session data?',
@@ -187,6 +179,7 @@ const STRINGS = {
     'panel.annotated':       '주석 영상',
     'panel.preview':         '미리보기',
     'panel.analysis':        '분석',
+    'panel.all_cams':        '전체 카메라',
 
     // Tabs
     'tabs.timeline': '이벤트 타임라인',
@@ -194,7 +187,6 @@ const STRINGS = {
     'tabs.qa':       '영상 질의',
     'tabs.metrics':  '탐지 지표',
     'tabs.audio':    '음성 보고서',
-    'tabs.library':  '클립 라이브러리',
     'tabs.settings': '설정',
 
     // Sidebar
@@ -267,6 +259,8 @@ const STRINGS = {
     'summary.translation':'번역: {ms}ms',
     'summary.flag_types': '플래그 유형',
     'summary.overnight':  '야간 요약',
+    'summary.total':      '전체 요약',
+    'summary.per_cam':    '카메라별',
     'summary.no_summary': '요약이 없습니다.',
     'summary.concerns':   '잠재적 우려 사항 ({count})',
     'summary.suspicious': '의심 클립 ({count})',
@@ -313,18 +307,8 @@ const STRINGS = {
     'metrics.frequency': '시간대별 이벤트 빈도',
     'metrics.events_tip':'이벤트',
 
-    // ClipLibrary
-    'library.title':       '저장된 클립',
-    'library.empty':       '저장된 클립이 없습니다.',
-    'library.load':        '분석용 불러오기',
-    'library.delete':      '삭제',
-    'library.preview_hdr': '미리보기: ',
-    'library.deleted':     '삭제됨: {name}',
-    'library.loaded':      '분석용으로 불러옴: {name}',
-    'library.filter':      '클립 필터링…',
-    'library.select_preview': '클립을 선택하여 미리보기',
-
     // Session
+    'session.event':         '{count}개 이벤트 · {runs}개 영상',
     'session.events':        '{count}개 이벤트 · {runs}개 영상',
     'session.clear':         '세션 초기화',
     'session.clear_confirm': '모든 세션 데이터를 초기화하시겠습니까?',

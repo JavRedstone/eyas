@@ -18,7 +18,6 @@ import SummaryAlerts from './components/tabs/SummaryAlerts.jsx'
 import AskFootage from './components/tabs/AskFootage.jsx'
 import DetectionMetrics from './components/tabs/DetectionMetrics.jsx'
 import AudioReport from './components/tabs/AudioReport.jsx'
-import ClipLibrary from './components/tabs/ClipLibrary.jsx'
 import ClipViewSelector from './components/ClipViewSelector.jsx'
 import { GRADIO_BACKEND_URL, gradioFileUrl, resolveGradioFile } from './backend.js'
 
@@ -29,7 +28,6 @@ function makeTabs(language) {
     { id: 'qa',        label: t(language, 'tabs.qa'),       icon: 'MessageSquare' },
     { id: 'metrics',   label: t(language, 'tabs.metrics'),  icon: 'BarChart2'     },
     { id: 'audio',     label: t(language, 'tabs.audio'),    icon: 'Volume2'       },
-    { id: 'library',   label: t(language, 'tabs.library'),  icon: 'Film'          },
   ]
 }
 
@@ -109,6 +107,8 @@ export default function App() {
   const [exportingZip, setExportingZip]     = useState(false)
   const [viewClipId, setViewClipId]         = useState(null)
   const [previewQueueId, setPreviewQueueId] = useState(null)
+  const [sessionSummary, setSessionSummary] = useState(null)
+  const [highlightedGridClipId, setHighlightedGridClipId] = useState(null)
 
   const [topColPct, setTopColPct] = useState(40)
 
@@ -120,6 +120,9 @@ export default function App() {
   const annotatedVideoElRef = useRef(null)
   const activeSubRef        = useRef(null)
   const stopRequestedRef    = useRef(false)
+  const videoGridRefs       = useRef([])
+  const syncLockRef         = useRef(false)
+  const syncLockTimerRef    = useRef(null)
 
   const makeDragHandler = useCallback((containerRef, setter, direction, lo = 20, hi = 80) =>
     (e) => {
@@ -147,10 +150,66 @@ export default function App() {
   const onTopColDrag = useMemo(() => makeDragHandler(topRowRef, setTopColPct, 'col', 25, 70), [makeDragHandler])
 
   const seekAnnotatedVideo = useCallback((time) => {
+    // Seek all grid videos when they are mounted
+    videoGridRefs.current.forEach(el => {
+      if (!el) return
+      el.currentTime = time
+      if (el.paused) el.play().catch(() => {})
+    })
+    // Seek the EventTimeline's own video player
     const el = annotatedVideoElRef.current
     if (!el) return
     el.currentTime = time
     if (el.paused) el.play().catch(() => {})
+  }, [])
+
+  // Highlight a specific grid clip and seek all grid videos to a timestamp.
+  const handleHighlightGridClip = useCallback((clipId, time) => {
+    setHighlightedGridClipId(clipId)
+    if (time != null) {
+      videoGridRefs.current.forEach(el => {
+        if (!el) return
+        el.currentTime = time
+        if (el.paused) el.play().catch(() => {})
+      })
+    }
+  }, [])
+
+  // Grid sync handlers — timed lock prevents the echo loop where a programmatic
+  // currentTime assignment fires another seeked event that re-triggers sync.
+  function lockGridSync(ms = 250) {
+    syncLockRef.current = true
+    clearTimeout(syncLockTimerRef.current)
+    syncLockTimerRef.current = setTimeout(() => { syncLockRef.current = false }, ms)
+  }
+
+  const handleGridSeeked = useCallback((e, idx) => {
+    if (syncLockRef.current) return
+    const time = e.target.currentTime
+    lockGridSync()
+    videoGridRefs.current.forEach((el, i) => {
+      if (i !== idx && el) el.currentTime = time
+    })
+  }, [])
+
+  const handleGridPlay = useCallback((e, idx) => {
+    if (syncLockRef.current) return
+    const time = e.target.currentTime
+    lockGridSync(100)
+    videoGridRefs.current.forEach((el, i) => {
+      if (i !== idx && el) {
+        el.currentTime = time
+        el.play().catch(() => {})
+      }
+    })
+  }, [])
+
+  const handleGridPause = useCallback((e, idx) => {
+    if (syncLockRef.current) return
+    lockGridSync(100)
+    videoGridRefs.current.forEach((el, i) => {
+      if (i !== idx && el && !el.paused) el.pause()
+    })
   }, [])
 
   useEffect(() => { languageRef.current = language }, [language])
@@ -369,6 +428,17 @@ export default function App() {
     }).catch(() => {})
   }, [client, splashDone])
 
+  // After analysis finishes (or session restores) with 2+ done clips, request a
+  // combined multi-cam summary from the LLM so the "All" chip shows an overall narrative.
+  const doneCount = useMemo(() => queue.filter(q => q.status === 'done').length, [queue])
+  useEffect(() => {
+    if (analyzing || !client || doneCount < 2) return
+    client.predict('/summarize_session', {}).then(r => {
+      const result = r.data?.[0]
+      if (result && result.summary) setSessionSummary(result)
+    }).catch(() => {})
+  }, [analyzing, client, doneCount])
+
   const handleToggleSelected = useCallback((id) => {
     setQueue(prev => prev.map(q => q.id === id ? { ...q, selected: !q.selected } : q))
   }, [])
@@ -568,7 +638,9 @@ export default function App() {
     setEvents([])
     setSessionRunCount(0)
     setSummary(null)
+    setSessionSummary(null)
     setViewClipId(null)
+    setHighlightedGridClipId(null)
     setOutputDir('')
     setAnnotatedVideo(null)
     setChatHistory([])
@@ -622,27 +694,51 @@ export default function App() {
     const done = queue.filter(q => q.status === 'done' && q.results?.summary)
     if (!done.length) return summary
     if (done.length === 1) return done[0].results.summary
+
     const riskOrder = { none: 0, low: 1, medium: 2, high: 3, critical: 4 }
     const maxRisk = done.reduce((best, item) => {
       const lvl = item.results.summary?.risk_level || 'none'
       return (riskOrder[lvl] ?? 0) > (riskOrder[best] ?? 0) ? lvl : best
     }, 'none')
-    const narrativeParts = done.map(item => {
-      const label = item.zone || item.name.replace(/\.[^.]+$/, '')
-      const text = (item.results.summary?.summary || '').trim()
-      return text ? `[${label}] ${text}` : null
-    }).filter(Boolean)
+
+    // Per-cam breakdown shown as sections in SummaryAlerts.
+    const per_cam = done.map(item => ({
+      name: item.zone || item.name.replace(/\.[^.]+$/, ''),
+      summary: item.results.summary?.summary || '',
+      flags: item.results.summary?.flags || [],
+      risk_level: item.results.summary?.risk_level || 'none',
+      suspicious_clips: item.results.summary?.suspicious_clips || [],
+    }))
+
+    // Overall narrative: prefer LLM-generated multi-cam summary, fall back to concat.
+    const totalText = sessionSummary?.summary
+      || per_cam.map(c => `[${c.name}] ${c.summary}`).filter(t => t).join('\n\n')
+
     return {
-      summary: narrativeParts.join('\n\n'),
+      summary: totalText,
       flags: [...new Set(done.flatMap(item => item.results.summary?.flags || []))],
       suspicious_clips: done.flatMap(item => item.results.summary?.suspicious_clips || []),
-      risk_level: maxRisk,
+      risk_level: sessionSummary?.risk_level || maxRisk,
       annotated_video_path: done[done.length - 1]?.results?.annotatedVideo || null,
       output_dir: done[done.length - 1]?.results?.outputDir || '',
+      per_cam,
     }
-  }, [queue, summary])
+  }, [queue, summary, sessionSummary])
 
   const viewSummary = viewClipId ? (viewClip?.results?.summary ?? null) : combinedSummary
+
+  // All clips that have a previewSrc (raw feeds) — shown in the top footage panel grid.
+  const gridClips = useMemo(
+    () => queue.filter(q => q.previewSrc),
+    [queue],
+  )
+  // Done clips with annotated videos — passed to EventTimeline for its bottom grid.
+  const doneClips = useMemo(
+    () => queue.filter(q => q.status === 'done' && q.results?.annotatedVideo),
+    [queue],
+  )
+  // Show a multi-cam grid in the top footage panel when no single clip is selected.
+  const isGridView = !viewClipId && !clipSrc && gridClips.length >= 2
 
   const tabProps = {
     client,
@@ -658,6 +754,8 @@ export default function App() {
     zoneKoCache,
     viewClipId,
     onSwitchToClip: setViewClipId,
+    onHighlightGridClip: handleHighlightGridClip,
+    doneClips,
   }
 
   const PanelHeader = ({ title, children }) => (
@@ -726,7 +824,11 @@ export default function App() {
                 <Box style={{ flex: 100 - topColPct }}
                   sx={{ display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0 }}>
                   <Paper sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-                    <PanelHeader title={clipSrc ? t(language, 'panel.event_clip') : t(language, 'panel.preview')}>
+                    <PanelHeader title={
+                      isGridView ? t(language, 'panel.all_cams')
+                        : clipSrc ? t(language, 'panel.event_clip')
+                        : t(language, 'panel.preview')
+                    }>
                       {clipSrc && (
                         <Typography
                           component="button"
@@ -737,8 +839,8 @@ export default function App() {
                       )}
                     </PanelHeader>
 
-                    {/* Source selector strip */}
-                    {queue.length > 0 && (
+                    {/* Source selector strip — hidden in grid view since all clips are visible */}
+                    {!isGridView && queue.length > 0 && (
                       <Box sx={{ flexShrink: 0, display: 'flex', gap: 0.5, px: 1.5, py: 0.75, borderBottom: '1px solid', borderColor: 'divider', overflowX: 'auto', '&::-webkit-scrollbar': { display: 'none' } }}>
                         {queue.map(item => {
                           const isActive = !clipSrc && previewQueueId === item.id
@@ -771,18 +873,66 @@ export default function App() {
                       </Box>
                     )}
 
-                    <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: (clipSrc || videoPreviewSrc) ? '#000' : 'background.default', borderRadius: '0 0 11px 11px', overflow: 'hidden', minHeight: 0 }}>
-                      {clipSrc ? (
-                        <video key={clipSrc} src={clipSrc} controls autoPlay style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                      ) : videoPreviewSrc ? (
-                        <video src={videoPreviewSrc} controls muted style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                      ) : (
-                        <Box sx={{ textAlign: 'center', p: 4 }}>
-                          <Typography sx={{ fontSize: '2rem', opacity: 0.2, mb: 1 }}>▶</Typography>
-                          <Typography variant="caption" color="text.secondary">{t(language, 'app.no_video')}</Typography>
-                        </Box>
-                      )}
-                    </Box>
+                    {isGridView ? (
+                      /* ── Multi-cam grid (All view with 2+ loaded clips) ── */
+                      <Box sx={{
+                        flex: 1, minHeight: 0, bgcolor: '#000', p: 0.75,
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(2, 1fr)',
+                        gridAutoRows: '1fr',
+                        gap: 0.75,
+                        overflow: 'hidden',
+                        borderRadius: '0 0 11px 11px',
+                      }}>
+                        {gridClips.map((item, idx) => {
+                          const isHighlighted = highlightedGridClipId === item.id
+                          const label = item.zone || item.name.replace(/\.[^.]+$/, '')
+                          return (
+                            <Box key={item.id} sx={{
+                              position: 'relative',
+                              borderRadius: 1,
+                              overflow: 'hidden',
+                              outline: '2px solid',
+                              outlineColor: isHighlighted ? 'primary.main' : 'transparent',
+                              transition: 'outline-color 0.2s',
+                            }}>
+                              <Typography variant="caption" sx={{
+                                position: 'absolute', top: 5, left: 7, zIndex: 1,
+                                color: '#fff', bgcolor: 'rgba(0,0,0,0.6)',
+                                px: 0.75, py: 0.2, borderRadius: 0.5,
+                                fontFamily: 'monospace', fontSize: '0.6rem',
+                                lineHeight: 1.5, pointerEvents: 'none',
+                              }}>
+                                {label}
+                              </Typography>
+                              <video
+                                ref={el => { videoGridRefs.current[idx] = el }}
+                                src={item.previewSrc || ''}
+                                controls
+                                style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+                                onSeeked={e => handleGridSeeked(e, idx)}
+                                onPlay={e => handleGridPlay(e, idx)}
+                                onPause={e => handleGridPause(e, idx)}
+                              />
+                            </Box>
+                          )
+                        })}
+                      </Box>
+                    ) : (
+                      /* ── Single video (single-clip view or pre-analysis preview) ── */
+                      <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: (clipSrc || videoPreviewSrc) ? '#000' : 'background.default', borderRadius: '0 0 11px 11px', overflow: 'hidden', minHeight: 0 }}>
+                        {clipSrc ? (
+                          <video key={clipSrc} src={clipSrc} controls autoPlay style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                        ) : videoPreviewSrc ? (
+                          <video src={videoPreviewSrc} controls muted style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                        ) : (
+                          <Box sx={{ textAlign: 'center', p: 4 }}>
+                            <Typography sx={{ fontSize: '2rem', opacity: 0.2, mb: 1 }}>▶</Typography>
+                            <Typography variant="caption" color="text.secondary">{t(language, 'app.no_video')}</Typography>
+                          </Box>
+                        )}
+                      </Box>
+                    )}
                   </Paper>
                 </Box>
               </Box>
@@ -815,9 +965,6 @@ export default function App() {
                     </Box>
                     <Box sx={{ display: activeTab === 'audio'   ? 'block' : 'none', flex: 1, overflowY: 'auto', p: 2.5 }}>
                       <AudioReport {...tabProps} />
-                    </Box>
-                    <Box sx={{ display: activeTab === 'library' ? 'flex' : 'none', flex: 1, flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-                      <ClipLibrary {...tabProps} />
                     </Box>
                   </Box>
                 </Paper>
