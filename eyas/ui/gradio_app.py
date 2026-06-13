@@ -258,11 +258,20 @@ def build_app(
             total: int,
             track_count: int,
             vlm_fired: bool,
-            _=None,
+            annotated_frame=None,
         ) -> None:
             now = _time.time()
             if vlm_fired or now - _last_progress_t[0] >= 0.2:
-                _q.put(("progress", done, total, track_count, vlm_fired))
+                preview_path = None
+                if annotated_frame is not None:
+                    try:
+                        import cv2 as _cv2
+                        p = str(Path(output_dir) / "preview.jpg")
+                        _cv2.imwrite(p, annotated_frame, [_cv2.IMWRITE_JPEG_QUALITY, 80])
+                        preview_path = p
+                    except Exception:
+                        pass
+                _q.put(("progress", done, total, track_count, vlm_fired, preview_path))
                 _last_progress_t[0] = now
 
         def _on_new_events(evs: list) -> None:
@@ -324,7 +333,7 @@ def build_app(
                     if not _model_loaded:
                         _model_loaded = True
                         step_start[1] = _time.time()
-                    _, done, total, track_count, vlm_fired = msg
+                    _, done, total, track_count, vlm_fired, preview_path = (*msg, None)[:6]
                     _progress_done[0] = int(done or 0)
                     _progress_total[0] = int(total or 0)
                     pct = f"{done}/{total}" if total else str(done)
@@ -335,7 +344,10 @@ def build_app(
                         if 2 not in step_start:
                             step_start[2] = _time.time()
                         steps[2] = {"id": "vlm", "state": "running", "detail": S.t("pipeline.frame", pct=pct)}
-                    yield _emit(S.t("status.processing_frame", pct=pct))
+                    update = _emit(S.t("status.processing_frame", pct=pct))
+                    if preview_path:
+                        update["preview_frame"] = preview_path
+                    yield update
                 elif kind == "done":
                     vp = msg[1]
                     break

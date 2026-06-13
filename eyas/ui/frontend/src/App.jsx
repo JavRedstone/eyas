@@ -113,6 +113,8 @@ export default function App() {
   const [previewQueueId, setPreviewQueueId] = useState(null)
   const [sessionSummary, setSessionSummary] = useState(null)
   const [highlightedGridClipId, setHighlightedGridClipId] = useState(null)
+  const [latestEventKey, setLatestEventKey] = useState(null)
+  const [previewFrame, setPreviewFrame] = useState(null)
 
   const [topColPct, setTopColPct] = useState(40)
 
@@ -541,6 +543,7 @@ export default function App() {
     setPipelineProgress(0)
     setAnnotatedVideo(null)
     setSummary(null)
+    setPreviewFrame(null)
 
     const base = sessionEventsRef.current
     const sub = client.submit('/run_pipeline', { video_path: gradioPath })
@@ -564,9 +567,16 @@ export default function App() {
         }))
         tagged = mergeEventKoFields(tagged, sessionEventsRef.current)
         setEvents([...base, ...tagged])
+        const latest = tagged[tagged.length - 1]
+        if (latest) {
+          const eKey = `${latest.source_clip_id ?? ''}-${latest.source_event_index ?? (base.length + tagged.length - 1)}`
+          setLatestEventKey(eKey)
+          if (latest.timestamp != null) seekAnnotatedVideo(Number(latest.timestamp))
+        }
       }
       if (u.output_dir)           setOutputDir(u.output_dir)
-      if (u.annotated_video_path) setAnnotatedVideo(u.annotated_video_path)
+      if (u.preview_frame)        setPreviewFrame(gradioFileUrl(u.preview_frame) + `?_t=${Date.now()}`)
+      if (u.annotated_video_path) { setAnnotatedVideo(u.annotated_video_path); setPreviewFrame(null) }
       if (u.type === 'final') {
         let tagged = (u.events || []).map((e, i) => ({
           ...e,
@@ -786,6 +796,8 @@ export default function App() {
     onSwitchToClip: setViewClipId,
     onHighlightGridClip: handleHighlightGridClip,
     doneClips,
+    latestEventKey,
+    previewFrame,
   }
 
   const PanelHeader = ({ title, children }) => (

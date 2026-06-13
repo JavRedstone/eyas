@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import { RefreshCw, Loader2, Film, Video, Play, ChevronRight, ChevronDown } from 'lucide-react'
 import Box from '@mui/material/Box'
@@ -149,12 +149,23 @@ export default function EventTimeline({
   onSwitchToClip,
   onHighlightGridClip = null,
   doneClips = [],
+  latestEventKey = null,
+  previewFrame = null,
 }) {
   const [loadingClip, setLoading] = useState(false)
   const [loadingIdx, setLoadingIdx] = useState(null)
   const [localClipSrc, setLocalClipSrc] = useState(null)
   const [showingClip, setShowingClip] = useState(false)
   const [expandedKey, setExpandedKey] = useState(null)
+
+  // Auto-expand and scroll to the latest event row when events stream in during processing
+  const latestRowRef = useRef(null)
+  useEffect(() => {
+    if (!latestEventKey) return
+    setExpandedKey(latestEventKey)
+    // Give the DOM a tick to render the expanded row, then scroll it into view
+    setTimeout(() => { latestRowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }) }, 50)
+  }, [latestEventKey])
   const [tableSplitPct, setTableSplitPct] = useState(50)
   const [highlightedAnnotatedClipId, setHighlightedAnnotatedClipId] = useState(null)
   const splitRowRef = useRef(null)
@@ -431,6 +442,7 @@ export default function EventTimeline({
 
                     return [
                       <TableRow key={rowKey} hover
+                        ref={rowKey === latestEventKey ? latestRowRef : null}
                         sx={{ cursor: 'pointer', bgcolor: isExpanded ? 'rgba(247,208,70,0.04)' : undefined }}
                         onClick={() => toggleExpand(rowKey)}>
                         {/* Expand chevron + index */}
@@ -630,7 +642,7 @@ export default function EventTimeline({
             </Box>
           ) : (
             /* ── Single annotated video ── */
-            <Box sx={{ flex: 1, bgcolor: activeSrc ? '#000' : 'background.default', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', minHeight: 0 }}>
+            <Box sx={{ flex: 1, bgcolor: (activeSrc || previewFrame) ? '#000' : 'background.default', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', minHeight: 0 }}>
               {activeSrc ? (
                 <video
                   ref={showingClip ? undefined : annotatedVideoRef}
@@ -647,6 +659,9 @@ export default function EventTimeline({
                   }}
                   style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
                 />
+              ) : previewFrame ? (
+                <img src={previewFrame} alt="Processing preview"
+                  style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
               ) : (
                 <Box sx={{ textAlign: 'center', p: 3 }}>
                   <Typography sx={{ fontSize: '1.5rem', opacity: 0.2, mb: 0.5 }}>▶</Typography>
