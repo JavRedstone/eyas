@@ -90,12 +90,9 @@ export default function App() {
   const [viewClipId, setViewClipId]         = useState(null)
   const [previewQueueId, setPreviewQueueId] = useState(null)
 
-  // Two-axis split: top-col | vert (row between top and bottom)
   const [topColPct, setTopColPct] = useState(40)
-  const [vertPct,   setVertPct]   = useState(42)
 
   const topRowRef  = useRef(null)
-  const mainColRef = useRef(null)
 
   const sessionEventsRef    = useRef([])
   const previewUrlRef       = useRef('')
@@ -126,8 +123,7 @@ export default function App() {
       window.addEventListener('mouseup', onUp)
     }, [])
 
-  const onTopColDrag = useMemo(() => makeDragHandler(topRowRef,  setTopColPct, 'col', 25, 70), [makeDragHandler])
-  const onVertDrag   = useMemo(() => makeDragHandler(mainColRef, setVertPct,   'row', 20, 75), [makeDragHandler])
+  const onTopColDrag = useMemo(() => makeDragHandler(topRowRef, setTopColPct, 'col', 25, 70), [makeDragHandler])
 
   const seekAnnotatedVideo = useCallback((time) => {
     const el = annotatedVideoElRef.current
@@ -403,16 +399,21 @@ export default function App() {
     setExportingZip(true)
     try {
       const r = await client.predict('/export_session_zip', {})
-      const file = r.data[0]
-      const filePath = file?.path ?? file?.url ?? file
-      if (filePath) {
-        const url = String(filePath).startsWith('/') ? filePath : `/gradio_api/file=${filePath}`
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `eyas_session_${new Date().toISOString().slice(0, 10)}.zip`
-        a.click()
-      }
-    } catch (e) { console.error('Export failed', e) }
+      console.log('[export] raw response:', r)
+      console.log('[export] r.data[0]:', r.data[0])
+      const payload = r.data[0]
+      const { data } = payload
+      console.log('[export] base64 data length:', data?.length, 'first 40:', data?.slice(0, 40))
+      const bytes = Uint8Array.from(atob(data), c => c.charCodeAt(0))
+      const blob = new Blob([bytes], { type: 'application/zip' })
+      const url = URL.createObjectURL(blob)
+      console.log('[export] blob url:', url, 'size:', blob.size)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `eyas_session_${new Date().toISOString().slice(0, 10)}.zip`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) { console.error('[export] failed:', e) }
     finally { setExportingZip(false) }
   }, [client])
 
@@ -457,12 +458,6 @@ export default function App() {
     </Box>
   )
 
-  const RowHandle = ({ onMouseDown }) => (
-    <Box sx={{ height: 14, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'row-resize', py: 0.25 }}
-      onMouseDown={onMouseDown}>
-      <Box sx={{ height: 2, width: '60%', minWidth: 40, borderRadius: 9999, bgcolor: 'divider', transition: 'background-color 0.15s', '&:hover': { bgcolor: 'primary.dark' } }} />
-    </Box>
-  )
 
   return (
     <ThemeProvider theme={theme}>
@@ -475,13 +470,11 @@ export default function App() {
           ) : (
             <Box key="app" component={motion.div}
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}
-              ref={mainColRef}
-              sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, p: 2, gap: 0, overflow: 'hidden' }}>
+              sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, p: 2, gap: 1.5, overflow: 'hidden' }}>
 
               {/* ── TOP ROW: Queue/Analysis + Footage Preview ─────────────────── */}
               <Box ref={topRowRef}
-                style={{ flex: vertPct }}
-                sx={{ display: 'flex', minHeight: 0, gap: 0 }}>
+                sx={{ flex: '0 0 42%', display: 'flex', minHeight: 0, gap: 0 }}>
 
                 {/* Top-left: queue sidebar + analysis panel */}
                 <Box style={{ flex: topColPct }}
@@ -575,11 +568,8 @@ export default function App() {
                 </Box>
               </Box>
 
-              <RowHandle onMouseDown={onVertDrag} />
-
               {/* ── BOTTOM ROW: icon sidebar + per-tab layouts ────────────────── */}
-              <Box style={{ flex: 100 - vertPct }}
-                sx={{ display: 'flex', minHeight: 0, gap: 0 }}>
+              <Box sx={{ flex: 1, display: 'flex', minHeight: 0, gap: 0 }}>
 
                 <Paper sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
                   <ClipViewSelector queue={queue} viewClipId={viewClipId} onChange={setViewClipId} />
