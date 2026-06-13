@@ -908,6 +908,7 @@ export default function App() {
                               <video
                                 ref={el => { videoGridRefs.current[idx] = el }}
                                 src={item.previewSrc || ''}
+                                preload="metadata"
                                 controls
                                 style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
                                 onSeeked={e => handleGridSeeked(e, idx)}

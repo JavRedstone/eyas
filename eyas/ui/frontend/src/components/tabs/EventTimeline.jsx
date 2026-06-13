@@ -583,9 +583,7 @@ export default function EventTimeline({
             }}>
               {doneClips.map((item, idx) => {
                 const av = item.results?.annotatedVideo
-                const src = av
-                  ? (av.startsWith('/gradio_api/file=') ? av : `/gradio_api/file=${av}`)
-                  : null
+                const src = av ? gradioFileUrl(av) : null
                 const label = item.zone || item.name.replace(/\.[^.]+$/, '')
                 const isHighlighted = highlightedAnnotatedClipId === item.id
                 return (
@@ -608,6 +606,7 @@ export default function EventTimeline({
                       <video
                         ref={el => { annotatedGridRefs.current[idx] = el }}
                         src={src}
+                        preload="metadata"
                         controls
                         style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
                         onSeeked={e => handleAnnotatedGridSeeked(e, idx)}
@@ -637,6 +636,7 @@ export default function EventTimeline({
                   ref={showingClip ? undefined : annotatedVideoRef}
                   key={activeSrc}
                   src={activeSrc}
+                  preload="metadata"
                   controls
                   onLoadedMetadata={(e) => {
                     if (pendingSeekRef.current !== null && !showingClip) {
