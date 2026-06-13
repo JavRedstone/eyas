@@ -12,14 +12,13 @@ import Splash from './components/Splash.jsx'
 import Header from './components/Header.jsx'
 import Sidebar from './components/Sidebar.jsx'
 import AnalysisPanel from './components/AnalysisPanel.jsx'
-import TabNav from './components/TabNav.jsx'
+import SidebarTabs from './components/SidebarTabs.jsx'
 import EventTimeline from './components/tabs/EventTimeline.jsx'
 import SummaryAlerts from './components/tabs/SummaryAlerts.jsx'
 import AskFootage from './components/tabs/AskFootage.jsx'
 import DetectionMetrics from './components/tabs/DetectionMetrics.jsx'
 import AudioReport from './components/tabs/AudioReport.jsx'
 import ClipLibrary from './components/tabs/ClipLibrary.jsx'
-import SettingsTab from './components/tabs/SettingsTab.jsx'
 import ClipViewSelector from './components/ClipViewSelector.jsx'
 
 function makeTabs(language) {
@@ -30,7 +29,6 @@ function makeTabs(language) {
     { id: 'metrics',   label: t(language, 'tabs.metrics'),  icon: 'BarChart2'     },
     { id: 'audio',     label: t(language, 'tabs.audio'),    icon: 'Volume2'       },
     { id: 'library',   label: t(language, 'tabs.library'),  icon: 'Film'          },
-    { id: 'settings',  label: t(language, 'tabs.settings'), icon: 'Settings'      },
   ]
 }
 
@@ -80,42 +78,52 @@ export default function App() {
   const [sessionRunCount, setSessionRunCount] = useState(0)
   const [exportingZip, setExportingZip]     = useState(false)
   const [viewClipId, setViewClipId]         = useState(null)
+  const [previewQueueId, setPreviewQueueId] = useState(null)
+
+  // Two-axis split: top-col | vert (row between top and bottom)
+  const [topColPct, setTopColPct] = useState(40)
+  const [vertPct,   setVertPct]   = useState(42)
+
+  const topRowRef  = useRef(null)
+  const mainColRef = useRef(null)
+
   const sessionEventsRef    = useRef([])
   const previewUrlRef       = useRef('')
   const annotatedVideoElRef = useRef(null)
-  const splitContainerRef   = useRef(null)
-  const isDragging          = useRef(false)
   const activeSubRef        = useRef(null)
   const stopRequestedRef    = useRef(false)
-  const [splitPct, setSplitPct] = useState(50)
+
+  const makeDragHandler = useCallback((containerRef, setter, direction, lo = 20, hi = 80) =>
+    (e) => {
+      e.preventDefault()
+      document.body.style.cursor = direction === 'col' ? 'col-resize' : 'row-resize'
+      document.body.style.userSelect = 'none'
+      const onMove = (ev) => {
+        if (!containerRef.current) return
+        const rect = containerRef.current.getBoundingClientRect()
+        const pct = direction === 'col'
+          ? ((ev.clientX - rect.left)  / rect.width)  * 100
+          : ((ev.clientY - rect.top)   / rect.height) * 100
+        setter(Math.max(lo, Math.min(hi, pct)))
+      }
+      const onUp = () => {
+        document.body.style.cursor = ''
+        document.body.style.userSelect = ''
+        window.removeEventListener('mousemove', onMove)
+        window.removeEventListener('mouseup', onUp)
+      }
+      window.addEventListener('mousemove', onMove)
+      window.addEventListener('mouseup', onUp)
+    }, [])
+
+  const onTopColDrag = useMemo(() => makeDragHandler(topRowRef,  setTopColPct, 'col', 25, 70), [makeDragHandler])
+  const onVertDrag   = useMemo(() => makeDragHandler(mainColRef, setVertPct,   'row', 20, 75), [makeDragHandler])
 
   const seekAnnotatedVideo = useCallback((time) => {
     const el = annotatedVideoElRef.current
     if (!el) return
     el.currentTime = time
     if (el.paused) el.play().catch(() => {})
-  }, [])
-
-  const onDragHandleMouseDown = useCallback((e) => {
-    e.preventDefault()
-    isDragging.current = true
-    document.body.style.cursor = 'col-resize'
-    document.body.style.userSelect = 'none'
-    function onMove(e) {
-      if (!isDragging.current || !splitContainerRef.current) return
-      const rect = splitContainerRef.current.getBoundingClientRect()
-      const pct  = ((e.clientX - rect.left) / rect.width) * 100
-      setSplitPct(Math.max(25, Math.min(75, pct)))
-    }
-    function onUp() {
-      isDragging.current = false
-      document.body.style.cursor = ''
-      document.body.style.userSelect = ''
-      window.removeEventListener('mousemove', onMove)
-      window.removeEventListener('mouseup', onUp)
-    }
-    window.addEventListener('mousemove', onMove)
-    window.addEventListener('mouseup', onUp)
   }, [])
 
   function getVideoPath(fileRef) {
@@ -205,7 +213,10 @@ export default function App() {
       error: null,
     }))
     setQueue(prev => [...prev, ...items])
-    if (items.length) setPreviewSource(items[0].previewSrc)
+    if (items.length) {
+      setPreviewSource(items[0].previewSrc)
+      setPreviewQueueId(items[0].id)
+    }
   }, [])
 
   const handleAddSampleToQueue = useCallback(async (sampleName) => {
@@ -214,8 +225,9 @@ export default function App() {
       const r = await client.predict('/load_sample', { name: sampleName })
       const path = getVideoPath(r.data[0])
       const previewSrc = getPreviewSrc(r.data[0])
+      const newId = Math.random().toString(36).slice(2)
       setQueue(prev => [...prev, {
-        id: Math.random().toString(36).slice(2),
+        id: newId,
         name: sampleName,
         file: null,
         path,
@@ -226,6 +238,7 @@ export default function App() {
         error: null,
       }])
       setPreviewSource(previewSrc)
+      setPreviewQueueId(newId)
     } catch (e) { setStatusMsg(`Error: ${e.message}`) }
   }, [client])
 
@@ -351,8 +364,17 @@ export default function App() {
     setOutputDir('')
     setAnnotatedVideo(null)
     setChatHistory([])
+    setPreviewQueueId(null)
     setQueue(prev => prev.map(q => q.status !== 'pending' ? { ...q, status: 'pending', error: null } : q))
   }, [client, language])
+
+  const handleSelectPreview = useCallback((item) => {
+    if (item.previewSrc) {
+      setPreviewSource(item.previewSrc)
+      setPreviewQueueId(item.id)
+      setClipSrc(null)
+    }
+  }, [])
 
   const handleExportZip = useCallback(async () => {
     if (!client) return
@@ -377,24 +399,46 @@ export default function App() {
   const allPendingSelected = queue.filter(q => q.status === 'pending').every(q => q.selected !== false)
   const somePendingSelected = queue.some(q => q.status === 'pending' && q.selected !== false)
 
-  // Scoped view: null = All (session), or a specific queue item id
-  const viewClip = viewClipId ? queue.find(q => q.id === viewClipId) : null
-  const viewEvents = viewClipId
-    ? events.filter(e => e.source_video === viewClip?.name)
-    : events
-  const viewSummary = viewClipId ? (viewClip?.results?.summary ?? null) : summary
+  const viewClip           = viewClipId ? queue.find(q => q.id === viewClipId) : null
+  const viewEvents         = viewClipId ? events.filter(e => e.source_video === viewClip?.name) : events
+  const viewSummary        = viewClipId ? (viewClip?.results?.summary ?? null) : summary
   const viewAnnotatedVideo = viewClipId ? (viewClip?.results?.annotatedVideo ?? null) : annotatedVideo
-  const viewOutputDir = viewClipId ? (viewClip?.results?.outputDir ?? '') : outputDir
+  const viewOutputDir      = viewClipId ? (viewClip?.results?.outputDir ?? '') : outputDir
 
-  const tabProps = { client, events: viewEvents, outputDir: viewOutputDir, summary: viewSummary, chatHistory, setChatHistory, language, setLanguage, onSeekVideo: seekAnnotatedVideo, setClipSrc }
+  const tabProps = {
+    client,
+    events: viewEvents,
+    outputDir: viewOutputDir,
+    summary: viewSummary,
+    chatHistory, setChatHistory,
+    language, setLanguage,
+    onSeekVideo: seekAnnotatedVideo,
+    setClipSrc,
+    annotatedVideo: viewAnnotatedVideo,
+    annotatedVideoRef: annotatedVideoElRef,
+  }
 
   const PanelHeader = ({ title, children }) => (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1.25, borderBottom: '1px solid', borderColor: 'divider', flexShrink: 0 }}>
       <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: 'primary.main', flexShrink: 0 }} />
       <Typography variant="caption" fontWeight={600} sx={{ color: 'text.primary', letterSpacing: '0.03em' }}>
         {title}
       </Typography>
       {children}
+    </Box>
+  )
+
+  const ColHandle = ({ onMouseDown }) => (
+    <Box sx={{ width: 14, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'col-resize', px: 0.25 }}
+      onMouseDown={onMouseDown}>
+      <Box sx={{ width: 2, height: '60%', minHeight: 40, borderRadius: 9999, bgcolor: 'divider', transition: 'background-color 0.15s', '&:hover': { bgcolor: 'primary.dark' } }} />
+    </Box>
+  )
+
+  const RowHandle = ({ onMouseDown }) => (
+    <Box sx={{ height: 14, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'row-resize', py: 0.25 }}
+      onMouseDown={onMouseDown}>
+      <Box sx={{ height: 2, width: '60%', minWidth: 40, borderRadius: 9999, bgcolor: 'divider', transition: 'background-color 0.15s', '&:hover': { bgcolor: 'primary.dark' } }} />
     </Box>
   )
 
@@ -409,13 +453,16 @@ export default function App() {
           ) : (
             <Box key="app" component={motion.div}
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}
-              sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+              ref={mainColRef}
+              sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, p: 2, gap: 0, overflow: 'hidden' }}>
 
-              <Box ref={splitContainerRef}
-                sx={{ display: 'flex', p: 2, flex: 1, minHeight: 0, overflow: 'hidden', gap: 0 }}>
+              {/* ── TOP ROW: Queue/Analysis + Footage Preview ─────────────────── */}
+              <Box ref={topRowRef}
+                style={{ flex: vertPct }}
+                sx={{ display: 'flex', minHeight: 0, gap: 0 }}>
 
-                {/* Left panel */}
-                <Box style={{ width: `${splitPct}%` }}
+                {/* Top-left: queue sidebar + analysis panel */}
+                <Box style={{ flex: topColPct }}
                   sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, minHeight: 0, minWidth: 0 }}>
                   <Sidebar
                     samples={samples} queue={queue} language={language}
@@ -429,8 +476,23 @@ export default function App() {
                     onClearSession={handleClearSession} onExportZip={handleExportZip}
                     exportingZip={exportingZip}
                   />
+                  <AnalysisPanel
+                    analyzing={analyzing} stopping={stopping} statusMsg={statusMsg}
+                    pipelineSteps={pipelineSteps} pipelineProgress={pipelineProgress}
+                    onAnalyzeAll={handleAnalyzeAll} onStop={handleStop}
+                    queuePending={queuePending} queueDone={queueDone} queueTotal={queue.length}
+                    processingItem={processingItem}
+                    language={language}
+                  />
+                </Box>
+
+                <ColHandle onMouseDown={onTopColDrag} />
+
+                {/* Top-right: raw footage / event clip preview */}
+                <Box style={{ flex: 100 - topColPct }}
+                  sx={{ display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0 }}>
                   <Paper sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-                    <PanelHeader title={clipSrc ? t(language, 'panel.event_clip') : viewAnnotatedVideo ? t(language, 'panel.annotated') : t(language, 'panel.preview')}>
+                    <PanelHeader title={clipSrc ? t(language, 'panel.event_clip') : t(language, 'panel.preview')}>
                       {clipSrc && (
                         <Typography
                           component="button"
@@ -440,13 +502,44 @@ export default function App() {
                         </Typography>
                       )}
                     </PanelHeader>
-                    <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: (clipSrc || viewAnnotatedVideo || videoPreviewSrc) ? '#000' : 'background.default', borderRadius: '0 0 11px 11px', overflow: 'hidden', minHeight: 0 }}>
+
+                    {/* Source selector strip */}
+                    {queue.length > 0 && (
+                      <Box sx={{ flexShrink: 0, display: 'flex', gap: 0.5, px: 1.5, py: 0.75, borderBottom: '1px solid', borderColor: 'divider', overflowX: 'auto', '&::-webkit-scrollbar': { display: 'none' } }}>
+                        {queue.map(item => {
+                          const isActive = !clipSrc && previewQueueId === item.id
+                          return (
+                            <Box
+                              key={item.id}
+                              onClick={() => handleSelectPreview(item)}
+                              sx={{
+                                flexShrink: 0,
+                                px: 1, py: 0.25,
+                                borderRadius: 1,
+                                cursor: 'pointer',
+                                border: '1px solid',
+                                borderColor: isActive ? 'primary.main' : 'divider',
+                                bgcolor: isActive ? 'rgba(247,208,70,0.1)' : 'transparent',
+                                color: isActive ? 'primary.main' : 'text.secondary',
+                                fontSize: '0.65rem',
+                                fontFamily: 'monospace',
+                                whiteSpace: 'nowrap',
+                                maxWidth: isActive ? 'none' : 96,
+                                overflow: isActive ? 'visible' : 'hidden',
+                                textOverflow: isActive ? 'clip' : 'ellipsis',
+                                transition: 'max-width 0.18s ease, background-color 0.12s, color 0.12s',
+                                '&:hover': { borderColor: 'primary.main', color: 'text.primary' },
+                              }}>
+                              {item.name}
+                            </Box>
+                          )
+                        })}
+                      </Box>
+                    )}
+
+                    <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: (clipSrc || videoPreviewSrc) ? '#000' : 'background.default', borderRadius: '0 0 11px 11px', overflow: 'hidden', minHeight: 0 }}>
                       {clipSrc ? (
                         <video key={clipSrc} src={clipSrc} controls autoPlay style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                      ) : viewAnnotatedVideo ? (
-                        <video ref={annotatedVideoElRef} key={viewAnnotatedVideo}
-                          src={viewAnnotatedVideo.startsWith('/gradio_api/file=') ? viewAnnotatedVideo : `/gradio_api/file=${viewAnnotatedVideo}`}
-                          controls style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                       ) : videoPreviewSrc ? (
                         <video src={videoPreviewSrc} controls muted style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                       ) : (
@@ -458,40 +551,47 @@ export default function App() {
                     </Box>
                   </Paper>
                 </Box>
-
-                {/* Drag handle */}
-                <Box sx={{ width: 16, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'col-resize', px: 0.5 }}
-                  onMouseDown={onDragHandleMouseDown}>
-                  <Box sx={{ width: 2, height: '100%', borderRadius: 9999, bgcolor: 'divider', transition: 'background-color 0.15s', '&:hover': { bgcolor: 'primary.dark' } }} />
-                </Box>
-
-                {/* Right panel */}
-                <Box style={{ width: `${100 - splitPct}%` }}
-                  sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, minHeight: 0, minWidth: 0 }}>
-                  <AnalysisPanel
-                    analyzing={analyzing} stopping={stopping} statusMsg={statusMsg}
-                    pipelineSteps={pipelineSteps} pipelineProgress={pipelineProgress}
-                    onAnalyzeAll={handleAnalyzeAll} onStop={handleStop}
-                    queuePending={queuePending} queueDone={queueDone} queueTotal={queue.length}
-                    processingItem={processingItem}
-                    language={language}
-                  />
-                  <Paper sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-                    <ClipViewSelector queue={queue} viewClipId={viewClipId} onChange={setViewClipId} />
-                    <TabNav tabs={tabs} activeTab={activeTab} setActiveTab={setActiveTab} />
-                    <Box sx={{ flex: 1, overflowY: 'auto', p: 2.5, minHeight: 0 }}>
-                      <Box sx={{ display: activeTab === 'timeline' ? 'block' : 'none' }}><EventTimeline   {...tabProps} /></Box>
-                      <Box sx={{ display: activeTab === 'alerts'   ? 'block' : 'none' }}><SummaryAlerts   {...tabProps} /></Box>
-                      <Box sx={{ display: activeTab === 'qa'       ? 'block' : 'none' }}><AskFootage      {...tabProps} /></Box>
-                      <Box sx={{ display: activeTab === 'metrics'  ? 'block' : 'none' }}><DetectionMetrics {...tabProps} /></Box>
-                      <Box sx={{ display: activeTab === 'audio'    ? 'block' : 'none' }}><AudioReport     {...tabProps} /></Box>
-                      <Box sx={{ display: activeTab === 'library'  ? 'block' : 'none' }}><ClipLibrary     {...tabProps} /></Box>
-                      <Box sx={{ display: activeTab === 'settings' ? 'block' : 'none' }}><SettingsTab     {...tabProps} /></Box>
-                    </Box>
-                  </Paper>
-                </Box>
-
               </Box>
+
+              <RowHandle onMouseDown={onVertDrag} />
+
+              {/* ── BOTTOM ROW: icon sidebar + per-tab layouts ────────────────── */}
+              <Box style={{ flex: 100 - vertPct }}
+                sx={{ display: 'flex', minHeight: 0, gap: 0 }}>
+
+                <Paper sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+                  <ClipViewSelector queue={queue} viewClipId={viewClipId} onChange={setViewClipId} />
+
+                  <Box sx={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
+                    <SidebarTabs tabs={tabs} activeTab={activeTab} setActiveTab={setActiveTab} />
+
+                    {/* EventTimeline: owns its own flex layout */}
+                    <Box sx={{ display: activeTab === 'timeline' ? 'flex' : 'none', flex: 1, flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+                      <EventTimeline {...tabProps} />
+                    </Box>
+
+                    {/* AskFootage: flex-height chat */}
+                    <Box sx={{ display: activeTab === 'qa' ? 'flex' : 'none', flex: 1, flexDirection: 'column', minHeight: 0, overflow: 'hidden', p: 2.5 }}>
+                      <AskFootage {...tabProps} />
+                    </Box>
+
+                    {/* Scrollable tabs */}
+                    <Box sx={{ display: activeTab === 'alerts'  ? 'block' : 'none', flex: 1, overflowY: 'auto', p: 2.5 }}>
+                      <SummaryAlerts {...tabProps} />
+                    </Box>
+                    <Box sx={{ display: activeTab === 'metrics' ? 'block' : 'none', flex: 1, overflowY: 'auto', p: 2.5 }}>
+                      <DetectionMetrics {...tabProps} />
+                    </Box>
+                    <Box sx={{ display: activeTab === 'audio'   ? 'block' : 'none', flex: 1, overflowY: 'auto', p: 2.5 }}>
+                      <AudioReport {...tabProps} />
+                    </Box>
+                    <Box sx={{ display: activeTab === 'library' ? 'flex' : 'none', flex: 1, flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+                      <ClipLibrary {...tabProps} />
+                    </Box>
+                  </Box>
+                </Paper>
+              </Box>
+
             </Box>
           )}
         </AnimatePresence>

@@ -2,6 +2,7 @@ const STRINGS = {
   English: {
     // App / layout
     'app.no_video':          'Load a sample or upload a video',
+    'app.no_annotated':      'Annotated output will appear here after analysis',
     'app.uploading':         'Uploading video…',
     'app.upload_failed':     'Upload failed: {msg}',
     'app.ready':             'Ready: {name}',
@@ -118,6 +119,7 @@ const STRINGS = {
     'library.deleted':     'Deleted: {name}',
     'library.loaded':      'Loaded for analysis: {name}',
     'library.filter':      'Filter clips…',
+    'library.select_preview': 'Select a clip to preview',
 
     // Session
     'session.events':        '{count} events · {runs} video(s)',
@@ -137,6 +139,7 @@ const STRINGS = {
   '한국어': {
     // App / layout
     'app.no_video':          '샘플을 불러오거나 영상을 업로드하세요',
+    'app.no_annotated':      '분석 후 주석 영상이 여기에 표시됩니다',
     'app.uploading':         '영상 업로드 중…',
     'app.upload_failed':     '업로드 실패: {msg}',
     'app.ready':             '준비됨: {name}',
@@ -253,6 +256,7 @@ const STRINGS = {
     'library.deleted':     '삭제됨: {name}',
     'library.loaded':      '분석용으로 불러옴: {name}',
     'library.filter':      '클립 필터링…',
+    'library.select_preview': '클립을 선택하여 미리보기',
 
     // Session
     'session.events':        '{count}개 이벤트 · {runs}개 영상',

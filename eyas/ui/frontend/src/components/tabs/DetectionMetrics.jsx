@@ -54,61 +54,62 @@ export default function DetectionMetrics({ summary, events, language = 'English'
         <StatCard label={t(language, 'metrics.zones')}  value={activeZones}     color="#34D399" />
       </Box>
 
-      {/* Zone bar chart */}
-      {zoneData.length > 0 ? (
-        <Box>
-          <Typography variant="overline" sx={{ display: 'block', mb: 1.5 }}>{t(language, 'metrics.zone_chart')}</Typography>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={zoneData} margin={{ top: 4, right: 16, bottom: 4, left: 0 }}>
-              <CartesianGrid stroke="#2e4060" strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="zone" tick={{ fill: '#7a8ea8', fontSize: 11 }} tickLine={false} axisLine={false} />
-              <YAxis tick={{ fill: '#7a8ea8', fontSize: 11 }} tickLine={false} axisLine={false} />
-              <Tooltip
-                cursor={{ fill: 'rgba(255,255,255,0.03)' }}
-                content={({ payload, label }) => {
+      {/* Charts side-by-side */}
+      <Box sx={{ display: 'grid', gridTemplateColumns: zoneData.length > 0 && timelineData.length > 0 ? '1fr 1fr' : '1fr', gap: 2.5 }}>
+        {zoneData.length > 0 ? (
+          <Box>
+            <Typography variant="overline" sx={{ display: 'block', mb: 1.5 }}>{t(language, 'metrics.zone_chart')}</Typography>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={zoneData} margin={{ top: 4, right: 16, bottom: 4, left: 0 }}>
+                <CartesianGrid stroke="#2e4060" strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="zone" tick={{ fill: '#7a8ea8', fontSize: 11 }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fill: '#7a8ea8', fontSize: 11 }} tickLine={false} axisLine={false} />
+                <Tooltip
+                  cursor={{ fill: 'rgba(255,255,255,0.03)' }}
+                  content={({ payload, label }) => {
+                    if (!payload?.length) return null
+                    return (
+                      <div style={{ background: '#1f2833', border: '1px solid #2e4060', borderRadius: 8, padding: '8px 12px', fontSize: '0.75rem', color: '#e5e1d8' }}>
+                        <div style={{ fontWeight: 500, textTransform: 'capitalize' }}>{label}</div>
+                        <div style={{ color: '#7a8ea8' }}>{payload[0].value} {t(language, 'metrics.detections')}</div>
+                      </div>
+                    )
+                  }} />
+                <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                  {zoneData.map((d, i) => (
+                    <rect key={i} fill={d.fill} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </Box>
+        ) : (
+          <Typography variant="caption" color="text.secondary">{t(language, 'metrics.empty')}</Typography>
+        )}
+
+        {timelineData.length > 0 && (
+          <Box>
+            <Typography variant="overline" sx={{ display: 'block', mb: 1.5 }}>{t(language, 'metrics.frequency')}</Typography>
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={timelineData} margin={{ top: 4, right: 16, bottom: 4, left: 0 }}>
+                <CartesianGrid stroke="#2e4060" strokeDasharray="3 3" />
+                <XAxis dataKey="t" tick={{ fill: '#7a8ea8', fontSize: 10 }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fill: '#7a8ea8', fontSize: 10 }} tickLine={false} axisLine={false} />
+                <Tooltip content={({ payload }) => {
                   if (!payload?.length) return null
                   return (
                     <div style={{ background: '#1f2833', border: '1px solid #2e4060', borderRadius: 8, padding: '8px 12px', fontSize: '0.75rem', color: '#e5e1d8' }}>
-                      <div style={{ fontWeight: 500, textTransform: 'capitalize' }}>{label}</div>
-                      <div style={{ color: '#7a8ea8' }}>{payload[0].value} {t(language, 'metrics.detections')}</div>
+                      {payload[0].payload.t}: {payload[0].value} {t(language, 'metrics.events_tip')}
                     </div>
                   )
                 }} />
-              <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                {zoneData.map((d, i) => (
-                  <rect key={i} fill={d.fill} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </Box>
-      ) : (
-        <Typography variant="caption" color="text.secondary">{t(language, 'metrics.empty')}</Typography>
-      )}
-
-      {/* Event frequency timeline */}
-      {timelineData.length > 0 && (
-        <Box>
-          <Typography variant="overline" sx={{ display: 'block', mb: 1.5 }}>{t(language, 'metrics.frequency')}</Typography>
-          <ResponsiveContainer width="100%" height={140}>
-            <LineChart data={timelineData} margin={{ top: 4, right: 16, bottom: 4, left: 0 }}>
-              <CartesianGrid stroke="#2e4060" strokeDasharray="3 3" />
-              <XAxis dataKey="t" tick={{ fill: '#7a8ea8', fontSize: 10 }} tickLine={false} axisLine={false} />
-              <YAxis tick={{ fill: '#7a8ea8', fontSize: 10 }} tickLine={false} axisLine={false} />
-              <Tooltip content={({ payload }) => {
-                if (!payload?.length) return null
-                return (
-                  <div style={{ background: '#1f2833', border: '1px solid #2e4060', borderRadius: 8, padding: '8px 12px', fontSize: '0.75rem', color: '#e5e1d8' }}>
-                    {payload[0].payload.t}: {payload[0].value} {t(language, 'metrics.events_tip')}
-                  </div>
-                )
-              }} />
-              <Line type="monotone" dataKey="count" stroke="#f7d046" strokeWidth={2}
-                dot={{ r: 3, fill: '#f7d046', strokeWidth: 0 }} activeDot={{ r: 5 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </Box>
-      )}
+                <Line type="monotone" dataKey="count" stroke="#f7d046" strokeWidth={2}
+                  dot={{ r: 3, fill: '#f7d046', strokeWidth: 0 }} activeDot={{ r: 5 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </Box>
+        )}
+      </Box>
     </Box>
   )
 }
