@@ -367,12 +367,23 @@ def build_app(
         yield {**_emit(S.t("status.running_llm")),
                "zone_counts": zone_counts, "output_dir": output_dir}
 
-        # LLM step — run in a thread so we can yield timer ticks
+        # LLM step — pre-load model in the @_gpu context (CUDA available here),
+        # then run inference in a thread so we can yield timer ticks while waiting.
+        # On ZeroGPU, Llama() CUDA init must happen in the decorated generator's
+        # main execution thread; the spawned thread does inference on the
+        # already-initialised model.
+        _r = _mreg.get("llm")
+        if _r is not None:
+            try:
+                _r._load_model()  # idempotent; downloads + initialises Llama with CUDA
+            except Exception as _llm_init_exc:
+                print(f"[LLM] pre-load failed: {_llm_init_exc}")
+                _r = None
+
         _llm_q: _queue.Queue = _queue.Queue()
 
         def _run_llm():
             try:
-                _r = _mreg.get("llm")
                 if _r is None:
                     raise RuntimeError("LLM not available")
                 _llm_q.put(("done", _r.summarize_events(events)))
