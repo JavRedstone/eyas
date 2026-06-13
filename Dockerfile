@@ -35,9 +35,10 @@ RUN cd eyas/ui/frontend && npm run build
 # ── Python dependencies ───────────────────────────────────────────────────────
 COPY --chown=user:user eyas/requirements.txt ./requirements.txt
 
-# Install llama-cpp-python from pre-built CPU wheel — avoids slow C++ compilation
+# Install llama-cpp-python with CUDA 12.4 support so the GGUF LLM runs on GPU
+# in ZeroGPU. CPU wheel is ~10x slower and causes 3+ minute hangs on summarization.
 RUN pip install --no-cache-dir llama-cpp-python \
-    --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
+    --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu124
 
 RUN pip install --no-cache-dir -r requirements.txt
 
