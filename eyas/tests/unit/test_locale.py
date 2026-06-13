@@ -279,8 +279,23 @@ class TestLocalizeZoneLabels:
         assert mapping["custom_zone"] == "KO:custom_zone"
         assert stats is not None
 
+    def test_korean_camera_zones_use_catalog_not_llm(self, monkeypatch):
+        def fake_translate(text, target_lang="Korean", use_gpu=True):
+            raise AssertionError(f"camera zone should not be translated: {text}")
+
+        monkeypatch.setattr("postprocessing.translate_tts.translate", fake_translate)
+        mapping, stats = localize_zone_labels(["cam1", "cam2", "cam3", "cam4"], "ko")
+        assert mapping == {
+            "cam1": "카메라 1",
+            "cam2": "카메라 2",
+            "cam3": "카메라 3",
+            "cam4": "카메라 4",
+        }
+        assert stats is None
+
     def test_is_known_zone(self):
         assert is_known_zone("back_door")
+        assert is_known_zone("cam2")
         assert not is_known_zone("custom_zone")
 
 

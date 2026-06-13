@@ -61,6 +61,10 @@ const STRINGS = {
     'zone.aisle2':      'Aisle 2',
     'zone.aisle3':      'Aisle 3',
     'zone.aisle4':      'Aisle 4',
+    'zone.cam1':        'Cam 1',
+    'zone.cam2':        'Cam 2',
+    'zone.cam3':        'Cam 3',
+    'zone.cam4':        'Cam 4',
 
     // AnalysisPanel
     'analysis.analyze':      'Analyze',
@@ -223,6 +227,10 @@ const STRINGS = {
     'zone.aisle2':      '통로 2',
     'zone.aisle3':      '통로 3',
     'zone.aisle4':      '통로 4',
+    'zone.cam1':        '카메라 1',
+    'zone.cam2':        '카메라 2',
+    'zone.cam3':        '카메라 3',
+    'zone.cam4':        '카메라 4',
 
     // AnalysisPanel
     'analysis.analyze':      '분석',

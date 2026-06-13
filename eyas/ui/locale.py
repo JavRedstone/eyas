@@ -30,6 +30,10 @@ ZONES: dict[str, dict[str, str]] = {
         "aisle2": "Aisle 2",
         "aisle3": "Aisle 3",
         "aisle4": "Aisle 4",
+        "cam1": "Cam 1",
+        "cam2": "Cam 2",
+        "cam3": "Cam 3",
+        "cam4": "Cam 4",
     },
     "ko": {
         "entrance": "입구",
@@ -44,6 +48,10 @@ ZONES: dict[str, dict[str, str]] = {
         "aisle2": "통로 2",
         "aisle3": "통로 3",
         "aisle4": "통로 4",
+        "cam1": "카메라 1",
+        "cam2": "카메라 2",
+        "cam3": "카메라 3",
+        "cam4": "카메라 4",
     },
 }
 
@@ -745,6 +753,15 @@ def localize_zone_labels(
         except Exception:
             for z in to_translate:
                 result.setdefault(z, z)
+
+    # #region agent log
+    try:
+        import json, time
+        with open("/home/hanhee/repos/eyas/.cursor/debug-cf95a6.log", "a", encoding="utf-8") as _log:
+            _log.write(json.dumps({"sessionId": "cf95a6", "location": "locale.py:localize_zone_labels", "message": "zone labels resolved", "data": {"locale": locale, "zones": list(unique), "result": result, "translated": list(to_translate)}, "timestamp": int(time.time() * 1000), "hypothesisId": "A"}) + "\n")
+    except Exception:
+        pass
+    # #endregion
 
     if stats.cache_hits == 0 and stats.cache_misses == 0:
         return result, None
