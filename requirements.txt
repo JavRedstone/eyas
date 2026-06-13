@@ -1,6 +1,9 @@
 # HF Spaces Gradio SDK reads this file at build time.
 # gradio, spaces, torch==2.11.0, huggingface-hub, datasets are pre-installed
 # in the HF base image; list only what the base image does not provide.
+
+# Pre-built CPU wheels — avoids compiling llama-cpp-python from source (takes 10+ min).
+--extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
 llama-cpp-python
 opencv-python
 numpy
