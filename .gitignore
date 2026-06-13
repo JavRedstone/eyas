@@ -54,6 +54,7 @@ credentials.yml
 # IDEs
 .vscode/
 .idea/
+.githooks/
 
 # Large data directory (untracked by default — use LFS for large files instead)
 data/
