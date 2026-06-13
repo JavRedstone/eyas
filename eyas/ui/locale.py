@@ -754,15 +754,6 @@ def localize_zone_labels(
             for z in to_translate:
                 result.setdefault(z, z)
 
-    # #region agent log
-    try:
-        import json, time
-        with open("/home/hanhee/repos/eyas/.cursor/debug-cf95a6.log", "a", encoding="utf-8") as _log:
-            _log.write(json.dumps({"sessionId": "cf95a6", "location": "locale.py:localize_zone_labels", "message": "zone labels resolved", "data": {"locale": locale, "zones": list(unique), "result": result, "translated": list(to_translate)}, "timestamp": int(time.time() * 1000), "hypothesisId": "A"}) + "\n")
-    except Exception:
-        pass
-    # #endregion
-
     if stats.cache_hits == 0 and stats.cache_misses == 0:
         return result, None
     return result, stats
