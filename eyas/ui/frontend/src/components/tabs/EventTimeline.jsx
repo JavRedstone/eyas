@@ -178,7 +178,8 @@ export default function EventTimeline({
   const splitRowRef = useRef(null)
   const pendingSeekRef = useRef(null)
   const annotatedGridRefs = useRef([])
-  const annotatedSyncingRef = useRef(false)
+  const annotatedSyncLockRef = useRef(false)
+  const annotatedSyncLockTimerRef = useRef(null)
 
   const sourceVideos = useMemo(() => {
     const names = new Set(events.map(e => e.source_video).filter(Boolean))
@@ -298,36 +299,39 @@ export default function EventTimeline({
   // Show a grid of annotated videos when in All view with 2+ done clips.
   const showAnnotatedGrid = !viewClipId && !showingClip && doneClips.length >= 2
 
+  function lockAnnotatedSync(ms = 250) {
+    annotatedSyncLockRef.current = true
+    clearTimeout(annotatedSyncLockTimerRef.current)
+    annotatedSyncLockTimerRef.current = setTimeout(() => { annotatedSyncLockRef.current = false }, ms)
+  }
+
   function handleAnnotatedGridSeeked(e, idx) {
-    if (annotatedSyncingRef.current) return
-    annotatedSyncingRef.current = true
+    if (annotatedSyncLockRef.current) return
     const time = e.target.currentTime
+    lockAnnotatedSync()
     annotatedGridRefs.current.forEach((el, i) => {
       if (i !== idx && el) el.currentTime = time
     })
-    annotatedSyncingRef.current = false
   }
 
   function handleAnnotatedGridPlay(e, idx) {
-    if (annotatedSyncingRef.current) return
-    annotatedSyncingRef.current = true
+    if (annotatedSyncLockRef.current) return
     const time = e.target.currentTime
+    lockAnnotatedSync(100)
     annotatedGridRefs.current.forEach((el, i) => {
       if (i !== idx && el) {
         el.currentTime = time
         el.play().catch(() => {})
       }
     })
-    annotatedSyncingRef.current = false
   }
 
   function handleAnnotatedGridPause(e, idx) {
-    if (annotatedSyncingRef.current) return
-    annotatedSyncingRef.current = true
+    if (annotatedSyncLockRef.current) return
+    lockAnnotatedSync(100)
     annotatedGridRefs.current.forEach((el, i) => {
       if (i !== idx && el && !el.paused) el.pause()
     })
-    annotatedSyncingRef.current = false
   }
 
   const CustomTooltip = ({ payload }) => {
