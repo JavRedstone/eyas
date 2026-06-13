@@ -90,6 +90,13 @@ export default function EventTimeline({
   const multiSource = sourceVideos.length > 1
   const numBands = Math.max(sourceVideos.length, 1)
 
+  const tableEvents = useMemo(() => {
+    if (!multiSource) return events
+    return [...events].sort(
+      (a, b) => Number(a.timestamp ?? a.time ?? 0) - Number(b.timestamp ?? b.time ?? 0)
+    )
+  }, [events, multiSource])
+
   const scatterData = useMemo(() => {
     const videoToIdx = {}
     sourceVideos.forEach((name, i) => { videoToIdx[name] = i + 1 })
@@ -112,12 +119,13 @@ export default function EventTimeline({
   const yTicks = useMemo(() => Array.from({ length: numBands }, (_, i) => i + 1), [numBands])
   const chartHeight = Math.max(90, numBands * 56)
 
-  async function loadClip(idx) {
-    if (!client || !outputDir) return
+  async function loadClip(idx, dir, displayIdx = idx) {
+    const clipDir = dir || outputDir
+    if (!client || !clipDir) return
     setLoading(true)
-    setLoadingIdx(idx)
+    setLoadingIdx(displayIdx)
     try {
-      const r = await client.predict('/load_event_clip', { clip_index: idx, output_dir: outputDir })
+      const r = await client.predict('/load_event_clip', { clip_index: idx, output_dir: clipDir })
       const src = resolveVideoSrc(r.data[0])
       if (src) {
         setLocalClipSrc(src)
@@ -245,13 +253,14 @@ export default function EventTimeline({
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {events.map((ev, i) => {
+                  {tableEvents.map((ev, i) => {
                     const kind = deriveKind(ev)
                     const color = kindColor(kind)
                     const ts = Number(ev.timestamp ?? ev.time ?? 0)
                     const srcName = ev.source_video ? ev.source_video.replace(/\.[^.]+$/, '') : null
+                    const rowKey = `${ev.source_clip_id ?? ''}-${ev.source_event_index ?? i}`
                     return (
-                      <TableRow key={i} hover sx={{ cursor: 'pointer' }}
+                      <TableRow key={rowKey} hover sx={{ cursor: 'pointer' }}
                         onClick={() => { onSeekVideo?.(ts); setShowingClip(false) }}>
                         <TableCell sx={{ fontFamily: 'monospace', color: 'text.secondary', py: 0.5 }}>{i + 1}</TableCell>
                         <TableCell sx={{ fontFamily: 'monospace', py: 0.5 }}>{ts.toFixed(1)}s</TableCell>
@@ -275,7 +284,7 @@ export default function EventTimeline({
                           <MuiTooltip title={t(language, 'timeline.load_clip')}>
                             <span>
                               <IconButton size="small" disabled={loadingClip}
-                                onClick={e => { e.stopPropagation(); loadClip(i) }}
+                                onClick={e => { e.stopPropagation(); loadClip(ev.source_event_index ?? i, ev.source_output_dir ?? outputDir, i) }}
                                 sx={{ fontSize: '0.62rem', gap: 0.5, borderRadius: 1, px: 0.5, py: 0.25 }}>
                                 {loadingIdx === i
                                   ? <Loader2 size={9} style={{ animation: 'spin 1s linear infinite' }} />

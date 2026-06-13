@@ -200,6 +200,7 @@ def build_app(
                 "progress_done": done,
                 "progress_total": total,
                 "progress_pct": progress_pct,
+                "video_name": Path(video_path).name,
             }
 
         def _start_step(idx: int, step_id: str, detail: str = "") -> None:
