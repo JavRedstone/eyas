@@ -180,7 +180,7 @@ export default function Sidebar({
           <Layers size={12} style={{ color: '#7a8ea8', flexShrink: 0 }} />
           <Typography variant="caption" color="text.secondary" sx={{ flex: 1, fontSize: '0.7rem' }}>
             {hasSession
-              ? t(language, 'session.events', { count: sessionEventCount, runs: sessionRunCount })
+              ? t(language, sessionEventCount === 1 ? 'session.event' : 'session.events', { count: sessionEventCount, runs: sessionRunCount })
               : t(language, 'session.empty')}
           </Typography>
         </Box>

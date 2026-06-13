@@ -18,7 +18,6 @@ import SummaryAlerts from './components/tabs/SummaryAlerts.jsx'
 import AskFootage from './components/tabs/AskFootage.jsx'
 import DetectionMetrics from './components/tabs/DetectionMetrics.jsx'
 import AudioReport from './components/tabs/AudioReport.jsx'
-import ClipLibrary from './components/tabs/ClipLibrary.jsx'
 import ClipViewSelector from './components/ClipViewSelector.jsx'
 
 function makeTabs(language) {
@@ -28,7 +27,6 @@ function makeTabs(language) {
     { id: 'qa',        label: t(language, 'tabs.qa'),       icon: 'MessageSquare' },
     { id: 'metrics',   label: t(language, 'tabs.metrics'),  icon: 'BarChart2'     },
     { id: 'audio',     label: t(language, 'tabs.audio'),    icon: 'Volume2'       },
-    { id: 'library',   label: t(language, 'tabs.library'),  icon: 'Film'          },
   ]
 }
 
@@ -970,9 +968,6 @@ export default function App() {
                     </Box>
                     <Box sx={{ display: activeTab === 'audio'   ? 'block' : 'none', flex: 1, overflowY: 'auto', p: 2.5 }}>
                       <AudioReport {...tabProps} />
-                    </Box>
-                    <Box sx={{ display: activeTab === 'library' ? 'flex' : 'none', flex: 1, flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-                      <ClipLibrary {...tabProps} />
                     </Box>
                   </Box>
                 </Paper>
