@@ -161,3 +161,17 @@ Not just object detection or surveillance UI — this turns hours of footage int
 ## 11. Final positioning statement (for submission)
 
 An offline CCTV intelligence system that turns hours of convenience store footage into a structured security log and natural-language report, allowing owners to review an entire day of activity in minutes without watching video.
+
+---
+
+## 12. What shipped (vs. plan)
+
+Everything in the MVP must-have list shipped. Notable additions beyond the MVP scope:
+
+- **Full multi-model chain**: YOLO11n → MiniCPM-V 4.6 → heuristic structurer → Nemotron 3 Nano 4B → TinyAya translation → VoxCPM2 TTS
+- **Custom React SPA**: replaced Gradio UI entirely; resizable split panels, scatter-chart timeline, animated splash screen, drag-handle sidebar
+- **Multi-camera session**: batch-process multiple clips and produce a unified cross-camera summary with per-zone breakdowns
+- **Bilingual support**: English / Korean hot-swap without restart; Korean overlay labels on annotated video
+- **Field tested**: demo filmed at Joy Convenience Store on four real aisle cameras; the store owner reviewed their own footage using the system
+
+Skipped (as planned): facial recognition, real-time streaming, inventory integrations, complex multi-camera synchronization.

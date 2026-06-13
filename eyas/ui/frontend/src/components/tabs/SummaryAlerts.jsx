@@ -28,6 +28,7 @@ export default function SummaryAlerts({ summary, language = 'English' }) {
   const suspiciousClips = Array.isArray(summary.suspicious_clips) ? summary.suspicious_clips : []
   const text   = displaySummaryText(summary, language)
   const transT = summary.translation_time_ms
+  const perCam = Array.isArray(summary.per_cam) ? summary.per_cam : []
 
   const gaugeData = [
     { name: 'Risk', value: rc.pct, fill: rc.color },
@@ -89,13 +90,32 @@ export default function SummaryAlerts({ summary, language = 'English' }) {
 
       {/* Summary text */}
       <Box>
-        <Typography variant="overline" sx={{ display: 'block', mb: 1 }}>{t(language, 'summary.overnight')}</Typography>
+        <Typography variant="overline" sx={{ display: 'block', mb: 1 }}>
+          {perCam.length > 0 ? t(language, 'summary.total') : t(language, 'summary.overnight')}
+        </Typography>
         <Paper sx={{ p: 1.5, bgcolor: 'rgba(20,45,79,0.5)' }}>
-          <Typography variant="body2" sx={{ lineHeight: 1.7, color: 'text.primary' }}>
+          <Typography variant="body2" sx={{ lineHeight: 1.7, color: 'text.primary', whiteSpace: 'pre-line' }}>
             {text || <span style={{ color: '#7a8ea8' }}>{t(language, 'summary.no_summary')}</span>}
           </Typography>
         </Paper>
       </Box>
+
+      {/* Per-camera breakdown — full SummaryAlerts output copied for each clip */}
+      {perCam.length > 0 && (
+        <Box>
+          <Typography variant="overline" sx={{ display: 'block', mb: 1.5 }}>{t(language, 'summary.per_cam')}</Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {perCam.map((cam, i) => (
+              <Paper key={i} sx={{ p: 2, bgcolor: 'rgba(14,30,54,0.6)', border: '1px solid', borderColor: 'divider' }}>
+                <Typography variant="caption" fontWeight={700} sx={{ display: 'block', mb: 1.5, color: 'primary.main', fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                  — {cam.name} —
+                </Typography>
+                <SummaryAlerts summary={cam} language={language} />
+              </Paper>
+            ))}
+          </Box>
+        </Box>
+      )}
 
       {/* Flagged items */}
       {flags.length > 0 && (

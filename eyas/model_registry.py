@@ -130,10 +130,7 @@ def _load_models() -> None:
     try:
         n_gpu_layers = int(os.getenv("EYAS_GPU_LAYERS", "-1"))
         reasoner = _GGUFReasoner(str(_nemotron_file), n_gpu_layers=n_gpu_layers)
-        # Do NOT call _load_model() here — this thread has no GPU.
-        # On ZeroGPU the GPU is only attached inside @spaces.GPU windows.
-        # _load_model() is called lazily by summarize_events() the first time
-        # it's invoked inside run_pipeline (@_gpu), so the GGUF loads onto GPU.
+        reasoner._load_model()
         with _LOCK:
             _INSTANCES["llm"] = reasoner
         _set("llm", "check_circle", "ready", "Ready")

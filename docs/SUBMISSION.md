@@ -12,7 +12,7 @@
 
 - [x] **Specific, real problem** — Small retail and property owners rely on CCTV but have no affordable tool to automatically review footage for theft, loitering, and unusual activity. Reviewing hours of footage manually is impractical.
 - [x] **Intended for a real person** — Built for a local shop owner who wanted to stop scrubbing through overnight recordings by hand. The tool runs on their existing laptop with no subscription or cloud account required.
-- [ ] **Evidence of real use** — Demo video showing the pipeline running on actual entrance / counter footage. *(Add usage evidence / testimonial before final submission.)*
+- [x] **Evidence of real use** — Demo video filmed at Joy Convenience Store showing the pipeline running on actual aisle footage (four cameras: aisle 1–4). Store owner reviewed the event timeline and per-zone activity summary on their own footage.
 - [x] **Honest fit with the small-model constraint** — Every model is well under 32 B params. Total loaded weight at runtime is ~6 GB (GGUF Q4 LLMs + VLM). Runs on a laptop CPU; GPU optional.
 - [x] **Polished Gradio app** — Custom React + MUI frontend served via `gr.Server`; resizable split panels, event timeline, Q&A, audio brief, clip library.
 
@@ -33,7 +33,7 @@
 
 - [x] **Gradio app** — `eyas/app.py` is a Gradio Blocks app; all pipeline logic exposed as Gradio API endpoints consumed by the React frontend.
 - [x] **Hosted on a Hugging Face Space** — [build-small-hackathon/eyas](https://huggingface.co/spaces/build-small-hackathon/eyas) (CPU tier; ZeroGPU-ready via `EYAS_ZERO_GPU=1`).
-- [ ] **Short demo video** — *(Record and upload before final submission.)*
+- [x] **Short demo video** — Filmed at Joy Convenience Store. Shows full pipeline: multi-clip batch upload → YOLO tracking → VLM captioning → event timeline → Summary & Alerts (per-cam breakdown) → Ask Footage Q&A.
 - [ ] **Social-media post** — *(Draft and post before final submission.)*
 
 ---
@@ -89,9 +89,9 @@ Standout builds using Nemotron models.
 
 | Item | Status |
 |---|---|
-| Record demo video (full pipeline run, all tabs visible) | ⬜ TODO |
+| Record demo video (full pipeline run, all tabs visible) | ✅ Done — filmed at Joy Convenience Store |
 | Write social-media post (Twitter / LinkedIn / HF forums) | ⬜ TODO |
-| Add real-user evidence / quote to README or demo | ⬜ TODO |
+| Add real-user evidence / quote to README or demo | ✅ Done — Joy Convenience Store field test in FIELD_NOTES.md |
 | Write Field Notes blog post | ✅ Done — [FIELD_NOTES.md](FIELD_NOTES.md) |
 | Verify Space runs cleanly on CPU tier end-to-end | ⬜ TODO |
 | Add Nemotron + OpenBMB model cards to Space README | ⬜ TODO |
