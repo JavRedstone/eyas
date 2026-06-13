@@ -20,6 +20,7 @@ import DetectionMetrics from './components/tabs/DetectionMetrics.jsx'
 import AudioReport from './components/tabs/AudioReport.jsx'
 import ClipLibrary from './components/tabs/ClipLibrary.jsx'
 import ClipViewSelector from './components/ClipViewSelector.jsx'
+import { GRADIO_BACKEND_URL, gradioFileUrl, resolveGradioFile } from './backend.js'
 
 function makeTabs(language) {
   return [
@@ -259,14 +260,7 @@ export default function App() {
   }
 
   function getPreviewSrc(fileRef) {
-    if (!fileRef) return null
-    if (typeof fileRef === 'string') {
-      if (fileRef.startsWith('http') || fileRef.startsWith('/gradio_api/file=')) return fileRef
-      return `/gradio_api/file=${fileRef}`
-    }
-    if (fileRef.url) return fileRef.url
-    if (fileRef.path) return `/gradio_api/file=${fileRef.path}`
-    return null
+    return resolveGradioFile(fileRef) || null
   }
 
   function setPreviewSource(nextSrc) {
@@ -303,9 +297,12 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    Client.connect(window.location.origin)
+    Client.connect(GRADIO_BACKEND_URL)
       .then(c => { setClient(c); pollSplash(c); loadSamples(c) })
-      .catch(() => null)
+      .catch(error => {
+        console.error(`Unable to connect to Eyas backend at ${GRADIO_BACKEND_URL}`, error)
+        setStatusMsg(`Unable to connect to backend at ${GRADIO_BACKEND_URL}`)
+      })
     return () => {
       if (previewUrlRef.current && previewUrlRef.current.startsWith('blob:')) URL.revokeObjectURL(previewUrlRef.current)
     }
@@ -329,7 +326,7 @@ export default function App() {
           file: null,
           path: null,
           previewSrc: run.annotated_video_path
-            ? `/gradio_api/file=${run.annotated_video_path}`
+            ? gradioFileUrl(run.annotated_video_path)
             : null,
           zone: parseFilenameZone(run.video_name),
           status: 'done',
@@ -350,7 +347,7 @@ export default function App() {
         // Show the last clip's annotated video in the footage preview panel.
         const last = runs[runs.length - 1]
         if (last.annotated_video_path) {
-          setPreviewSource(`/gradio_api/file=${last.annotated_video_path}`)
+          setPreviewSource(gradioFileUrl(last.annotated_video_path))
           setPreviewQueueId(last.run_id)
           setAnnotatedVideo(last.annotated_video_path)
         }
@@ -434,7 +431,7 @@ export default function App() {
     let gradioPath = item.path
     if (!gradioPath && item.file) {
       setStatusMsg(t(language, 'app.uploading'))
-      const up = await client.upload(await prepare_files([item.file]), client.config?.root ?? window.location.origin)
+      const up = await client.upload(await prepare_files([item.file]), client.config?.root ?? GRADIO_BACKEND_URL)
       const uploadedPath = getVideoPath(up[0])
       if (!uploadedPath) throw new Error('upload returned no path')
       gradioPath = uploadedPath

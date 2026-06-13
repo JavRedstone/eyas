@@ -124,6 +124,13 @@ class TestEventFormatting:
             if ev["activity"]:
                 assert ev["activity"] in formatted
 
+    def test_format_includes_event_summaries(self, events):
+        r = Reasoner("dummy.gguf")
+        formatted = r._format_events(events)
+        for ev in events:
+            if ev.get("summary"):
+                assert ev["summary"] in formatted
+
     def test_format_marks_confirmed_pickups(self, events):
         r = Reasoner("dummy.gguf")
         formatted = r._format_events(events)
