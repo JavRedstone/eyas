@@ -1,18 +1,15 @@
-# HF Spaces Gradio SDK reads this file at build time.
-# gradio, spaces, torch==2.11.0, huggingface-hub, datasets are pre-installed
-# in the HF base image; list only what the base image does not provide.
-
-# Pre-built CPU wheels — avoids compiling llama-cpp-python from source (takes 10+ min).
 --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
-llama-cpp-python
+
+gradio
+spaces
 opencv-python
 numpy
 pillow
+torch
 torchaudio
 transformers
 ultralytics
 voxcpm
-# nano-vllm-voxcpm is intentionally omitted: its flash-attn dep requires torch
-# at compile time and breaks pip on CPU-only build machines (including HF Spaces).
-# On a bare CUDA server: pip install nano-vllm-voxcpm (set EYAS_ZERO_GPU=0)
+llama-cpp-python
+pytest
 python-dotenv>=1.0
