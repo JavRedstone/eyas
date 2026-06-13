@@ -8,6 +8,7 @@ torchaudio
 transformers
 ultralytics
 voxcpm
+nano-vllm-voxcpm
 llama-cpp-python
 pytest
 python-dotenv>=1.0

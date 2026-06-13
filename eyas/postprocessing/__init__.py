@@ -63,7 +63,7 @@ _voxcpm2_sample_rate = None
 
 
 def get_voxcpm2_model():
-    """Lazy-load VoxCPM2 TTS model and its output sample rate."""
+    """Lazy-load VoxCPM2 via the standard PyTorch voxcpm backend (MPS / CPU / ZeroGPU)."""
     global _voxcpm2_model, _voxcpm2_sample_rate
     if _voxcpm2_model is not None:
         return _voxcpm2_model, _voxcpm2_sample_rate
@@ -76,6 +76,37 @@ def get_voxcpm2_model():
     )
     _voxcpm2_sample_rate = _voxcpm2_model.tts_model.sample_rate
     return _voxcpm2_model, _voxcpm2_sample_rate
+
+
+# VoxCPM2 AudioVAE output sample rate (from model config; same for both backends).
+VOXCPM2_NANO_SAMPLE_RATE: int = 16000
+
+_voxcpm2_nano_server = None
+
+
+def get_voxcpm2_model_nano():
+    """Lazy-load VoxCPM2 via nanovllm_voxcpm (bare CUDA / dedicated GPU only).
+
+    Returns a SyncVoxCPMServerPool.  Do NOT use on ZeroGPU — the persistent
+    worker processes lose GPU access when the @spaces.GPU window closes.
+    """
+    global _voxcpm2_nano_server
+    if _voxcpm2_nano_server is not None:
+        return _voxcpm2_nano_server
+    try:
+        from nanovllm_voxcpm import VoxCPM as NanoVoxCPM  # type: ignore
+    except ImportError as exc:
+        raise RuntimeError(
+            "nano-vllm-voxcpm is not installed. Run: pip install nano-vllm-voxcpm"
+        ) from exc
+    _voxcpm2_nano_server = NanoVoxCPM.from_pretrained(
+        model="openbmb/VoxCPM2",
+        devices=[0],
+        max_num_batched_tokens=4096,
+        max_num_seqs=4,
+        gpu_memory_utilization=0.8,
+    )
+    return _voxcpm2_nano_server
 
 VOXCPM2_SUPPORTED_LANGUAGES = [
     "Arabic", "Burmese", "Simplified Chinese", "Traditional Chinese", "Danish", "Dutch", "English", "Finnish", "French",
