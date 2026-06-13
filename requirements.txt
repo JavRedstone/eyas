@@ -1,0 +1,12 @@
+# HF Spaces Gradio SDK reads this file at build time.
+# gradio, spaces, torch==2.11.0, huggingface-hub, datasets are pre-installed
+# in the HF base image; list only what the base image does not provide.
+llama-cpp-python
+opencv-python
+numpy
+pillow
+torchaudio
+transformers
+ultralytics
+voxcpm
+python-dotenv>=1.0
