@@ -377,16 +377,21 @@ export default function App() {
     setExportingZip(true)
     try {
       const r = await client.predict('/export_session_zip', {})
-      const file = r.data[0]
-      const filePath = file?.path ?? file?.url ?? file
-      if (filePath) {
-        const url = String(filePath).startsWith('/') ? filePath : `/gradio_api/file=${filePath}`
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `eyas_session_${new Date().toISOString().slice(0, 10)}.zip`
-        a.click()
-      }
-    } catch (e) { console.error('Export failed', e) }
+      console.log('[export] raw response:', r)
+      console.log('[export] r.data[0]:', r.data[0])
+      const payload = r.data[0]
+      const { data } = payload
+      console.log('[export] base64 data length:', data?.length, 'first 40:', data?.slice(0, 40))
+      const bytes = Uint8Array.from(atob(data), c => c.charCodeAt(0))
+      const blob = new Blob([bytes], { type: 'application/zip' })
+      const url = URL.createObjectURL(blob)
+      console.log('[export] blob url:', url, 'size:', blob.size)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `eyas_session_${new Date().toISOString().slice(0, 10)}.zip`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) { console.error('[export] failed:', e) }
     finally { setExportingZip(false) }
   }, [client])
 
