@@ -28,6 +28,7 @@ export default function SummaryAlerts({ summary, language = 'English' }) {
   const suspiciousClips = Array.isArray(summary.suspicious_clips) ? summary.suspicious_clips : []
   const text   = displaySummaryText(summary, language)
   const transT = summary.translation_time_ms
+  const perCam = Array.isArray(summary.per_cam) ? summary.per_cam : []
 
   const gaugeData = [
     { name: 'Risk', value: rc.pct, fill: rc.color },
@@ -89,13 +90,44 @@ export default function SummaryAlerts({ summary, language = 'English' }) {
 
       {/* Summary text */}
       <Box>
-        <Typography variant="overline" sx={{ display: 'block', mb: 1 }}>{t(language, 'summary.overnight')}</Typography>
+        <Typography variant="overline" sx={{ display: 'block', mb: 1 }}>
+          {perCam.length > 0 ? t(language, 'summary.total') : t(language, 'summary.overnight')}
+        </Typography>
         <Paper sx={{ p: 1.5, bgcolor: 'rgba(20,45,79,0.5)' }}>
-          <Typography variant="body2" sx={{ lineHeight: 1.7, color: 'text.primary' }}>
+          <Typography variant="body2" sx={{ lineHeight: 1.7, color: 'text.primary', whiteSpace: 'pre-line' }}>
             {text || <span style={{ color: '#7a8ea8' }}>{t(language, 'summary.no_summary')}</span>}
           </Typography>
         </Paper>
       </Box>
+
+      {/* Per-camera breakdown */}
+      {perCam.length > 0 && (
+        <Box>
+          <Typography variant="overline" sx={{ display: 'block', mb: 1 }}>{t(language, 'summary.per_cam')}</Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {perCam.map((cam, i) => {
+              const camRc = riskConfig((cam.risk_level || 'none').toLowerCase(), language)
+              return (
+                <Paper key={i} sx={{ p: 1.5, bgcolor: 'rgba(20,45,79,0.4)', border: '1px solid', borderColor: 'divider' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.75 }}>
+                    <Typography variant="caption" fontWeight={700} sx={{ color: 'primary.main', fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      {cam.name}
+                    </Typography>
+                    <Box sx={{ px: 0.75, py: 0.125, borderRadius: 0.75, bgcolor: `${camRc.color}22`, border: `1px solid ${camRc.color}55` }}>
+                      <Typography variant="caption" sx={{ color: camRc.color, fontSize: '0.6rem', fontFamily: 'monospace' }}>
+                        {camRc.label}
+                      </Typography>
+                    </Box>
+                  </Box>
+                  <Typography variant="body2" sx={{ fontSize: '0.75rem', color: 'text.secondary', lineHeight: 1.6 }}>
+                    {cam.summary || <span style={{ color: '#7a8ea8' }}>{t(language, 'summary.no_summary')}</span>}
+                  </Typography>
+                </Paper>
+              )
+            })}
+          </Box>
+        </Box>
+      )}
 
       {/* Flagged items */}
       {flags.length > 0 && (

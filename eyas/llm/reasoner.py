@@ -117,7 +117,7 @@ class Reasoner:
         return "timestamp" in ev and "activity" in ev and "track_id" in ev
 
     @staticmethod
-    def _format_observation(i: int, ev: Dict) -> str:
+    def _format_observation(i: int, ev: Dict, cam_label: str = "") -> str:
         conf = ev.get("confidence", "?")
         conf_s = f"{conf:.2f}" if isinstance(conf, float) else str(conf)
         held = ev.get("held_objects") or []
@@ -125,8 +125,10 @@ class Reasoner:
         pickup = ev.get("pickup_confirmed", False)
         picked = ev.get("picked_up_items") or []
         pickup_s = ("YES -> " + ", ".join(f"{p['name']} x{p.get('count',1)}" for p in picked)) if pickup else "no"
+        ts = ev.get("timestamp", "?")
+        ts_s = f"{ts:.2f}s" if isinstance(ts, (int, float)) else str(ts)
         return (
-            f"Event {i}: [Track {ev.get('track_id','?')} | t={ev.get('timestamp','?'):.2f}s] "
+            f"Event {i}: {cam_label}[Track {ev.get('track_id','?')} | t={ts_s}] "
             f"Zone: {ev.get('zone','?')} | "
             f"{ev.get('activity','?')} | "
             f"Held: {held_s} | "
@@ -135,27 +137,55 @@ class Reasoner:
         )
 
     @staticmethod
-    def _format_legacy(i: int, ev: Dict) -> str:
+    def _format_legacy(i: int, ev: Dict, cam_label: str = "") -> str:
         meta = ev.get("metadata", {})
         conf = meta.get("confidence", meta.get("conf", "?"))
         conf_s = f"{conf:.2f}" if isinstance(conf, float) else str(conf)
         clip = meta.get("clip_pointer", meta.get("clip", ""))
         return (
-            f"Event {i}: [{ev.get('type', '?')}] "
+            f"Event {i}: {cam_label}[{ev.get('type', '?')}] "
             f"{ev.get('start_time', '?')}–{ev.get('end_time', '?')} | "
             f"Zone: {ev.get('zone', '?')} | "
             f"Conf: {conf_s} | "
             f"clip: {clip}"
         )
 
-    def _format_events(self, events: List[Dict]) -> str:
-        # Collect the last non-empty VLM appearance description per track.
+    def _format_events(self, events: List[Dict], multi_cam: bool = False) -> str:
+        if multi_cam:
+            # Group appearance descriptions by (source_video, track_id) so the LLM
+            # can cross-reference the same person across cameras by appearance.
+            cam_track_desc: Dict[str, Dict[int, str]] = {}
+            for ev in events:
+                src = ev.get("source_video", "")
+                tid = ev.get("track_id")
+                desc = (ev.get("description") or "").strip()
+                if src and isinstance(tid, int) and desc:
+                    cam_track_desc.setdefault(src, {})[tid] = desc
+
+            lines: List[str] = []
+            if cam_track_desc:
+                lines.append("Identified people (by camera):")
+                for src in sorted(cam_track_desc):
+                    for tid in sorted(cam_track_desc[src]):
+                        lines.append(f"  [{src} Track {tid}]: {cam_track_desc[src][tid]}")
+                lines.append("")
+
+            for i, ev in enumerate(events):
+                src = ev.get("source_video", "")
+                lbl = f"[{src}] " if src else ""
+                if self._is_observation_schema(ev):
+                    lines.append(self._format_observation(i, ev, cam_label=lbl))
+                else:
+                    lines.append(self._format_legacy(i, ev, cam_label=lbl))
+            return "\n".join(lines)
+
+        # Single-camera path — collect last description per track.
         track_desc: Dict[int, str] = {}
         for ev in events:
             tid = ev.get("track_id")
             desc = (ev.get("description") or "").strip()
             if isinstance(tid, int) and desc:
-                track_desc[tid] = desc  # overwrite → keep latest
+                track_desc[tid] = desc
 
         lines: List[str] = []
         if track_desc:
@@ -171,16 +201,15 @@ class Reasoner:
                 lines.append(self._format_legacy(i, ev))
         return "\n".join(lines)
 
-    def _trim_events(self, events: List[Dict], max_chars: int = 3000) -> List[Dict]:
+    def _trim_events(self, events: List[Dict], max_chars: int = 3000, multi_cam: bool = False) -> List[Dict]:
         """Return as many trailing events as fit within max_chars when formatted."""
         if not events:
             return events
-        formatted = self._format_events(events)
+        formatted = self._format_events(events, multi_cam=multi_cam)
         if len(formatted) <= max_chars:
             return events
-        # Drop from the front until it fits
         for start in range(1, len(events)):
-            if len(self._format_events(events[start:])) <= max_chars:
+            if len(self._format_events(events[start:], multi_cam=multi_cam)) <= max_chars:
                 return events[start:]
         return events[-1:]
 
@@ -228,11 +257,14 @@ class Reasoner:
         if not events:
             return dict(_SUMMARIZE_FALLBACK) | {"summary": "No events recorded."}
 
-        trimmed = self._trim_events(events)
-        start_t = trimmed[0].get("start_time", "?")
-        end_t = trimmed[-1].get("end_time", "?")
+        sources = {ev.get("source_video", "") for ev in events}
+        multi_cam = len(sources) > 1 and any(sources)
+
+        trimmed = self._trim_events(events, multi_cam=multi_cam)
+        start_t = (trimmed[0].get("start_time") or trimmed[0].get("timestamp") or "?")
+        end_t = (trimmed[-1].get("end_time") or trimmed[-1].get("timestamp") or "?")
         period = f"{start_t}–{end_t}"
-        event_log = self._format_events(trimmed)
+        event_log = self._format_events(trimmed, multi_cam=multi_cam)
 
         prompt = SUMMARIZE_PROMPT.format(period=period, event_log=event_log)
         raw = self._run_inference(prompt, SUMMARIZE_GRAMMAR)
