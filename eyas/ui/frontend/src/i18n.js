@@ -17,6 +17,7 @@ const STRINGS = {
     'panel.annotated':       'Annotated Video',
     'panel.preview':         'Preview',
     'panel.analysis':        'Analysis',
+    'panel.all_cams':        'All Cameras',
 
     // Tabs
     'tabs.timeline': 'Event Timeline',
@@ -189,6 +190,7 @@ const STRINGS = {
     'panel.annotated':       '주석 영상',
     'panel.preview':         '미리보기',
     'panel.analysis':        '분석',
+    'panel.all_cams':        '전체 카메라',
 
     // Tabs
     'tabs.timeline': '이벤트 타임라인',
