@@ -166,6 +166,7 @@ export default function EventTimeline({
   viewClipId = null,
   onSwitchToClip,
   onHighlightGridClip = null,
+  doneClips = [],
 }) {
   const [loadingClip, setLoading] = useState(false)
   const [loadingIdx, setLoadingIdx] = useState(null)
@@ -173,8 +174,11 @@ export default function EventTimeline({
   const [showingClip, setShowingClip] = useState(false)
   const [expandedKey, setExpandedKey] = useState(null)
   const [tableSplitPct, setTableSplitPct] = useState(50)
+  const [highlightedAnnotatedClipId, setHighlightedAnnotatedClipId] = useState(null)
   const splitRowRef = useRef(null)
   const pendingSeekRef = useRef(null)
+  const annotatedGridRefs = useRef([])
+  const annotatedSyncingRef = useRef(false)
 
   const sourceVideos = useMemo(() => {
     const names = new Set(events.map(e => e.source_video).filter(Boolean))
@@ -244,8 +248,18 @@ export default function EventTimeline({
     // In All-view with a grid, highlight the clip's tile and seek all grid videos
     // without switching away from All view.
     if (!viewClipId && onHighlightGridClip) {
-      onHighlightGridClip(clipId, ts)
-      onSeekVideo?.(ts)
+      onHighlightGridClip(clipId, ts)  // seek + highlight top raw-feed grid
+      // Also seek + highlight the annotated grid in this panel
+      if (doneClips.length >= 2) {
+        setHighlightedAnnotatedClipId(clipId)
+        annotatedGridRefs.current.forEach(el => {
+          if (!el) return
+          el.currentTime = ts
+          if (el.paused) el.play().catch(() => {})
+        })
+      } else {
+        onSeekVideo?.(ts)
+      }
       return
     }
     const needsSwitch = onSwitchToClip && clipId && clipId !== viewClipId
@@ -281,6 +295,41 @@ export default function EventTimeline({
     window.addEventListener('mouseup', onUp)
   }
 
+  // Show a grid of annotated videos when in All view with 2+ done clips.
+  const showAnnotatedGrid = !viewClipId && !showingClip && doneClips.length >= 2
+
+  function handleAnnotatedGridSeeked(e, idx) {
+    if (annotatedSyncingRef.current) return
+    annotatedSyncingRef.current = true
+    const time = e.target.currentTime
+    annotatedGridRefs.current.forEach((el, i) => {
+      if (i !== idx && el) el.currentTime = time
+    })
+    annotatedSyncingRef.current = false
+  }
+
+  function handleAnnotatedGridPlay(e, idx) {
+    if (annotatedSyncingRef.current) return
+    annotatedSyncingRef.current = true
+    const time = e.target.currentTime
+    annotatedGridRefs.current.forEach((el, i) => {
+      if (i !== idx && el) {
+        el.currentTime = time
+        el.play().catch(() => {})
+      }
+    })
+    annotatedSyncingRef.current = false
+  }
+
+  function handleAnnotatedGridPause(e, idx) {
+    if (annotatedSyncingRef.current) return
+    annotatedSyncingRef.current = true
+    annotatedGridRefs.current.forEach((el, i) => {
+      if (i !== idx && el && !el.paused) el.pause()
+    })
+    annotatedSyncingRef.current = false
+  }
+
   const CustomTooltip = ({ payload }) => {
     if (!payload?.length) return null
     const d = payload[0].payload
@@ -300,7 +349,12 @@ export default function EventTimeline({
 
   const handleChartClick = (state) => {
     const payload = state?.activePayload?.[0]?.payload
-    if (payload?.x != null) onSeekVideo?.(payload.x)
+    if (payload?.x == null) return
+    onSeekVideo?.(payload.x)
+    annotatedGridRefs.current.forEach(el => {
+      if (!el) return
+      el.currentTime = payload.x
+    })
   }
 
   const activeSrc = showingClip && localClipSrc ? localClipSrc : annotatedVideoSrc
@@ -493,67 +547,128 @@ export default function EventTimeline({
               </span>
             </MuiTooltip>
 
-            {/* Divider */}
-            {multiSource && !showingClip && onSwitchToClip && (
-              <Box sx={{ width: 1, height: 14, bgcolor: 'divider', mx: 0.25, flexShrink: 0 }} />
+            {/* Divider + multi-source switcher — hidden in annotated grid mode */}
+            {!showAnnotatedGrid && multiSource && !showingClip && onSwitchToClip && (
+              <>
+                <Box sx={{ width: 1, height: 14, bgcolor: 'divider', mx: 0.25, flexShrink: 0 }} />
+                {sourceVideos.map(name => {
+                  const cid = videoToClipId[name]
+                  const isActive = cid === viewClipId || (!viewClipId && name === sourceVideos[sourceVideos.length - 1])
+                  return (
+                    <Box key={name} component="button"
+                      onClick={() => onSwitchToClip(cid)}
+                      sx={{
+                        px: 0.75, py: 0.25,
+                        border: '1px solid',
+                        borderColor: isActive ? 'primary.main' : 'divider',
+                        borderRadius: 1,
+                        fontSize: '0.6rem', fontFamily: 'monospace',
+                        bgcolor: isActive ? 'rgba(247,208,70,0.1)' : 'transparent',
+                        color: isActive ? 'primary.main' : 'text.secondary',
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                        lineHeight: 1.4,
+                        '&:hover': { borderColor: 'primary.main', color: 'text.primary', bgcolor: 'rgba(247,208,70,0.05)' },
+                      }}>
+                      {clipLabel(name)}
+                    </Box>
+                  )
+                })}
+              </>
             )}
 
-            {/* Multi-source video switcher chips */}
-            {!showingClip && multiSource && onSwitchToClip && sourceVideos.map(name => {
-              const cid = videoToClipId[name]
-              const isActive = cid === viewClipId || (!viewClipId && name === sourceVideos[sourceVideos.length - 1])
-              return (
-                <Box key={name} component="button"
-                  onClick={() => onSwitchToClip(cid)}
-                  sx={{
-                    px: 0.75, py: 0.25,
-                    border: '1px solid',
-                    borderColor: isActive ? 'primary.main' : 'divider',
-                    borderRadius: 1,
-                    fontSize: '0.6rem', fontFamily: 'monospace',
-                    bgcolor: isActive ? 'rgba(247,208,70,0.1)' : 'transparent',
-                    color: isActive ? 'primary.main' : 'text.secondary',
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    lineHeight: 1.4,
-                    '&:hover': { borderColor: 'primary.main', color: 'text.primary', bgcolor: 'rgba(247,208,70,0.05)' },
-                  }}>
-                  {clipLabel(name)}
-                </Box>
-              )
-            })}
-
             {/* Label for single-source or clip mode */}
-            {(showingClip || !multiSource) && (
+            {(showingClip || (!multiSource && !showAnnotatedGrid)) && (
               <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.62rem', ml: 0.25 }}>
                 {showingClip && localClipSrc ? t(language, 'panel.event_clip') : annotatedVideoSrc ? t(language, 'panel.annotated') : t(language, 'timeline.no_video')}
               </Typography>
             )}
           </Box>
 
-          <Box sx={{ flex: 1, bgcolor: activeSrc ? '#000' : 'background.default', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', minHeight: 0 }}>
-            {activeSrc ? (
-              <video
-                ref={showingClip ? undefined : annotatedVideoRef}
-                key={activeSrc}
-                src={activeSrc}
-                controls
-                onLoadedMetadata={(e) => {
-                  if (pendingSeekRef.current !== null && !showingClip) {
-                    e.currentTarget.currentTime = pendingSeekRef.current
-                    pendingSeekRef.current = null
-                    e.currentTarget.play().catch(() => {})
-                  }
-                }}
-                style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
-              />
-            ) : (
-              <Box sx={{ textAlign: 'center', p: 3 }}>
-                <Typography sx={{ fontSize: '1.5rem', opacity: 0.2, mb: 0.5 }}>▶</Typography>
-                <Typography variant="caption" color="text.secondary">{t(language, 'app.no_annotated')}</Typography>
-              </Box>
-            )}
-          </Box>
+          {showAnnotatedGrid ? (
+            /* ── Annotated video grid (All view, 2+ done clips) ── */
+            <Box sx={{
+              flex: 1, minHeight: 0, bgcolor: '#000', p: 0.5,
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gridAutoRows: '1fr',
+              gap: 0.5,
+              overflow: 'hidden',
+            }}>
+              {doneClips.map((item, idx) => {
+                const av = item.results?.annotatedVideo
+                const src = av
+                  ? (av.startsWith('/gradio_api/file=') ? av : `/gradio_api/file=${av}`)
+                  : null
+                const label = item.zone || item.name.replace(/\.[^.]+$/, '')
+                const isHighlighted = highlightedAnnotatedClipId === item.id
+                return (
+                  <Box key={item.id} sx={{
+                    position: 'relative', borderRadius: 1, overflow: 'hidden',
+                    outline: '2px solid',
+                    outlineColor: isHighlighted ? 'primary.main' : 'transparent',
+                    transition: 'outline-color 0.2s',
+                  }}>
+                    <Typography variant="caption" sx={{
+                      position: 'absolute', top: 4, left: 5, zIndex: 1,
+                      color: '#fff', bgcolor: 'rgba(0,0,0,0.6)',
+                      px: 0.75, py: 0.15, borderRadius: 0.5,
+                      fontFamily: 'monospace', fontSize: '0.55rem',
+                      lineHeight: 1.5, pointerEvents: 'none',
+                    }}>
+                      {label}
+                    </Typography>
+                    {src ? (
+                      <video
+                        ref={el => { annotatedGridRefs.current[idx] = el }}
+                        src={src}
+                        controls
+                        style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+                        onSeeked={e => handleAnnotatedGridSeeked(e, idx)}
+                        onPlay={e => handleAnnotatedGridPlay(e, idx)}
+                        onPause={e => handleAnnotatedGridPause(e, idx)}
+                        onLoadedMetadata={(e) => {
+                          if (pendingSeekRef.current !== null) {
+                            e.currentTarget.currentTime = pendingSeekRef.current
+                            e.currentTarget.play().catch(() => {})
+                          }
+                        }}
+                      />
+                    ) : (
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', bgcolor: 'background.default' }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem' }}>No annotated video</Typography>
+                      </Box>
+                    )}
+                  </Box>
+                )
+              })}
+            </Box>
+          ) : (
+            /* ── Single annotated video ── */
+            <Box sx={{ flex: 1, bgcolor: activeSrc ? '#000' : 'background.default', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', minHeight: 0 }}>
+              {activeSrc ? (
+                <video
+                  ref={showingClip ? undefined : annotatedVideoRef}
+                  key={activeSrc}
+                  src={activeSrc}
+                  controls
+                  onLoadedMetadata={(e) => {
+                    if (pendingSeekRef.current !== null && !showingClip) {
+                      e.currentTarget.currentTime = pendingSeekRef.current
+                      pendingSeekRef.current = null
+                      e.currentTarget.play().catch(() => {})
+                    }
+                  }}
+                  style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+                />
+              ) : (
+                <Box sx={{ textAlign: 'center', p: 3 }}>
+                  <Typography sx={{ fontSize: '1.5rem', opacity: 0.2, mb: 0.5 }}>▶</Typography>
+                  <Typography variant="caption" color="text.secondary">{t(language, 'app.no_annotated')}</Typography>
+                </Box>
+              )}
+            </Box>
+          )}
         </Box>
       </Box>
     </Box>
