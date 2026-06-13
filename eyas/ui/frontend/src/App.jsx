@@ -311,28 +311,63 @@ export default function App() {
     }
   }, [loadSamples, pollSplash])
 
-  // Restore the last session's events + summary after the splash clears.
+  // Restore the last session's events, summary, queue and footage after the splash clears.
   useEffect(() => {
     if (!client || !splashDone) return
     client.predict('/get_session_state', {}).then(r => {
       const state = r.data?.[0]
       if (!state) return
       const { runs = [], events = [] } = state
-      if (events.length) {
-        sessionEventsRef.current = events
-        setEvents(events)
-        setSessionRunCount(runs.length)
-      }
+      if (!runs.length && !events.length) return
+
+      // Rebuild queue from past runs so ClipViewSelector chips and per-clip
+      // summaries are visible immediately without re-analysing.
       if (runs.length) {
+        const restoredQueue = runs.map(run => ({
+          id: run.run_id,
+          name: run.video_name,
+          file: null,
+          path: null,
+          previewSrc: run.annotated_video_path
+            ? `/gradio_api/file=${run.annotated_video_path}`
+            : null,
+          zone: parseFilenameZone(run.video_name),
+          status: 'done',
+          selected: true,
+          error: null,
+          results: {
+            summary: {
+              ...(run.summary || {}),
+              annotated_video_path: run.annotated_video_path || null,
+              output_dir: run.output_dir || '',
+            },
+            annotatedVideo: run.annotated_video_path || null,
+            outputDir: run.output_dir || '',
+          },
+        }))
+        setQueue(restoredQueue)
+
+        // Show the last clip's annotated video in the footage preview panel.
         const last = runs[runs.length - 1]
+        if (last.annotated_video_path) {
+          setPreviewSource(`/gradio_api/file=${last.annotated_video_path}`)
+          setPreviewQueueId(last.run_id)
+          setAnnotatedVideo(last.annotated_video_path)
+        }
+        if (last.output_dir) setOutputDir(last.output_dir)
+
         const llm = last.summary || {}
         setSummary({
           ...llm,
           annotated_video_path: last.annotated_video_path || null,
           output_dir: last.output_dir || '',
         })
-        if (last.annotated_video_path) setAnnotatedVideo(last.annotated_video_path)
-        if (last.output_dir) setOutputDir(last.output_dir)
+      }
+
+      if (events.length) {
+        sessionEventsRef.current = events
+        setEvents(events)
+        setSessionRunCount(runs.length)
       }
     }).catch(() => {})
   }, [client, splashDone])
@@ -580,11 +615,37 @@ export default function App() {
   const allPendingSelected = queue.filter(q => q.status === 'pending').every(q => q.selected !== false)
   const somePendingSelected = queue.some(q => q.status === 'pending' && q.selected !== false)
 
-  const viewClip           = viewClipId ? queue.find(q => q.id === viewClipId) : null
-  const viewEvents         = viewClipId ? events.filter(e => eventBelongsToClip(e, viewClip)) : events
-  const viewSummary        = viewClipId ? (viewClip?.results?.summary ?? null) : summary
+  const viewClip = viewClipId ? queue.find(q => q.id === viewClipId) : null
+  const viewEvents = viewClipId ? events.filter(e => eventBelongsToClip(e, viewClip)) : events
   const viewAnnotatedVideo = viewClipId ? (viewClip?.results?.annotatedVideo ?? null) : annotatedVideo
-  const viewOutputDir      = viewClipId ? (viewClip?.results?.outputDir ?? '') : outputDir
+  const viewOutputDir = viewClipId ? (viewClip?.results?.outputDir ?? '') : outputDir
+
+  // For the "All" chip, aggregate summaries from every completed clip.
+  const combinedSummary = useMemo(() => {
+    const done = queue.filter(q => q.status === 'done' && q.results?.summary)
+    if (!done.length) return summary
+    if (done.length === 1) return done[0].results.summary
+    const riskOrder = { none: 0, low: 1, medium: 2, high: 3, critical: 4 }
+    const maxRisk = done.reduce((best, item) => {
+      const lvl = item.results.summary?.risk_level || 'none'
+      return (riskOrder[lvl] ?? 0) > (riskOrder[best] ?? 0) ? lvl : best
+    }, 'none')
+    const narrativeParts = done.map(item => {
+      const label = item.zone || item.name.replace(/\.[^.]+$/, '')
+      const text = (item.results.summary?.summary || '').trim()
+      return text ? `[${label}] ${text}` : null
+    }).filter(Boolean)
+    return {
+      summary: narrativeParts.join('\n\n'),
+      flags: [...new Set(done.flatMap(item => item.results.summary?.flags || []))],
+      suspicious_clips: done.flatMap(item => item.results.summary?.suspicious_clips || []),
+      risk_level: maxRisk,
+      annotated_video_path: done[done.length - 1]?.results?.annotatedVideo || null,
+      output_dir: done[done.length - 1]?.results?.outputDir || '',
+    }
+  }, [queue, summary])
+
+  const viewSummary = viewClipId ? (viewClip?.results?.summary ?? null) : combinedSummary
 
   const tabProps = {
     client,
