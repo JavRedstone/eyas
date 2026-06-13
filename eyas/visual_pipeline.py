@@ -96,38 +96,6 @@ def _draw_alert_highlight(
                 (255, 255, 255), ft, cv2.LINE_AA)
 
 
-def _draw_zoom_inset(frame, x1: int, y1: int, x2: int, y2: int, pad: int = 32) -> None:
-    """Paste a zoomed crop of the flagged region into the top-right corner."""
-    h, w = frame.shape[:2]
-    cx1, cy1 = max(0, x1 - pad), max(0, y1 - pad)
-    cx2, cy2 = min(w, x2 + pad), min(h, y2 + pad)
-    crop = frame[cy1:cy2, cx1:cx2]
-    if crop.size == 0:
-        return
-
-    inset_w = max(100, w // 4)
-    ch, cw = crop.shape[:2]
-    inset_h = int(inset_w * ch / max(cw, 1))
-    inset_h = min(inset_h, h // 3)
-    if inset_h <= 0:
-        return
-
-    resized = cv2.resize(crop, (inset_w, inset_h), interpolation=cv2.INTER_LINEAR)
-
-    margin = 10
-    ix1, iy1 = w - inset_w - margin, margin
-    ix2, iy2 = ix1 + inset_w, iy1 + inset_h
-
-    # Paste inset
-    frame[iy1:iy2, ix1:ix2] = resized
-
-    # Border + "CLOSE-UP" label
-    cv2.rectangle(frame, (ix1 - 2, iy1 - 2), (ix2 + 2, iy2 + 2), _ALERT_COLOR, 2)
-    font, scale = cv2.FONT_HERSHEY_SIMPLEX, 0.4
-    cv2.putText(frame, "CLOSE-UP", (ix1, iy2 + 14), font, scale,
-                _ALERT_COLOR, 1, cv2.LINE_AA)
-
-
 def draw_tracks(
     frame,
     tracks: List[Track],
@@ -137,22 +105,15 @@ def draw_tracks(
 ):
     """Draw YOLO person tracks with alert highlighting for suspicious activity."""
     rendered = frame.copy()
-    suspicious_tracks = []
     for track in tracks:
         x1, y1, x2, y2 = track.bbox
         status = statuses.get(track.track_id) if statuses else None
         if status and status.confirmed_pickups:
             _draw_alert_highlight(rendered, x1, y1, x2, y2, "SUSPICIOUS")
-            suspicious_tracks.append(track)
         elif status and status.observations > 0:
             cv2.rectangle(rendered, (x1, y1), (x2, y2), _OBSERVE_COLOR, 3)
         else:
             cv2.rectangle(rendered, (x1, y1), (x2, y2), _NORMAL_COLOR, 4)
-    # Zoom inset for the most recently suspicious track (last in list = drawn on top)
-    if suspicious_tracks:
-        t = suspicious_tracks[-1]
-        x1, y1, x2, y2 = t.bbox
-        _draw_zoom_inset(rendered, x1, y1, x2, y2)
     return rendered
 
 
@@ -164,7 +125,7 @@ def render_annotated_video(
     display_seconds: float = 1.5,
     labels: Optional[OverlayLabels] = None,
 ) -> None:
-    """Render annotated video: green boxes normally, alert highlight + zoom inset for pickups."""
+    """Render annotated video with alert highlighting for pickups."""
     confirmed = [event for event in events if event.pickup_confirmed]
     observed = [event for event in events if not event.pickup_confirmed]
     if not source_path.exists():
@@ -187,18 +148,14 @@ def render_annotated_video(
                 ev.track_id for ev in observed
                 if ev.timestamp <= t <= ev.timestamp + display_seconds
             } - pickup_ids
-            zoom_candidate = None
             for track in frame_tracks[frame_index]:
                 x1, y1, x2, y2 = track.bbox
                 if track.track_id in pickup_ids:
                     _draw_alert_highlight(frame, x1, y1, x2, y2, "SUSPICIOUS", frame_index)
-                    zoom_candidate = (x1, y1, x2, y2)
                 elif track.track_id in observe_ids:
                     cv2.rectangle(frame, (x1, y1), (x2, y2), _OBSERVE_COLOR, 3)
                 else:
                     cv2.rectangle(frame, (x1, y1), (x2, y2), _NORMAL_COLOR, 4)
-            if zoom_candidate:
-                _draw_zoom_inset(frame, *zoom_candidate)
             writer.write(frame)
             frame_index += 1
     finally:
