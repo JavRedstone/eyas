@@ -795,6 +795,12 @@ def localize_events_for_display(
             if ko != desc:
                 out["description_ko"] = ko
 
+        activity = (ev.get("activity") or "").strip()
+        if activity:
+            ko = _cached_localize(activity, locale, cache, accum)
+            if ko != activity:
+                out["activity_ko"] = ko
+
         zone_raw = str(ev.get("zone", "")).strip()
         if zone_raw:
             if is_known_zone(zone_raw):

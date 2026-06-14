@@ -116,7 +116,7 @@ function EventDetail({ ev, language, zoneKoCache, multiSource }) {
           <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.58rem', letterSpacing: '0.05em', textTransform: 'uppercase', display: 'block', mb: 0.3 }}>
             {t(language, 'event.activity')}
           </Typography>
-          <Typography sx={{ fontSize: '0.78rem', lineHeight: 1.6, color: 'text.primary', fontStyle: 'italic' }}>{ev.activity}</Typography>
+          <Typography sx={{ fontSize: '0.78rem', lineHeight: 1.6, color: 'text.primary', fontStyle: 'italic' }}>{(language === '한국어' && ev.activity_ko) || ev.activity}</Typography>
         </Box>
       )}
 
