@@ -57,7 +57,7 @@ All models download automatically on first run. No API keys required.
 
 | Document | Contents |
 |---|---|
-| [SETUP.md](SETUP.md) | Quick start, local dev, Docker, HF Spaces deploy |
+| [Setup & Development](docs/SETUP.md) | Quick start, local dev, Docker, HF Spaces deploy |
 | [Architecture](docs/ARCHITECTURE.md) | Pipeline diagram, component breakdown, event schema |
 | [Field Notes](docs/FIELD_NOTES.md) | Build log — design decisions, lessons from each stage, store field test |
 | [AI Theft Detection](docs/AI_THEFT_DETECTION.md) | Capabilities, limits, and best practices |
