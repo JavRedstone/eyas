@@ -34,6 +34,15 @@ _NEMOTRON_GGUF_FILENAME = "NVIDIA-Nemotron3-Nano-4B-Q4_K_M.gguf"
 _DEFAULT_LOCAL_MODEL = "nemotron-nano-4b.gguf"
 
 
+def _short_item_name(item: dict) -> str:
+    """Truncate item name to first phrase — prevents VLM scene descriptions bleeding in."""
+    name = item.get("name", "") if isinstance(item, dict) else str(item)
+    for sep in [". ", "; ", ", and "]:
+        if sep in name:
+            name = name[: name.index(sep)]
+    return name[:45].strip()
+
+
 class Reasoner:
     """Local LLM reasoning engine backed by llama-cpp-python."""
 
@@ -123,14 +132,14 @@ class Reasoner:
         conf_s = f"{conf:.2f}" if isinstance(conf, float) else str(conf)
         held = ev.get("held_objects") or []
         held_s = (
-            ", ".join(f"{h['name']} x{h.get('count', 1)}" for h in held)
+            ", ".join(f"{_short_item_name(h)} x{h.get('count', 1)}" for h in held)
             if held
             else "-"
         )
         pickup = ev.get("pickup_confirmed", False)
         picked = ev.get("picked_up_items") or []
         if pickup:
-            item_list = ", ".join(f"{p['name']} x{p.get('count', 1)}" for p in picked)
+            item_list = ", ".join(f"{_short_item_name(p)} x{p.get('count', 1)}" for p in picked)
             pickup_s = f"YES -> {item_list}" if item_list else "YES (item unidentified)"
         else:
             pickup_s = "no"
@@ -316,7 +325,34 @@ class Reasoner:
         period = f"{start_t}–{end_t}"
         event_log = self._format_events(trimmed, multi_cam=multi_cam)
 
-        prompt = SUMMARIZE_PROMPT.format(period=period, event_log=event_log)
+        # Inject factual pickup roster so even a small model can't miss confirmed pickups.
+        pickup_lines: List[str] = []
+        seen_keys: set = set()
+        for ev in events:
+            if ev.get("pickup_confirmed"):
+                tid = ev.get("track_id", "?")
+                ts = ev.get("timestamp", "?")
+                ts_s = f"{ts:.1f}s" if isinstance(ts, (int, float)) else str(ts)
+                zone = ev.get("zone", "?")
+                items = [
+                    _short_item_name(p)
+                    for p in (ev.get("picked_up_items") or [])
+                    if isinstance(p, dict) and p.get("name")
+                ]
+                item_s = ", ".join(items) if items else "unidentified item"
+                key = f"{tid}-{ts_s}"
+                if key not in seen_keys:
+                    seen_keys.add(key)
+                    pickup_lines.append(f"  - Track {tid} at {ts_s} in zone '{zone}': {item_s}")
+        pickup_block = ""
+        if pickup_lines:
+            pickup_block = (
+                "=== CONFIRMED PICKUPS (state each in your summary) ===\n"
+                + "\n".join(pickup_lines)
+                + "\n=== END CONFIRMED PICKUPS ===\n\n"
+            )
+
+        prompt = SUMMARIZE_PROMPT.format(period=period, event_log=pickup_block + event_log)
         raw = self._run_inference(prompt, SUMMARIZE_GRAMMAR, max_tokens=1024)
         return self._parse_json(raw, _SUMMARIZE_FALLBACK)
 
