@@ -22,8 +22,8 @@ tags:
   <img src="docs/eyas_logo_wide.png" alt="Eyas" width="600" />
 </p>
 
-# Eyas
-AI Security Camera Agent
+# Eyas: AI Security Camera Agent
+### By: Javier Huang, Hanhee Lee, Joe Lee
 
 Eyas is an on-device security camera agent built for our teammate's family's convenience store. It runs person tracking, event detection, and LLM reasoning over CCTV footage to surface theft, loitering, and suspicious activity as a structured, searchable log.
 
@@ -38,6 +38,12 @@ Eyas is an on-device security camera agent built for our teammate's family's con
 - **Audio Report** — spoken security brief via VoxCPM2 TTS
 - **Multi-camera** — queue multiple clips, get a unified cross-camera session summary
 - **Korean** — full UI and pipeline output translation, hot-swap without restart
+
+## Architecture
+
+<p align="center">
+  <img src="docs/eyas-architecture-diagram.png" alt="Eyas architecture diagram" width="900" />
+</p>
 
 ## Models
 
