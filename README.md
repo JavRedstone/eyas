@@ -1,5 +1,5 @@
 ---
-title: Eyas — AI Security Camera Agent
+title: Eyas
 emoji: 🦅
 colorFrom: blue
 colorTo: yellow
@@ -9,7 +9,7 @@ sdk_version: 5.38.0
 python_version: "3.12"
 app_file: eyas/app.py
 license: mit
-short_description: Offline AI security camera agent for retail.
+short_description: AI Security Camera Agent
 tags:
   - track:backyard
   - sponsor:openbmb
@@ -18,7 +18,7 @@ tags:
   - sponsor:cohere
 ---
 
-# Eyas — AI Security Camera Agent
+# Eyas
 
 Eyas is an on-device security camera agent built for our teammate's family's convenience store — it runs person tracking, event detection, and LLM reasoning over CCTV footage to surface theft, loitering, and suspicious activity as a structured, searchable log. No cloud required.
 
