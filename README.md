@@ -14,6 +14,8 @@ tags:
   - track:backyard
   - sponsor:openbmb
   - sponsor:nvidia
+  - sponsor:openai
+  - sponsor:cohere
 ---
 
 # Eyas — AI Security Camera Agent
