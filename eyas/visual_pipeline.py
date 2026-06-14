@@ -107,30 +107,6 @@ def _draw_alert_highlight(
                 (255, 255, 255), ft, cv2.LINE_AA)
 
 
-def _draw_zoom_inset(frame, x1: int, y1: int, x2: int, y2: int, pad: int = 32) -> None:
-    """Paste a zoomed crop of the flagged region into the top-right corner."""
-    h, w = frame.shape[:2]
-    cx1, cy1 = max(0, x1 - pad), max(0, y1 - pad)
-    cx2, cy2 = min(w, x2 + pad), min(h, y2 + pad)
-    crop = frame[cy1:cy2, cx1:cx2]
-    if crop.size == 0:
-        return
-    inset_w = max(100, w // 4)
-    ch, cw = crop.shape[:2]
-    inset_h = int(inset_w * ch / max(cw, 1))
-    inset_h = min(inset_h, h // 3)
-    if inset_h <= 0:
-        return
-    resized = cv2.resize(crop, (inset_w, inset_h), interpolation=cv2.INTER_LINEAR)
-    margin = 10
-    ix1, iy1 = w - inset_w - margin, margin
-    ix2, iy2 = ix1 + inset_w, iy1 + inset_h
-    frame[iy1:iy2, ix1:ix2] = resized
-    cv2.rectangle(frame, (ix1 - 2, iy1 - 2), (ix2 + 2, iy2 + 2), _ALERT_COLOR, 2)
-    font, scale = cv2.FONT_HERSHEY_SIMPLEX, 0.4
-    cv2.putText(frame, "CLOSE-UP", (ix1, iy2 + 14), font, scale, _ALERT_COLOR, 1, cv2.LINE_AA)
-
-
 def draw_tracks(
     frame,
     tracks: List[Track],
@@ -182,19 +158,15 @@ def render_annotated_video(
                 ev.track_id for ev in observed
                 if ev.timestamp <= t <= ev.timestamp + display_seconds
             } - pickup_ids
-            zoom_candidate = None
             for track in frame_tracks[frame_index]:
                 x1, y1, x2, y2 = track.bbox
                 if track.track_id in pickup_ids:
                     _draw_alert_highlight(frame, x1, y1, x2, y2, "SUSPICIOUS", frame_index)
-                    zoom_candidate = (x1, y1, x2, y2)
                 elif track.track_id in observe_ids:
                     cv2.rectangle(frame, (x1, y1), (x2, y2), _OBSERVE_COLOR, 3)
                     _draw_small_label(frame, x1, y1, "OBSERVING", _OBSERVE_COLOR)
                 else:
                     cv2.rectangle(frame, (x1, y1), (x2, y2), _NORMAL_COLOR, 4)
-            if zoom_candidate:
-                _draw_zoom_inset(frame, *zoom_candidate)
             writer.write(frame)
             frame_index += 1
     finally:
