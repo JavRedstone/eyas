@@ -22,11 +22,10 @@ tags:
   <img src="docs/eyas_logo_wide.png" alt="Eyas" width="600" />
 </p>
 
-# Eyas — AI Security Camera Agent
+# Eyas
+AI Security Camera Agent
 
-On-device CCTV intelligence for small retail stores. Eyas runs a chain of small models — YOLO11n → MiniCPM-V 4.6 → Nemotron 3 Nano 4B — entirely locally to turn raw footage into a structured, searchable security event log. No cloud, no subscription, no data leaving the premises.
-
-Built for our teammate's family's shop, as part of the **Build Small Hackathon**.
+Eyas is an on-device security camera agent built for our teammate's family's convenience store. It runs person tracking, event detection, and LLM reasoning over CCTV footage to surface theft, loitering, and suspicious activity as a structured, searchable log. No cloud required.
 
 ---
 
@@ -47,7 +46,7 @@ Built for our teammate's family's shop, as part of the **Build Small Hackathon**
 | [YOLO11n](https://github.com/ultralytics/ultralytics) | Person detector + BotSORT tracker | ~6 MB |
 | [MiniCPM-V 4.6](https://huggingface.co/openbmb/MiniCPM-V-4.6) | Vision-language observer | ~1.3B params |
 | [Nemotron 3 Nano 4B](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF) | LLM reasoner (GGUF Q4) | ~2.5 GB |
-| [TinyAya](https://huggingface.co/CohereLabs/tiny-aya-global-GGUF) | Korean translation (GGUF Q4) | ~0.5 GB |
+| [TinyAya Global](https://huggingface.co/CohereLabs/tiny-aya-global-GGUF) | Korean translation (GGUF Q4) | ~0.5 GB |
 | [VoxCPM2](https://huggingface.co/openbmb/MiniCPM-o-2_6) | Text-to-speech | ~2.4B params |
 
 All models download automatically on first run. No API keys required.
