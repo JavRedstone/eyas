@@ -347,7 +347,6 @@ def run_visual_pipeline(
         if writer is not None:
             writer.release()
 
-    structurer.finalize_pending_pickups()
     if writer is not None:
         render_annotated_video(
             source, annotated_path, frame_tracks, structurer.events, labels=overlay_labels

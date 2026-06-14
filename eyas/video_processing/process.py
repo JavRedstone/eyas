@@ -43,17 +43,9 @@ PERSON_STATUS_PROMPT = (
     "You are observing one YOLO-tracked person in convenience-store CCTV. "
     "The ordered images were selected because motion near the person may show an "
     "interaction; treat them as before, during, and after evidence. "
-    "Describe only what is visibly present in the supplied images. Give a "
-    "non-biometric appearance description useful during this visit in at most "
-    "35 words, including visible clothing, colors, carried bags, body orientation, "
-    "and location relative to nearby shelves. In activity, use at most 100 words "
-    "to describe the ordered "
-    "sequence in detail: where each visible hand begins, how each hand moves, "
-    "whether it reaches toward or contacts a product, where the product begins, "
-    "and where the product ends. Mention occlusion or ambiguity explicitly. "
-    "Do not collapse visible hand motion into generic words such as browsing, "
-    "interacting, examining, selecting, or adjusting. Keep the entire response "
-    "valid JSON and prioritize completing every required field. Set held_objects only for objects with "
+    "Describe only what is visibly present in the supplied images. Give a short "
+    "non-biometric appearance description useful during this visit, then state "
+    "what the person is currently doing. Set held_objects only for objects with "
     "clear visible contact with the person's hand. An object near a hand, on a "
     "shelf, or merely inside the person's bounding box is not held. When hand "
     "contact is unclear, return an empty held_objects list. "
@@ -62,10 +54,6 @@ PERSON_STATUS_PROMPT = (
     "clearly show the person's hand contacting a retail item and the item moving "
     "from its previous location into the person's hand. An item merely inside "
     "the bounding box, on a nearby shelf, or already visible is NOT a pickup. "
-    "Small or brief hand movements may still be pickups, but confirm them only "
-    "when the item's change from shelf location to moving with the hand is "
-    "unambiguous across the chronological images. Do not require the exact "
-    "product identity; use 'retail item' when the item type is unclear. "
     "If the sequence shows the hand moving toward an item and then holding it, "
     "describe the activity explicitly as picking up the item. Do not use only "
     "the vague phrase 'interacting with retail items' for a visible pickup. "
@@ -139,7 +127,7 @@ _WORD_NUM = {
 }
 _NON_PRODUCT_ITEMS = {
     "glasses", "eyeglasses", "sunglasses", "hat", "cap", "shirt", "t-shirt",
-    "pants", "jeans", "shoes", "jacket", "coat", "hair", "bag", "backpack",
+    "pants", "jeans", "shoes", "jacket", "coat", "hair",
 }
 _EXPLICIT_HELD_OBJECT = re.compile(
     r"\b(?:holding|carrying)\s+"
@@ -209,7 +197,6 @@ def parse_person_observation(text: str) -> PersonObservation:
     pickup_confirmed = False
     raw_items = []
     raw_held_objects = []
-    held_objects_explicit = False
     for data in objects:
         description = str(data.get("description", "")).strip() or description
         activity = str(data.get("activity", data.get("action", ""))).strip() or activity
@@ -218,7 +205,6 @@ def parse_person_observation(text: str) -> PersonObservation:
             raw_items = data["picked_up_items"]
         if isinstance(data.get("held_objects"), list):
             raw_held_objects = data["held_objects"]
-            held_objects_explicit = True
 
     # Tolerate partially malformed JSON fields while never defaulting a pickup
     # to true. Missing/invalid confirmation remains false.
@@ -255,7 +241,7 @@ def parse_person_observation(text: str) -> PersonObservation:
         name = str(item["name"]).strip().lower()
         if name not in _NON_PRODUCT_ITEMS:
             held_objects.append({"name": name, "count": count})
-    if not held_objects and not held_objects_explicit:
+    if not held_objects:
         explicit_held = _EXPLICIT_HELD_OBJECT.search(f"{description}, {activity}")
         if explicit_held:
             prefix = f"{description}, {activity}"[
@@ -494,7 +480,7 @@ class MiniCPMVLM:
                 backend=self.backend,
             )
         self._ensure_loaded()
-        images = [self._to_pil(frame) for frame in frames[-6:]]
+        images = [self._to_pil(frame) for frame in frames[-5:]]
         content = [{"type": "image", "image": image} for image in images]
         content.append({"type": "text", "text": PERSON_STATUS_PROMPT})
         messages = [{"role": "user", "content": content}]
@@ -738,7 +724,7 @@ class LlamaCppMiniCPMVLM:
                 backend=self.backend,
             )
         text = self._complete(
-            frames[-6:],
+            frames[-5:],
             PERSON_STATUS_PROMPT,
             max_new_tokens or self.max_new_tokens,
         )
