@@ -13,32 +13,32 @@
         <mxCell id="10L" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=none;fontSize=15;" value="&lt;span style=&quot;color:#CC4400;font-weight:700;&quot;&gt;Ingest &amp; Control&lt;/span&gt;" vertex="1">
           <mxGeometry height="40" width="330" x="45" y="60" as="geometry" />
         </mxCell>
-        <mxCell id="11" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF6B35;fontColor=#ffffff;strokeColor=#CC4400;fontSize=12;fontStyle=1;arcSize=12;" value="app.py" vertex="1">
+        <mxCell id="11" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF6B35;fontColor=#ffffff;strokeColor=#CC4400;fontSize=12;fontStyle=1;arcSize=12;" value="App Entrypoint&lt;br&gt;&lt;span style=&quot;font-size:10px;font-weight:400;&quot;&gt;app.py&lt;/span&gt;" vertex="1">
           <mxGeometry height="50" width="280" x="70" y="115" as="geometry" />
         </mxCell>
         <mxCell id="11s" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#555555;" value="&lt;i&gt;FastAPI entrypoint; mounts Gradio, seeds models&lt;/i&gt;" vertex="1">
           <mxGeometry height="20" width="310" x="55" y="168" as="geometry" />
         </mxCell>
-        <mxCell id="12" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0066CC;fontColor=#ffffff;strokeColor=#004499;fontSize=12;fontStyle=1;arcSize=12;" value="model_registry.py" vertex="1">
+        <mxCell id="12" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0066CC;fontColor=#ffffff;strokeColor=#004499;fontSize=12;fontStyle=1;arcSize=12;" value="Model Loader&lt;br&gt;&lt;span style=&quot;font-size:10px;font-weight:400;&quot;&gt;model_registry.py&lt;/span&gt;" vertex="1">
           <mxGeometry height="50" width="280" x="70" y="200" as="geometry" />
         </mxCell>
         <mxCell id="12s" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#555555;" value="&lt;i&gt;Lazy-loads YOLO, MiniCPM-V, Nemotron, TinyAya, VoxCPM2 from HF Hub&lt;/i&gt;" vertex="1">
           <mxGeometry height="20" width="310" x="55" y="253" as="geometry" />
         </mxCell>
-        <mxCell id="14" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF6B35;fontColor=#ffffff;strokeColor=#CC4400;fontSize=11;fontStyle=1;arcSize=12;" value="User Upload" vertex="1">
+        <mxCell id="14" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF6B35;fontColor=#ffffff;strokeColor=#CC4400;fontSize=11;fontStyle=1;arcSize=12;" value="User Upload&lt;br&gt;&lt;span style=&quot;font-size:10px;font-weight:400;&quot;&gt;@gradio/client&lt;/span&gt;" vertex="1">
           <mxGeometry height="50" width="280" x="70" y="290" as="geometry" />
         </mxCell>
         <mxCell id="1314s" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#555555;" value="&lt;i&gt;Video sources: CCTV direct file upload&lt;/i&gt;" vertex="1">
           <mxGeometry height="20" width="310" x="55" y="345" as="geometry" />
         </mxCell>
-        <mxCell id="15" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF6B35;fontColor=#ffffff;strokeColor=#CC4400;fontSize=12;fontStyle=1;arcSize=12;" value="Sample Load" vertex="1">
+        <mxCell id="15" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF6B35;fontColor=#ffffff;strokeColor=#CC4400;fontSize=12;fontStyle=1;arcSize=12;" value="Sample Load&lt;br&gt;&lt;span style=&quot;font-size:10px;font-weight:400;&quot;&gt;eyas/input/ clips&lt;/span&gt;" vertex="1">
           <mxGeometry height="50" width="280" x="70" y="385" as="geometry" />
         </mxCell>
 
         <mxCell id="15s" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#555555;" value="&lt;i&gt;Preloaded .mp4 clips served from /input/&lt;/i&gt;" vertex="1">
           <mxGeometry height="20" width="310" x="55" y="438" as="geometry" />
         </mxCell>
-        <mxCell id="16" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0066CC;fontColor=#ffffff;strokeColor=#004499;fontSize=12;fontStyle=1;arcSize=12;" value="Clip Ingest &amp; Storage" vertex="1">
+        <mxCell id="16" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0066CC;fontColor=#ffffff;strokeColor=#004499;fontSize=12;fontStyle=1;arcSize=12;" value="Clip Ingest &amp; Storage&lt;br&gt;&lt;span style=&quot;font-size:10px;font-weight:400;&quot;&gt;storage/manager.py&lt;/span&gt;" vertex="1">
           <mxGeometry height="50" width="280" x="70" y="470" as="geometry" />
         </mxCell>
         <mxCell id="16s" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#555555;" value="&lt;i&gt;Validates, writes to /data/runs/&lt;run_id&gt;/, serves via Gradio&lt;/i&gt;" vertex="1">
@@ -50,13 +50,13 @@
         <mxCell id="20L" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=none;fontSize=15;" value="&lt;span style=&quot;color:#0066CC;font-weight:700;&quot;&gt;API Gateway&lt;/span&gt;" vertex="1">
           <mxGeometry height="40" width="290" x="400" y="60" as="geometry" />
         </mxCell>
-        <mxCell id="21" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0066CC;fontColor=#ffffff;strokeColor=#004499;fontSize=12;fontStyle=1;arcSize=12;" value="Gradio API Backend" vertex="1">
+        <mxCell id="21" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0066CC;fontColor=#ffffff;strokeColor=#004499;fontSize=12;fontStyle=1;arcSize=12;" value="API Backend&lt;br&gt;&lt;span style=&quot;font-size:10px;font-weight:400;&quot;&gt;Gradio Blocks&lt;/span&gt;" vertex="1">
           <mxGeometry height="50" width="240" x="425" y="295" as="geometry" />
         </mxCell>
         <mxCell id="21s" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#555555;" value="&lt;i&gt;Endpoints: /run_pipeline, /ask_footage, /get_samples, /export_session_zip&lt;/i&gt;" vertex="1">
           <mxGeometry height="20" width="274" x="408" y="348" as="geometry" />
         </mxCell>
-        <mxCell id="22" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF6B35;fontColor=#ffffff;strokeColor=#CC4400;fontSize=12;fontStyle=1;arcSize=12;" value="Splash Polling" vertex="1">
+        <mxCell id="22" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF6B35;fontColor=#ffffff;strokeColor=#CC4400;fontSize=12;fontStyle=1;arcSize=12;" value="Progress Polling&lt;br&gt;&lt;span style=&quot;font-size:10px;font-weight:400;&quot;&gt;poll_splash API&lt;/span&gt;" vertex="1">
           <mxGeometry height="50" width="240" x="425" y="115" as="geometry" />
         </mxCell>
         <mxCell id="22s" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#555555;" value="&lt;i&gt;SSE progress stream: step pct, status, previews&lt;/i&gt;" vertex="1">
@@ -68,31 +68,31 @@
         <mxCell id="30L" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=none;fontSize=15;" value="&lt;span style=&quot;color:#CC4400;font-weight:700;&quot;&gt;Core Visual Pipeline&lt;/span&gt;" vertex="1">
           <mxGeometry height="40" width="730" x="715" y="60" as="geometry" />
         </mxCell>
-        <mxCell id="31" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF6B35;fontColor=#ffffff;strokeColor=#CC4400;fontSize=12;fontStyle=1;arcSize=12;" value="① YOLO Tracker" vertex="1">
+        <mxCell id="31" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF6B35;fontColor=#ffffff;strokeColor=#CC4400;fontSize=12;fontStyle=1;arcSize=12;" value="Person Tracking&lt;br&gt;&lt;span style=&quot;font-size:10px;font-weight:400;&quot;&gt;YOLO11n + BotSORT&lt;/span&gt;" vertex="1">
           <mxGeometry height="50" width="310" x="738" y="225" as="geometry" />
         </mxCell>
         <mxCell id="31s" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#555555;" value="&lt;i&gt;YOLO11n: per-frame bbox + track_id; exports JSON events&lt;/i&gt;" vertex="1">
           <mxGeometry height="20" width="342" x="722" y="278" as="geometry" />
         </mxCell>
-        <mxCell id="32" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF6B35;fontColor=#ffffff;strokeColor=#CC4400;fontSize=12;fontStyle=1;arcSize=12;" value="② VLM Captioner" vertex="1">
+        <mxCell id="32" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF6B35;fontColor=#ffffff;strokeColor=#CC4400;fontSize=12;fontStyle=1;arcSize=12;" value="Scene Captioning&lt;br&gt;&lt;span style=&quot;font-size:10px;font-weight:400;&quot;&gt;MiniCPM-V 4.6&lt;/span&gt;" vertex="1">
           <mxGeometry height="50" width="310" x="1112" y="225" as="geometry" />
         </mxCell>
         <mxCell id="32s" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#555555;" value="&lt;i&gt;MiniCPM-V 4.6: captions track crops; outputs description, activity, pickup_confirmed&lt;/i&gt;" vertex="1">
           <mxGeometry height="20" width="342" x="1096" y="278" as="geometry" />
         </mxCell>
-        <mxCell id="33" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF6B35;fontColor=#ffffff;strokeColor=#CC4400;fontSize=12;fontStyle=1;arcSize=12;" value="③ Event Structurer" vertex="1">
+        <mxCell id="33" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF6B35;fontColor=#ffffff;strokeColor=#CC4400;fontSize=12;fontStyle=1;arcSize=12;" value="Event Structuring&lt;br&gt;&lt;span style=&quot;font-size:10px;font-weight:400;&quot;&gt;Heuristic Rules&lt;/span&gt;" vertex="1">
           <mxGeometry height="50" width="310" x="738" y="345" as="geometry" />
         </mxCell>
         <mxCell id="33s" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#555555;" value="&lt;i&gt;Heuristic builder: clusters VLM observations into typed events with zone + timestamp&lt;/i&gt;" vertex="1">
           <mxGeometry height="20" width="342" x="722" y="398" as="geometry" />
         </mxCell>
-        <mxCell id="34" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF6B35;fontColor=#ffffff;strokeColor=#CC4400;fontSize=12;fontStyle=1;arcSize=12;" value="④ LLM Reasoner" vertex="1">
+        <mxCell id="34" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF6B35;fontColor=#ffffff;strokeColor=#CC4400;fontSize=12;fontStyle=1;arcSize=12;" value="Risk &amp; Summary&lt;br&gt;&lt;span style=&quot;font-size:10px;font-weight:400;&quot;&gt;Nemotron-Nano-4B&lt;/span&gt;" vertex="1">
           <mxGeometry height="50" width="310" x="1112" y="345" as="geometry" />
         </mxCell>
         <mxCell id="34s" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#555555;" value="&lt;i&gt;Nemotron-Nano-4B: risk scoring, NL summary, alerts&lt;/i&gt;" vertex="1">
           <mxGeometry height="20" width="342" x="1096" y="398" as="geometry" />
         </mxCell>
-        <mxCell id="35" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0066CC;fontColor=#ffffff;strokeColor=#004499;fontSize=12;fontStyle=1;arcSize=12;" value="⑤ Annotated Output" vertex="1">
+        <mxCell id="35" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0066CC;fontColor=#ffffff;strokeColor=#004499;fontSize=12;fontStyle=1;arcSize=12;" value="Annotated Output&lt;br&gt;&lt;span style=&quot;font-size:10px;font-weight:400;&quot;&gt;OpenCV + H.264&lt;/span&gt;" vertex="1">
           <mxGeometry height="50" width="310" x="925" y="475" as="geometry" />
         </mxCell>
         <mxCell id="35s" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#555555;" value="&lt;i&gt;Overlaid bounding boxes + event JSON; written to /data/out/&lt;/i&gt;" vertex="1">
@@ -104,19 +104,19 @@
         <mxCell id="40L" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=none;fontSize=15;" value="&lt;span style=&quot;color:#0066CC;font-weight:700;&quot;&gt;Operator UI&lt;/span&gt;" vertex="1">
           <mxGeometry height="40" width="405" x="1470" y="60" as="geometry" />
         </mxCell>
-        <mxCell id="41" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0066CC;fontColor=#ffffff;strokeColor=#004499;fontSize=12;fontStyle=1;arcSize=12;" value="React SPA" vertex="1">
+        <mxCell id="41" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0066CC;fontColor=#ffffff;strokeColor=#004499;fontSize=12;fontStyle=1;arcSize=12;" value="Operator Interface&lt;br&gt;&lt;span style=&quot;font-size:10px;font-weight:400;&quot;&gt;React + Vite + MUI&lt;/span&gt;" vertex="1">
           <mxGeometry height="50" width="355" x="1495" y="225" as="geometry" />
         </mxCell>
         <mxCell id="41s" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#555555;" value="&lt;i&gt;Vite + MUI: footage panel, multi-cam grid, clip queue&lt;/i&gt;" vertex="1">
           <mxGeometry height="20" width="389" x="1478" y="278" as="geometry" />
         </mxCell>
-        <mxCell id="42" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0066CC;fontColor=#ffffff;strokeColor=#004499;fontSize=12;fontStyle=1;arcSize=12;" value="Analysis Tabs" vertex="1">
+        <mxCell id="42" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0066CC;fontColor=#ffffff;strokeColor=#004499;fontSize=12;fontStyle=1;arcSize=12;" value="Analysis Tabs&lt;br&gt;&lt;span style=&quot;font-size:10px;font-weight:400;&quot;&gt;Timeline · Alerts · Q&amp;A&lt;/span&gt;" vertex="1">
           <mxGeometry height="50" width="355" x="1495" y="345" as="geometry" />
         </mxCell>
         <mxCell id="42s" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#555555;" value="&lt;i&gt;Timeline · Alerts · Ask Footage · Metrics · Audio&lt;/i&gt;" vertex="1">
           <mxGeometry height="20" width="389" x="1478" y="398" as="geometry" />
         </mxCell>
-        <mxCell id="43" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF6B35;fontColor=#ffffff;strokeColor=#CC4400;fontSize=12;fontStyle=1;arcSize=12;" value="Export / Audio Output" vertex="1">
+        <mxCell id="43" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF6B35;fontColor=#ffffff;strokeColor=#CC4400;fontSize=12;fontStyle=1;arcSize=12;" value="Export &amp; Audio&lt;br&gt;&lt;span style=&quot;font-size:10px;font-weight:400;&quot;&gt;ZIP + VoxCPM2 TTS&lt;/span&gt;" vertex="1">
           <mxGeometry height="50" width="355" x="1495" y="460" as="geometry" />
         </mxCell>
         <mxCell id="43s" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#555555;" value="&lt;i&gt;ZIP export (clips + JSON) · VoxCPM2 TTS security report&lt;/i&gt;" vertex="1">
@@ -128,19 +128,19 @@
         <mxCell id="50L" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=none;fontSize=15;" value="&lt;span style=&quot;color:#556677;font-weight:700;&quot;&gt;Persistence Layer&lt;/span&gt;" vertex="1">
           <mxGeometry height="40" width="1830" x="45" y="790" as="geometry" />
         </mxCell>
-        <mxCell id="51" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0066CC;fontColor=#ffffff;strokeColor=#004499;fontSize=12;fontStyle=1;arcSize=12;" value="Session State" vertex="1">
+        <mxCell id="51" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0066CC;fontColor=#ffffff;strokeColor=#004499;fontSize=12;fontStyle=1;arcSize=12;" value="Session State&lt;br&gt;&lt;span style=&quot;font-size:10px;font-weight:400;&quot;&gt;In-memory / JSON&lt;/span&gt;" vertex="1">
           <mxGeometry height="50" width="270" x="70" y="862" as="geometry" />
         </mxCell>
-        <mxCell id="52" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0066CC;fontColor=#ffffff;strokeColor=#004499;fontSize=12;fontStyle=1;arcSize=12;" value="Clip Storage" vertex="1">
+        <mxCell id="52" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0066CC;fontColor=#ffffff;strokeColor=#004499;fontSize=12;fontStyle=1;arcSize=12;" value="Clip Storage&lt;br&gt;&lt;span style=&quot;font-size:10px;font-weight:400;&quot;&gt;/data/runs/&lt;/span&gt;" vertex="1">
           <mxGeometry height="50" width="270" x="447" y="862" as="geometry" />
         </mxCell>
-        <mxCell id="53" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF6B35;fontColor=#ffffff;strokeColor=#CC4400;fontSize=12;fontStyle=1;arcSize=12;" value="HF Hub" vertex="1">
+        <mxCell id="53" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF6B35;fontColor=#ffffff;strokeColor=#CC4400;fontSize=12;fontStyle=1;arcSize=12;" value="Model Hub&lt;br&gt;&lt;span style=&quot;font-size:10px;font-weight:400;&quot;&gt;Hugging Face&lt;/span&gt;" vertex="1">
           <mxGeometry height="50" width="270" x="824" y="862" as="geometry" />
         </mxCell>
-        <mxCell id="54" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#546e7a;fontColor=#ffffff;strokeColor=#37474f;fontSize=12;arcSize=12;" value="Model Registry" vertex="1">
+        <mxCell id="54" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#546e7a;fontColor=#ffffff;strokeColor=#37474f;fontSize=12;fontStyle=1;arcSize=12;" value="Model Registry&lt;br&gt;&lt;span style=&quot;font-size:10px;font-weight:400;&quot;&gt;model_registry.py&lt;/span&gt;" vertex="1">
           <mxGeometry height="50" width="270" x="1201" y="862" as="geometry" />
         </mxCell>
-        <mxCell id="55" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF6B35;fontColor=#ffffff;strokeColor=#CC4400;fontSize=12;fontStyle=1;arcSize=12;" value="TTS + Translator" vertex="1">
+        <mxCell id="55" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF6B35;fontColor=#ffffff;strokeColor=#CC4400;fontSize=12;fontStyle=1;arcSize=12;" value="Speech + Translation&lt;br&gt;&lt;span style=&quot;font-size:10px;font-weight:400;&quot;&gt;VoxCPM2 + TinyAya&lt;/span&gt;" vertex="1">
           <mxGeometry height="50" width="270" x="1578" y="862" as="geometry" />
         </mxCell>
         <mxCell id="e60" edge="1" parent="1" source="15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#666666;strokeWidth=2;" target="16">
