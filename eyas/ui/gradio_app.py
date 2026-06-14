@@ -135,6 +135,29 @@ def build_app(
     S = Strings(language)
     _lang = [language]  # mutable so save_language can hot-swap at runtime
 
+    def _normalize_llm_summary(payload: Optional[dict], error: str = "") -> dict:
+        """Ensure summary payload always has displayable text and valid keys."""
+        valid_risk = {"none", "low", "medium", "high", "critical"}
+        data = payload if isinstance(payload, dict) else {}
+        summary_text = str(data.get("summary", "") or "").strip()
+        if not summary_text:
+            if error:
+                summary_text = S.t("status.llm_error", error=error)
+            else:
+                summary_text = S.t("status.llm_unavailable")
+        risk = str(data.get("risk_level", "none") or "none").lower()
+        if risk not in valid_risk:
+            risk = "none"
+        flags = data.get("flags")
+        suspicious = data.get("suspicious_clips")
+        return {
+            **data,
+            "summary": summary_text,
+            "flags": flags if isinstance(flags, list) else [],
+            "suspicious_clips": suspicious if isinstance(suspicious, list) else [],
+            "risk_level": risk,
+        }
+
     # ── API functions (closures so they can access S, _lang, prefs_path) ──
 
     def poll_splash() -> dict:
@@ -416,9 +439,9 @@ def build_app(
             try:
                 llm_msg = _llm_q.get(timeout=1.0)
                 if llm_msg[0] == "done":
-                    llm = llm_msg[1]
+                    llm = _normalize_llm_summary(llm_msg[1])
                 else:
-                    llm = {"summary": S.t("status.llm_unavailable"), "flags": [], "suspicious_clips": [], "risk_level": "none"}
+                    llm = _normalize_llm_summary(None, error=llm_msg[1])
                 break
             except _queue.Empty:
                 yield {**_emit(S.t("status.running_llm")),
@@ -534,13 +557,13 @@ def build_app(
             return {}
         _r = _mreg.get("llm")
         if _r is None:
-            return {}
+            return _normalize_llm_summary(None)
         try:
             _r._load_model()
-            return _r.summarize_events(all_events)
+            return _normalize_llm_summary(_r.summarize_events(all_events))
         except Exception as exc:
             print(f"[summarize_session] error: {exc}")
-            return {}
+            return _normalize_llm_summary(None, error=str(exc))
 
     def get_samples() -> list:
         return list(_SAMPLE_PATHS.keys())

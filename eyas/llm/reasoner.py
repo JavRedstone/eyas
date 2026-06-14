@@ -21,7 +21,7 @@ from .prompts import (
 # Fallback dicts returned when JSON parsing fails
 # ---------------------------------------------------------------------------
 _SUMMARIZE_FALLBACK: Dict = {
-    "summary": "",
+    "summary": "LLM summary unavailable.",
     "flags": [],
     "suspicious_clips": [],
     "risk_level": "none",
@@ -235,7 +235,7 @@ class Reasoner:
     def _run_inference(
         self,
         prompt: str,
-        grammar_str: str,  # kept for API compat, no longer used
+        grammar_str: str = "",  # reserved, not used — LlamaGrammar segfaults on parse errors
         max_tokens: int = 512,
         temperature: float = 0.2,
     ) -> str:
@@ -252,18 +252,23 @@ class Reasoner:
         return result["choices"][0]["message"]["content"].strip()
 
     def _parse_json(self, raw: str, fallback: Dict) -> Dict:
+        import re
         base = dict(fallback)
-        try:
-            parsed = json.loads(raw)
-            return base | parsed
-        except json.JSONDecodeError:
-            start = raw.find("{")
-            end = raw.rfind("}") + 1
+        # Strip <think>...</think> blocks some models emit before JSON
+        cleaned = re.sub(r"<\|?think(?:ing)?\|?>.*?</\|?think(?:ing)?\|?>", "", raw, flags=re.DOTALL | re.IGNORECASE)
+        # Strip markdown code fences
+        cleaned = re.sub(r"```(?:json)?\s*", "", cleaned).strip()
+        for candidate in (cleaned, raw):
+            try:
+                return base | json.loads(candidate)
+            except (json.JSONDecodeError, ValueError):
+                pass
+            start = candidate.find("{")
+            end = candidate.rfind("}") + 1
             if start != -1 and end > start:
                 try:
-                    parsed = json.loads(raw[start:end])
-                    return base | parsed
-                except json.JSONDecodeError:
+                    return base | json.loads(candidate[start:end])
+                except (json.JSONDecodeError, ValueError):
                     pass
         return base
 
@@ -286,7 +291,7 @@ class Reasoner:
         event_log = self._format_events(trimmed, multi_cam=multi_cam)
 
         prompt = SUMMARIZE_PROMPT.format(period=period, event_log=event_log)
-        raw = self._run_inference(prompt, SUMMARIZE_GRAMMAR)
+        raw = self._run_inference(prompt, SUMMARIZE_GRAMMAR, max_tokens=1024)
         return self._parse_json(raw, _SUMMARIZE_FALLBACK)
 
     def answer_query(self, events: List[Dict], query: str) -> Dict:
@@ -297,7 +302,7 @@ class Reasoner:
         trimmed = self._trim_events(events)
         event_log = self._format_events(trimmed)
         prompt = QA_PROMPT.format(event_log=event_log, query=query)
-        raw = self._run_inference(prompt, QA_GRAMMAR)
+        raw = self._run_inference(prompt, QA_GRAMMAR, max_tokens=1024)
         return self._parse_json(raw, _QA_FALLBACK)
 
     def generate_alert(self, event: Dict) -> Dict:
