@@ -129,11 +129,11 @@ class Reasoner:
         )
         pickup = ev.get("pickup_confirmed", False)
         picked = ev.get("picked_up_items") or []
-        pickup_s = (
-            ("YES -> " + ", ".join(f"{p['name']} x{p.get('count', 1)}" for p in picked))
-            if pickup
-            else "no"
-        )
+        if pickup:
+            item_list = ", ".join(f"{p['name']} x{p.get('count', 1)}" for p in picked)
+            pickup_s = f"YES -> {item_list}" if item_list else "YES (item unidentified)"
+        else:
+            pickup_s = "no"
         summary = (ev.get("summary") or "").strip()
         summary_s = f"Summary: {summary} | " if summary else ""
         ts = ev.get("timestamp", "?")
@@ -216,7 +216,7 @@ class Reasoner:
         return "\n".join(lines)
 
     def _trim_events(
-        self, events: List[Dict], max_chars: int = 1800, multi_cam: bool = False
+        self, events: List[Dict], max_chars: int = 2400, multi_cam: bool = False
     ) -> List[Dict]:
         """Return a budget-trimmed subset, prioritising pickup events and context around them."""
         if not events:
@@ -224,18 +224,27 @@ class Reasoner:
         if len(self._format_events(events, multi_cam=multi_cam)) <= max_chars:
             return events
 
-        # Identify indices of pickup events and a ±2-event context window around each
-        pickup_indices: set[int] = set()
+        # Priority set: pickup events ± 4 context + last event per track (shows final state)
+        priority_indices: set[int] = set()
         for i, ev in enumerate(events):
             if ev.get("pickup_confirmed"):
-                for j in range(max(0, i - 2), min(len(events), i + 3)):
-                    pickup_indices.add(j)
+                for j in range(max(0, i - 4), min(len(events), i + 5)):
+                    priority_indices.add(j)
 
-        # Build candidate list: pickups+context first, then others in order
-        priority = [events[i] for i in sorted(pickup_indices)]
-        others   = [ev for i, ev in enumerate(events) if i not in pickup_indices]
+        # Always include the most recent observation per track so the LLM sees
+        # what the person was ultimately doing (e.g. handling a specific object).
+        last_per_track: Dict[int, int] = {}
+        for i, ev in enumerate(events):
+            tid = ev.get("track_id")
+            if isinstance(tid, int):
+                last_per_track[tid] = i
+        priority_indices.update(last_per_track.values())
 
-        # Fill up to max_chars: start with priority events, then append others
+        # Build candidate list: priority first, then others in chronological order
+        priority = [events[i] for i in sorted(priority_indices)]
+        others   = [ev for i, ev in enumerate(events) if i not in priority_indices]
+
+        # Fill up to max_chars
         selected: List[Dict] = []
         for ev in priority + others:
             trial = selected + [ev]
