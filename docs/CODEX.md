@@ -88,37 +88,4 @@ Codex session logs (tool calls, reasoning steps, file edits) are stored in [`doc
 
 ---
 
-## Event schema reference
-
-A representative structured event (pickup confirmed, item unidentified) as produced by the heuristic structurer after VLM observation:
-
-```json
-{
-  "track_id": 2,
-  "timestamp": 5.84,
-  "confirmation_timestamp": 5.84,
-  "description": "Two individuals in a convenience store, one in dark clothing bending over a shelf, the other standing with hands on hips. Shelves with products are visible, and decorative snowflakes hang above. The floor has a tiled pattern with square accents.",
-  "activity": "The person in dark clothing bends down to interact with a shelf, possibly picking up or examining an item, while the standing person observes.",
-  "held_objects": [],
-  "pickup_confirmed": true,
-  "picked_up_items": [],
-  "summary": "...",
-  "zone": "counter",
-  "backend": "minicpmv",
-  "bbox": [1182, 235, 1476, 912],
-  "confidence": 0.857,
-  "source_video": "20260608_130000_counter.mp4",
-  "source_clip_id": "20260614_121209",
-  "source_event_index": 5
-}
-```
-
-Key fields for judges:
-
-| Field | Notes |
-|-------|-------|
-| `pickup_confirmed` | Set by heuristic structurer after weighing VLM confidence and activity keywords. `true` here even though `raw_observation` shows `false` — heuristics overrode the VLM's conservative output. |
-| `picked_up_items: []` | The "item unidentified" path — pickup is confirmed but the VLM could not name the object. The reasoner emits `Pickup: YES (item unidentified)` and the pickup roster block names it "unidentified item". |
-| `raw_observation` | Verbatim VLM JSON before heuristic overrides, stored for auditability. |
-| `source_video` / `source_event_index` | Full traceability back to the original video file and session event index. |
-| `zone` | Derived from the filename convention (`*_counter.mp4` → `counter`). No manual annotation required. |
+For the structured event schema that flows between these stages, see [ARCHITECTURE.md — Event schema](ARCHITECTURE.md#event-schema).

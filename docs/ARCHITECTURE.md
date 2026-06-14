@@ -87,6 +87,38 @@ The frontend maintains a session layer on top of individual pipeline runs. Multi
 
 All `VideoWriter` instances use the `avc1` (H.264) fourcc — required for browser-compatible MP4 playback. The default `mp4v` codec produces FMP4 which most browsers do not support inline.
 
+## Event schema
+
+A structured event as produced by `event_structuring/` and consumed by `llm/`:
+
+```json
+{
+  "track_id": 2,
+  "timestamp": 5.84,
+  "confirmation_timestamp": 5.84,
+  "description": "Two individuals in a convenience store, one in dark clothing bending over a shelf...",
+  "activity": "The person in dark clothing bends down to interact with a shelf, possibly picking up or examining an item.",
+  "held_objects": [],
+  "pickup_confirmed": true,
+  "picked_up_items": [],
+  "zone": "counter",
+  "backend": "minicpmv",
+  "bbox": [1182, 235, 1476, 912],
+  "confidence": 0.857,
+  "source_video": "20260608_130000_counter.mp4",
+  "source_clip_id": "20260614_121209",
+  "source_event_index": 5
+}
+```
+
+| Field | Notes |
+|-------|-------|
+| `pickup_confirmed` | Set by heuristic structurer. Can be `true` even when `raw_observation` shows `false` — the structurer overrides the VLM's conservative judgment based on activity keywords and confidence. |
+| `picked_up_items: []` | The "item unidentified" path — pickup confirmed but the VLM could not name the object. Reasoner emits `Pickup: YES (item unidentified)`. |
+| `raw_observation` | Verbatim VLM JSON before heuristic overrides, stored for auditability. |
+| `zone` | Derived from the filename convention (`*_counter.mp4` → `counter`). No manual annotation required. |
+| `source_video` / `source_event_index` | Full traceability back to the original video file and session event index. |
+
 ## Deployment
 
 See the root [README.md](../README.md) for Docker and HF Spaces deployment details.
