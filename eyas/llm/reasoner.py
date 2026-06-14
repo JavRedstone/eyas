@@ -356,7 +356,7 @@ class Reasoner:
         raw = self._run_inference(prompt, SUMMARIZE_GRAMMAR, max_tokens=1024)
         return self._parse_json(raw, _SUMMARIZE_FALLBACK)
 
-    def answer_query(self, events: List[Dict], query: str) -> Dict:
+    def answer_query(self, events: List[Dict], query: str, summary: Optional[Dict] = None) -> Dict:
         """Answer a natural-language question about the event log."""
         if not events:
             return dict(_QA_FALLBACK) | {"answer": "No events available to query."}
@@ -366,7 +366,23 @@ class Reasoner:
 
         trimmed = self._trim_events(events, multi_cam=multi_cam)
         event_log = self._format_events(trimmed, multi_cam=multi_cam)
-        prompt = QA_PROMPT.format(event_log=event_log, query=query)
+
+        summary_block = ""
+        if summary:
+            lines = ["Security analysis summary:"]
+            if summary.get("risk_level"):
+                lines.append(f"  Risk level: {summary['risk_level']}")
+            if summary.get("summary"):
+                lines.append(f"  Summary: {summary['summary']}")
+            if summary.get("flags"):
+                lines.append(f"  Flags: {summary['flags']}")
+            per_cam = summary.get("per_cam") or []
+            for cam in per_cam:
+                if cam.get("name") and cam.get("summary"):
+                    lines.append(f"  [{cam['name'].upper()}]: {cam['summary']}")
+            summary_block = "\n".join(lines) + "\n\n"
+
+        prompt = QA_PROMPT.format(summary_block=summary_block, event_log=event_log, query=query)
         raw = self._run_inference(prompt, QA_GRAMMAR, max_tokens=1024)
         return self._parse_json(raw, _QA_FALLBACK)
 

@@ -486,7 +486,7 @@ def build_app(
         yield final_payload
 
     @_gpu(duration=120)
-    def ask_footage(message: str, history: list, events: list) -> tuple:
+    def ask_footage(message: str, history: list, events: list, summary: dict = None) -> tuple:
         def _append(hist, user_msg, assistant_msg):
             return hist + [
                 {"role": "user", "content": user_msg},
@@ -503,7 +503,7 @@ def build_app(
             if _r is None:
                 reply = S.t("status.llm_unavailable")
                 return _append(history, message, reply), "", ""
-            result = _r.answer_query(events, message)
+            result = _r.answer_query(events, message, summary=summary or None)
             reply = result["answer"]
             if result.get("clips"):
                 reply += "\n\n" + S.t("status.related_clips", clips=", ".join(result["clips"]))
@@ -700,11 +700,12 @@ def build_app(
             _msg = gr.Textbox()
             _hist = gr.JSON()
             _evts = gr.JSON()
+            _summary_qa = gr.JSON()
             _qa_hist = gr.JSON()
             _qa_empty = gr.Textbox()
             _qa_timing = gr.Textbox()
             gr.Button("_").click(
-                ask_footage, inputs=[_msg, _hist, _evts],
+                ask_footage, inputs=[_msg, _hist, _evts, _summary_qa],
                 outputs=[_qa_hist, _qa_empty, _qa_timing],
                 api_name="ask_footage",
             )

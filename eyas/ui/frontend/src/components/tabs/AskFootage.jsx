@@ -10,7 +10,7 @@ import Chip from '@mui/material/Chip'
 import { t } from '../../i18n.js'
 import { displayChatText } from '../../display.js'
 
-export default function AskFootage({ client, events, chatHistory, setChatHistory, language = 'English' }) {
+export default function AskFootage({ client, events, summary, chatHistory, setChatHistory, language = 'English' }) {
   const [query, setQuery]   = useState('')
   const [loading, setLoading] = useState(false)
   const bottomRef = useRef()
@@ -36,6 +36,7 @@ export default function AskFootage({ client, events, chatHistory, setChatHistory
         message: q,
         history: newHistory.map(h => [h.role === 'user' ? h.text : null, h.role === 'assistant' ? h.text : null]),
         events,
+        summary: summary || null,
       })
       const replyHistory = r.data[0] || []
       const englishAnswer = extractAssistantReply(replyHistory)

@@ -68,13 +68,20 @@ Response:
 # ---------------------------------------------------------------------------
 
 QA_PROMPT = """\
-Answer the question about the CCTV event log below.
+Answer the question about the CCTV footage.
+When a security analysis summary is provided, treat it as the authoritative ground truth —
+do NOT contradict it. Use the event log for specific details (timestamps, zones, indices).
 When an 'Identified people' section is present, refer to each person by their appearance.
 Always include the Zone field when describing where events happened.
 Any event with "Pickup: YES" is a confirmed suspicious pickup — treat it as such.
 Cite relevant event indices (0-based) and note zone, items, and person appearance.
 
 --- EXAMPLE ---
+Security analysis summary:
+  Risk level: medium
+  Summary: The person in a white t-shirt (Track 3) picked up water and chips from aisle_2 and aisle_3 without visiting the counter — possible theft.
+  Flags: ["Person in white t-shirt (Track 3) took multiple items without counter visit"]
+
 Event log:
 Identified people:
   Track 3: wearing a white t-shirt and blue jeans
@@ -90,7 +97,7 @@ Response:
 {{"answer": "The person in a white t-shirt and jeans (Track 3) took 1 item (water) from aisle_2. The person in a black hoodie (Track 5) had no pickup events.", "relevant_event_indices": [1], "clips": []}}
 --- END EXAMPLE ---
 
-Event log:
+{summary_block}Event log:
 {event_log}
 
 Question: {query}
