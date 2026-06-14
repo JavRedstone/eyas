@@ -27,8 +27,11 @@ Produce a security summary that covers:
   2. For each person who had a pickup event: appearance, number of items taken, zones visited
   3. Any suspicious or notable patterns, including pickup/handling of items, repeated pickups,
      unusual zones, concealment, and people lingering or standing still without obvious purpose
-  4. Overall risk level: "none" (no pickups), "low" (1 pickup, normal behaviour),
-     "medium" (multiple pickups or unusual movement), "high" (concealment or many items)
+  4. Overall risk level:
+       "none"   — no suspicious behaviour whatsoever
+       "low"    — mildly suspicious (e.g. unusual movement, lingering, reaching for items) but no confirmed pickup
+       "medium" — confirmed pickup OR very suspicious behaviour (e.g. bending into shelves, concealment attempt)
+       "high"   — multiple confirmed pickups, clear concealment with items, or repeated theft-pattern behaviour
 
 If someone picks up an item, mention that explicitly in the summary and include it in flags
 even if the overall risk stays low.

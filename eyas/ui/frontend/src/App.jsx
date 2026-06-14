@@ -750,15 +750,22 @@ export default function App() {
       suspicious_clips: item.results.summary?.suspicious_clips || [],
     }))
 
-    // Overall narrative: prefer LLM-generated multi-cam summary, fall back to concat.
-    const totalText = sessionSummary?.summary
-      || per_cam.map(c => `[${c.name}] ${c.summary}`).filter(t => t).join('\n\n')
+    // Session summary risk must not lower the max per-cam risk.
+    const sessionRiskRank = riskOrder[sessionSummary?.risk_level] ?? -1
+    const maxRiskRank = riskOrder[maxRisk] ?? 0
+    const totalRisk = sessionRiskRank > maxRiskRank ? sessionSummary.risk_level : maxRisk
+
+    // Use the cross-cam LLM narrative only when it doesn't contradict per-cam findings.
+    const perCamText = per_cam.map(c => `[${c.name}] ${c.summary}`).filter(t => t).join('\n\n')
+    const totalText = (sessionSummary?.summary && sessionRiskRank >= maxRiskRank)
+      ? sessionSummary.summary
+      : perCamText
 
     return {
       summary: totalText,
       flags: [...new Set(done.flatMap(item => item.results.summary?.flags || []))],
       suspicious_clips: done.flatMap(item => item.results.summary?.suspicious_clips || []),
-      risk_level: sessionSummary?.risk_level || maxRisk,
+      risk_level: totalRisk,
       annotated_video_path: done[done.length - 1]?.results?.annotatedVideo || null,
       output_dir: done[done.length - 1]?.results?.outputDir || '',
       per_cam,
