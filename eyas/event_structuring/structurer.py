@@ -313,6 +313,10 @@ class EventStructurer:
                 status.confirmed_pickups = self._merge_items(
                     status.confirmed_pickups, picked_up_items
                 )
+            elif pickup_confirmed and not status.confirmed_pickups:
+                # Event fires as pickup_confirmed but no items identified — still
+                # update status so draw_tracks() shows SUSPICIOUS, not OBSERVING.
+                status.confirmed_pickups = [{"name": "retail item", "count": 1}]
             status.summary = " ".join(
                 part for part in [status.description, status.current_activity] if part
             )
