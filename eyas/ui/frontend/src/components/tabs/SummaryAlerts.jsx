@@ -117,8 +117,8 @@ export default function SummaryAlerts({ summary, language = 'English' }) {
         </Box>
       )}
 
-      {/* Flagged items */}
-      {flags.length > 0 && (
+      {/* Flagged items — hide at top level when per-cam breakdown is shown (each cam has its own) */}
+      {flags.length > 0 && perCam.length === 0 && (
         <Box>
           <Typography variant="overline" sx={{ display: 'block', mb: 1 }}>{t(language, 'summary.concerns', { count: flags.length })}</Typography>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -135,8 +135,8 @@ export default function SummaryAlerts({ summary, language = 'English' }) {
         </Box>
       )}
 
-      {/* Suspicious clips */}
-      {suspiciousClips.length > 0 && (
+      {/* Suspicious clips — hide at top level when per-cam breakdown is shown */}
+      {suspiciousClips.length > 0 && perCam.length === 0 && (
         <Box>
           <Typography variant="overline" sx={{ display: 'block', mb: 1 }}>{t(language, 'summary.suspicious', { count: suspiciousClips.length })}</Typography>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>

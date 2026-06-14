@@ -755,11 +755,9 @@ export default function App() {
     const maxRiskRank = riskOrder[maxRisk] ?? 0
     const totalRisk = sessionRiskRank > maxRiskRank ? sessionSummary.risk_level : maxRisk
 
-    // Use the cross-cam LLM narrative only when it doesn't contradict per-cam findings.
-    const perCamText = per_cam.map(c => `[${c.name}] ${c.summary}`).filter(t => t).join('\n\n')
-    const totalText = (sessionSummary?.summary && sessionRiskRank >= maxRiskRank)
-      ? sessionSummary.summary
-      : perCamText
+    // Prefer the cross-cam LLM narrative; fall back to per-cam concat only when absent.
+    const perCamText = per_cam.map(c => `[${c.name.toUpperCase()}] ${c.summary}`).filter(t => t).join('\n\n')
+    const totalText = sessionSummary?.summary || perCamText
 
     return {
       summary: totalText,

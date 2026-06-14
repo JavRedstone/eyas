@@ -22,9 +22,13 @@ SUMMARIZE_PROMPT = """\
 Analyze the CCTV event log below. Group events by Track ID to identify each person's activity.
 When an 'Identified people' section is present, refer to each person by their appearance
 (e.g. "the person in a red hoodie (Track 3)") rather than just their Track ID.
+RULE: If ANY event in the log has "Pickup: YES", you MUST state in the summary that a pickup
+occurred, name the person, and include it in flags. Do not write "no pickup occurred" when a
+"Pickup: YES" event exists.
+
 Produce a security summary that covers:
   1. How many distinct people were tracked
-  2. For each person who had a pickup event: appearance, number of items taken, zones visited
+  2. For each person who had a pickup event (Pickup: YES): appearance, items taken or "unidentified item", zones visited
   3. Any suspicious or notable patterns, including pickup/handling of items, repeated pickups,
      unusual zones, concealment, and people lingering or standing still without obvious purpose
   4. Overall risk level:
@@ -66,7 +70,9 @@ Response:
 QA_PROMPT = """\
 Answer the question about the CCTV event log below.
 When an 'Identified people' section is present, refer to each person by their appearance.
-Cite relevant event indices (0-based) and note how many items each person took if relevant.
+Always include the Zone field when describing where events happened.
+Any event with "Pickup: YES" is a confirmed suspicious pickup — treat it as such.
+Cite relevant event indices (0-based) and note zone, items, and person appearance.
 
 --- EXAMPLE ---
 Event log:
