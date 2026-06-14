@@ -216,7 +216,7 @@ class Reasoner:
         return "\n".join(lines)
 
     def _trim_events(
-        self, events: List[Dict], max_chars: int = 3000, multi_cam: bool = False
+        self, events: List[Dict], max_chars: int = 1800, multi_cam: bool = False
     ) -> List[Dict]:
         """Return a budget-trimmed subset, prioritising pickup events and context around them."""
         if not events:

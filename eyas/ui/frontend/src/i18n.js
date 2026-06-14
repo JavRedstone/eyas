@@ -46,7 +46,8 @@ const STRINGS = {
     'kind.intrusion':   'intrusion',
     'kind.loitering':   'loitering',
     'kind.pickup':      'pickup',
-    'kind.suspicious':  'suspicious',
+    'kind.handling':    'handling',
+    'kind.suspicious':  'handling',
     'kind.observation': 'observation',
 
     // Zone labels (mirror locale.py ZONES)
@@ -94,6 +95,7 @@ const STRINGS = {
     'event.timestamp':       'Timestamp',
     'event.confidence':      'Confidence',
     'event.source':          'Source',
+    'event.activity':        'Activity',
     'event.items':           'Items',
 
     // SummaryAlerts
@@ -213,7 +215,8 @@ const STRINGS = {
     'kind.intrusion':   '침입',
     'kind.loitering':   '배회',
     'kind.pickup':      '집기',
-    'kind.suspicious':  '의심',
+    'kind.handling':    '취급',
+    'kind.suspicious':  '취급',
     'kind.observation': '관찰',
 
     // Zone labels (mirror locale.py ZONES)
@@ -260,6 +263,7 @@ const STRINGS = {
     'event.timestamp':    '타임스탬프',
     'event.confidence':   '신뢰도',
     'event.source':       '소스',
+    'event.activity':     '활동',
     'event.items':        '물품',
     'timeline.no_video':  '아직 영상 없음',
 

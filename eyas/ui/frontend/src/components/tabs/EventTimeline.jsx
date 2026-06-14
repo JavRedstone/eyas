@@ -24,7 +24,7 @@ const KIND_COLORS = {
   intrusion:   '#EF4444',
   loitering:   '#FBBF24',
   pickup:      '#FF2222',
-  suspicious:  '#FBBF24',
+  handling:    '#FBBF24',
   observation: '#8B93A9',
   default:     '#7a8ea8',
 }
@@ -37,7 +37,7 @@ function deriveKind(ev) {
   if (ev.kind) return ev.kind
   if (ev.event_type) return ev.event_type
   if (ev.pickup_confirmed) return 'pickup'
-  if (ev.held_objects?.length) return 'suspicious'
+  if (ev.held_objects?.length) return 'handling'
   return 'observation'
 }
 
@@ -109,6 +109,16 @@ function EventDetail({ ev, language, zoneKoCache, multiSource }) {
           </Box>
         )}
       </Box>
+
+      {/* Activity (VLM reason) */}
+      {ev.activity && (
+        <Box>
+          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.58rem', letterSpacing: '0.05em', textTransform: 'uppercase', display: 'block', mb: 0.3 }}>
+            {t(language, 'event.activity')}
+          </Typography>
+          <Typography sx={{ fontSize: '0.78rem', lineHeight: 1.6, color: 'text.primary', fontStyle: 'italic' }}>{ev.activity}</Typography>
+        </Box>
+      )}
 
       {/* Full description */}
       <Box>
