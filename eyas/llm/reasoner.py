@@ -218,19 +218,34 @@ class Reasoner:
     def _trim_events(
         self, events: List[Dict], max_chars: int = 3000, multi_cam: bool = False
     ) -> List[Dict]:
-        """Return as many trailing events as fit within max_chars when formatted."""
+        """Return a budget-trimmed subset, prioritising pickup events and context around them."""
         if not events:
             return events
-        formatted = self._format_events(events, multi_cam=multi_cam)
-        if len(formatted) <= max_chars:
+        if len(self._format_events(events, multi_cam=multi_cam)) <= max_chars:
             return events
-        for start in range(1, len(events)):
-            if (
-                len(self._format_events(events[start:], multi_cam=multi_cam))
-                <= max_chars
-            ):
-                return events[start:]
-        return events[-1:]
+
+        # Identify indices of pickup events and a ±2-event context window around each
+        pickup_indices: set[int] = set()
+        for i, ev in enumerate(events):
+            if ev.get("pickup_confirmed"):
+                for j in range(max(0, i - 2), min(len(events), i + 3)):
+                    pickup_indices.add(j)
+
+        # Build candidate list: pickups+context first, then others in order
+        priority = [events[i] for i in sorted(pickup_indices)]
+        others   = [ev for i, ev in enumerate(events) if i not in pickup_indices]
+
+        # Fill up to max_chars: start with priority events, then append others
+        selected: List[Dict] = []
+        for ev in priority + others:
+            trial = selected + [ev]
+            if len(self._format_events(trial, multi_cam=multi_cam)) > max_chars:
+                break
+            selected.append(ev)
+
+        # Re-sort by timestamp so the narrative is chronological
+        selected.sort(key=lambda e: float(e.get("timestamp") or e.get("time") or 0))
+        return selected if selected else events[:1]
 
     def _run_inference(
         self,
@@ -249,7 +264,9 @@ class Reasoner:
             temperature=temperature,
             response_format={"type": "json_object"},
         )
-        return result["choices"][0]["message"]["content"].strip()
+        raw = result["choices"][0]["message"]["content"].strip()
+        print(f"[LLM raw output] finish_reason={result['choices'][0].get('finish_reason')} len={len(raw)} preview={raw[:200]!r}")
+        return raw
 
     def _parse_json(self, raw: str, fallback: Dict) -> Dict:
         import re
