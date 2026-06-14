@@ -1,6 +1,6 @@
 <mxfile host="Electron" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) draw.io/28.2.8 Chrome/140.0.7339.240 Electron/38.4.0 Safari/605.1.15">
   <diagram name="Eyas Architecture" id="eyas-arch">
-    <mxGraphModel dx="3142" dy="1889" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1920" pageHeight="1080" math="0" shadow="0">
+    <mxGraphModel dx="2571" dy="1545" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1920" pageHeight="1080" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -22,28 +22,26 @@
         <mxCell id="12" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0066CC;fontColor=#ffffff;strokeColor=#004499;fontSize=12;fontStyle=1;arcSize=12;" value="model_registry.py" vertex="1">
           <mxGeometry height="50" width="280" x="70" y="200" as="geometry" />
         </mxCell>
-        <mxCell id="12s" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#555555;" value="&lt;i&gt;Lazy-loads YOLO, MiniCPM-V, Nemotron, VoxCPM from HF Hub&lt;/i&gt;" vertex="1">
+        <mxCell id="12s" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#555555;" value="&lt;i&gt;Lazy-loads YOLO, MiniCPM-V, Nemotron, TinyAya, VoxCPM2 from HF Hub&lt;/i&gt;" vertex="1">
           <mxGeometry height="20" width="310" x="55" y="253" as="geometry" />
         </mxCell>
         <mxCell id="14" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF6B35;fontColor=#ffffff;strokeColor=#CC4400;fontSize=11;fontStyle=1;arcSize=12;" value="User Upload" vertex="1">
-          <mxGeometry height="40" width="130" x="145" y="290" as="geometry" />
+          <mxGeometry height="50" width="280" x="70" y="290" as="geometry" />
         </mxCell>
         <mxCell id="1314s" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#555555;" value="&lt;i&gt;Video sources: CCTV direct file upload&lt;/i&gt;" vertex="1">
-          <mxGeometry height="20" width="310" x="55" y="330" as="geometry" />
+          <mxGeometry height="20" width="310" x="55" y="345" as="geometry" />
         </mxCell>
         <mxCell id="15" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF6B35;fontColor=#ffffff;strokeColor=#CC4400;fontSize=12;fontStyle=1;arcSize=12;" value="Sample Load" vertex="1">
           <mxGeometry height="50" width="280" x="70" y="385" as="geometry" />
         </mxCell>
-        <mxCell id="BlOEwMKmmhSeTzrh8zni-57" edge="1" parent="1" source="15s" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="16s" value="">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
+
         <mxCell id="15s" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#555555;" value="&lt;i&gt;Preloaded .mp4 clips served from /input/&lt;/i&gt;" vertex="1">
           <mxGeometry height="20" width="310" x="55" y="438" as="geometry" />
         </mxCell>
         <mxCell id="16" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0066CC;fontColor=#ffffff;strokeColor=#004499;fontSize=12;fontStyle=1;arcSize=12;" value="Clip Ingest &amp; Storage" vertex="1">
           <mxGeometry height="50" width="280" x="70" y="470" as="geometry" />
         </mxCell>
-        <mxCell id="16s" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#555555;" value="&lt;i&gt;Validates, writes to /data/clips/, returns clip URL&lt;/i&gt;" vertex="1">
+        <mxCell id="16s" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#555555;" value="&lt;i&gt;Validates, writes to /data/runs/&lt;run_id&gt;/, serves via Gradio&lt;/i&gt;" vertex="1">
           <mxGeometry height="20" width="310" x="55" y="523" as="geometry" />
         </mxCell>
         <mxCell id="20" parent="1" style="rounded=2;whiteSpace=wrap;html=1;fillColor=#EBF5FF;strokeColor=#0066CC;strokeWidth=2.5;dashed=1;dashPattern=8 4;verticalAlign=top;arcSize=2;" value="" vertex="1">
@@ -55,7 +53,7 @@
         <mxCell id="21" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0066CC;fontColor=#ffffff;strokeColor=#004499;fontSize=12;fontStyle=1;arcSize=12;" value="Gradio API Backend" vertex="1">
           <mxGeometry height="50" width="240" x="425" y="295" as="geometry" />
         </mxCell>
-        <mxCell id="21s" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#555555;" value="&lt;i&gt;REST endpoints: /upload, /run, /session, /export&lt;/i&gt;" vertex="1">
+        <mxCell id="21s" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#555555;" value="&lt;i&gt;Endpoints: /run_pipeline, /ask_footage, /get_samples, /export_session_zip&lt;/i&gt;" vertex="1">
           <mxGeometry height="20" width="274" x="408" y="348" as="geometry" />
         </mxCell>
         <mxCell id="22" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF6B35;fontColor=#ffffff;strokeColor=#CC4400;fontSize=12;fontStyle=1;arcSize=12;" value="Splash Polling" vertex="1">
@@ -76,16 +74,16 @@
         <mxCell id="31s" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#555555;" value="&lt;i&gt;YOLO11n: per-frame bbox + track_id; exports JSON events&lt;/i&gt;" vertex="1">
           <mxGeometry height="20" width="342" x="722" y="278" as="geometry" />
         </mxCell>
-        <mxCell id="32" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF6B35;fontColor=#ffffff;strokeColor=#CC4400;fontSize=12;fontStyle=1;arcSize=12;" value="② Event Structurer" vertex="1">
+        <mxCell id="32" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF6B35;fontColor=#ffffff;strokeColor=#CC4400;fontSize=12;fontStyle=1;arcSize=12;" value="② VLM Captioner" vertex="1">
           <mxGeometry height="50" width="310" x="1112" y="225" as="geometry" />
         </mxCell>
-        <mxCell id="32s" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#555555;" value="&lt;i&gt;Clusters tracks into discrete events; assigns zone + kind&lt;/i&gt;" vertex="1">
+        <mxCell id="32s" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#555555;" value="&lt;i&gt;MiniCPM-V 4.6: captions track crops; outputs description, activity, pickup_confirmed&lt;/i&gt;" vertex="1">
           <mxGeometry height="20" width="342" x="1096" y="278" as="geometry" />
         </mxCell>
-        <mxCell id="33" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF6B35;fontColor=#ffffff;strokeColor=#CC4400;fontSize=12;fontStyle=1;arcSize=12;" value="③ VLM Captioner" vertex="1">
+        <mxCell id="33" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF6B35;fontColor=#ffffff;strokeColor=#CC4400;fontSize=12;fontStyle=1;arcSize=12;" value="③ Event Structurer" vertex="1">
           <mxGeometry height="50" width="310" x="738" y="345" as="geometry" />
         </mxCell>
-        <mxCell id="33s" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#555555;" value="&lt;i&gt;MiniCPM-V 4.6: event-clip frame captioning via VLM&lt;/i&gt;" vertex="1">
+        <mxCell id="33s" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#555555;" value="&lt;i&gt;Heuristic builder: clusters VLM observations into typed events with zone + timestamp&lt;/i&gt;" vertex="1">
           <mxGeometry height="20" width="342" x="722" y="398" as="geometry" />
         </mxCell>
         <mxCell id="34" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF6B35;fontColor=#ffffff;strokeColor=#CC4400;fontSize=12;fontStyle=1;arcSize=12;" value="④ LLM Reasoner" vertex="1">
@@ -148,15 +146,10 @@
         <mxCell id="e60" edge="1" parent="1" source="15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#666666;strokeWidth=2;" target="16">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e61" edge="1" parent="1" source="11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=0.25;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#666666;strokeWidth=2;" target="21">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="370" y="128" />
-              <mxPoint x="370" y="320" />
-            </Array>
-          </mxGeometry>
+        <mxCell id="e61" edge="1" parent="1" source="11" style="edgeStyle=entityRelationEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=0.25;exitDx=0;exitDy=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;strokeColor=#666666;strokeWidth=2;" target="21">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e63" edge="1" parent="1" source="14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=0.25;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#666666;strokeWidth=2;" target="21">
+        <mxCell id="e63" edge="1" parent="1" source="14" style="edgeStyle=entityRelationEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=0.25;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#666666;strokeWidth=2;" target="21">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="e64" edge="1" parent="1" source="16" style="edgeStyle=entityRelationEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.7;entryDx=0;entryDy=0;strokeColor=#666666;strokeWidth=2;" target="21">
@@ -177,13 +170,10 @@
         <mxCell id="e67" edge="1" parent="1" source="31" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#666666;strokeWidth=2;" target="32">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e68" edge="1" parent="1" source="31" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#CC4400;strokeWidth=1.5;dashed=1;dashPattern=5 3;" target="33">
+        <mxCell id="e68" edge="1" parent="1" source="32" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#666666;strokeWidth=2;" target="33">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e69" edge="1" parent="1" source="32" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#CC4400;strokeWidth=1.5;dashed=1;dashPattern=5 3;" target="34">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="e70" edge="1" parent="1" source="33" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#666666;strokeWidth=2;" target="34">
+        <mxCell id="e69" edge="1" parent="1" source="33" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#666666;strokeWidth=2;" target="34">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="e71" edge="1" parent="1" source="34" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#666666;strokeWidth=2;" target="35">
