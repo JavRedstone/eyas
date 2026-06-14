@@ -361,8 +361,11 @@ class Reasoner:
         if not events:
             return dict(_QA_FALLBACK) | {"answer": "No events available to query."}
 
-        trimmed = self._trim_events(events)
-        event_log = self._format_events(trimmed)
+        sources = {ev.get("source_video", "") for ev in events}
+        multi_cam = len(sources) > 1 and any(sources)
+
+        trimmed = self._trim_events(events, multi_cam=multi_cam)
+        event_log = self._format_events(trimmed, multi_cam=multi_cam)
         prompt = QA_PROMPT.format(event_log=event_log, query=query)
         raw = self._run_inference(prompt, QA_GRAMMAR, max_tokens=1024)
         return self._parse_json(raw, _QA_FALLBACK)
