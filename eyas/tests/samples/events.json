@@ -1,1 +1,21 @@
-[]
+[
+  {
+    "track_id": 2,
+    "timestamp": 5.84,
+    "confirmation_timestamp": 5.84,
+    "description": "Two individuals in a convenience store, one in dark clothing bending over a shelf, the other standing with hands on hips. Shelves with products are visible, and decorative snowflakes hang above. The floor has a tiled pattern with square accents.",
+    "activity": "The person in dark clothing bends down to interact with a shelf, possibly picking up or examining an item, while the standing person observes. The standing person then stands still, with hands on hips, indicating no active interaction.",
+    "held_objects": [],
+    "pickup_confirmed": true,
+    "picked_up_items": [],
+    "summary": "Two individuals in a convenience store, one in dark clothing bending over a shelf, the other standing with hands on hips. Shelves with products are visible, and decorative snowflakes hang above. The floor has a tiled pattern with square accents. The person in dark clothing bends down to interact with a shelf, possibly picking up or examining an item, while the standing person observes. The standing person then stands still, with hands on hips, indicating no active interaction.",
+    "zone": "counter",
+    "backend": "minicpmv",
+    "raw_observation": "{\n  \"description\": \"Two individuals in a convenience store, one in dark clothing bending over a shelf, the other standing with hands on hips. Shelves with products are visible, and decorative snowflakes hang above. The floor has a tiled pattern with square accents.\",\n  \"activity\": \"The person in dark clothing bends down to interact with a shelf, possibly picking up or examining an item, while the standing person observes. The standing person then stands still, with hands on hips, indicating no active interaction.\",\n  \"held_objects\": [],\n  \"pickup_confirmed\": false,\n  \"picked_up_items\": []\n}",
+    "bbox": [1182, 235, 1476, 912],
+    "confidence": 0.857,
+    "source_video": "20260608_130000_counter.mp4",
+    "source_clip_id": "20260614_121209",
+    "source_event_index": 5
+  }
+]
