@@ -65,7 +65,7 @@ Eyas is an on-device security camera agent built for our teammate's family's con
 | [MiniCPM-V 4.6](https://huggingface.co/openbmb/MiniCPM-V-4.6) | Vision-language observer | ~1.3B params |
 | [Nemotron 3 Nano 4B](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF) | LLM reasoner (GGUF Q4) | ~2.5 GB |
 | [TinyAya Global](https://huggingface.co/CohereLabs/tiny-aya-global-GGUF) | Korean translation (GGUF Q4) | ~0.5 GB |
-| [VoxCPM2](https://huggingface.co/openbmb/MiniCPM-o-2_6) | Text-to-speech | ~2.4B params |
+| [VoxCPM2](https://github.com/OpenBMB/VoxCPM) | Text-to-speech | ~2.4B params |
 
 All models download automatically on first run. No API keys required.
 

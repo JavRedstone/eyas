@@ -1,4 +1,4 @@
-# Eyas — Field Notes
+# Eyas — AI Security Camera Agent
 
 *Field Notes from the Build Small Hackathon. Eyas, which stands for a* small *hawk, is an offline CCTV intelligence agent that turns raw footage into a structured security event log using a chain of* small *models: YOLO11n → MiniCPM-V 4.6 → Nemotron 3 Nano 4B → TinyAya → VoxCPM2 — all running locally with no cloud APIs.*
 
@@ -6,8 +6,8 @@
 
 - [Live Demo](https://huggingface.co/spaces/build-small-hackathon/eyas)
 - [Source Code](https://huggingface.co/spaces/build-small-hackathon/eyas/tree/main)
-- [Social Media Post](Coming soon)
-- [Demo Video](Coming soon)
+- Social Media Post(Coming soon)
+- [Demo Video](https://www.youtube.com/watch?v=x9h7nMv_KeQ)
 
 ---
 
@@ -22,7 +22,7 @@
 
 Our motivation for building this is quite straightforward.
 
-One of our teammates has family who runs a small retail shop, and shoplifting is a problem they experience firsthand. The owners speak Korean and have no affordable tool to review footage automatically.
+One of our teammates has family who runs a small retail shop, and shoplifting is a problem they experience firsthand. 
 
 Like many small businesses, they already have CCTV cameras covering the aisles, entrance, and counter. But in reality, it is impossible to constantly watch every camera, especially when there are multiple groups of customers in the store at the same time. Shoplifters often take advantage of those busy moments.
 
@@ -40,21 +40,19 @@ We believe the key may not be harsher punishment, but immediate deterrence.
 
 If a theft attempt can be detected the moment it happens and staff can be alerted right away, the shoplifter realizes that stealing from this store is not easy. More importantly, the owner gets a chance to respond before the person leaves.
 
-> **"Security cameras are usually used to identify a shoplifter after an incident has already happened."**
+> **"Security cameras are usually used to identify a shoplifter after an incident has already happened."**  
 > <small>보안카메라는 보통 일이 다 끝난 다음에 절도자를 확인하는 용도로 쓰이잖아요.</small>
 
 That is the gap we want to address. Instead of using CCTV only after the fact, we want to help store owners use it in the moment.
 
-> **"A simple alert like 'you might want to check this' would allow us to act right away and potentially prevent shoplifting."**
+> **"A simple alert like 'you might want to check this' would allow us to act right away and potentially prevent shoplifting."**  
 > <small>지금처럼 "이건 확인이 한 번 필요하다"는 식으로 알려주기만 해도, 바로 움직여서 상황을 막을 수 있거든요.</small>
 
 An AI-powered detection system could identify suspicious behavior, notify employees immediately, and give them the opportunity to respond before a theft is completed.
 
 The goal is not to accuse people automatically or replace human judgment. The goal is to give small business owners an extra set of eyes when they cannot watch everything themselves.
 
-The usual pitch for "AI security cameras" is a cloud subscription that ships footage off-site, stores it indefinitely, and charges per camera per month. That is not what a family-run shop wants to sign up for.
-
-The question we started with: can a chain of genuinely small models — the kind that fit on a laptop — do something useful with CCTV footage, entirely locally?
+For stores with limited staff, this kind of system could help protect not only their inventory, but also their peace of mind.
 
 ---
 
@@ -99,10 +97,8 @@ The crop size mattered more than we expected. If a person is partially visible o
 
 ### MiniCPM-V 4.6: surprisingly good at CCTV, with one major catch
 
-<figure>
-  <video controls src="https://cdn-uploads.huggingface.co/production/uploads/667db115d29e971c591a8031/UKcQLiZujktPQ2RD8_wF7.qt"></video>
-  <figcaption><strong>Video 1.</strong> Example VLM observation from a CCTV crop. MiniCPM-V 4.6 does not directly confirm theft, but describes visible actions such as a person reaching toward, picking up, or handling an item.</figcaption>
-</figure>
+https://cdn-uploads.huggingface.co/production/uploads/667db115d29e971c591a8031/UKcQLiZujktPQ2RD8_wF7.qt
+<figcaption><strong>Video 1.</strong> Example VLM observation from a CCTV crop. MiniCPM-V 4.6 does not directly confirm theft, but describes visible actions such as a person reaching toward, picking up, or handling an item.</figcaption>
 
 MiniCPM-V 4.6 was not trained on security footage, but it turned out to be a reasonable observer. Give it a crop of someone reaching toward a shelf and it will often correctly note "person appearing to pick up or handle item." Give it someone lingering near an exit and it notes the positioning. It does not pretend to see things it cannot.
 
@@ -120,10 +116,8 @@ Zone assignment uses configurable polygons from the filename convention (`202406
 
 ### Nemotron 3 Nano 4B: fast enough, but prompting is everything
 
-<figure>
-  <video controls src="https://cdn-uploads.huggingface.co/production/uploads/667db115d29e971c591a8031/jhM_YmkKLJnIC1GpsKg35.qt"></video>
-  <figcaption><strong>Video 2.</strong> Example footage of Nemotron 3 Nano 4B summarizing outputs and handling natural-language Q&A tasks.</figcaption>
-</figure>
+https://cdn-uploads.huggingface.co/production/uploads/667db115d29e971c591a8031/jhM_YmkKLJnIC1GpsKg35.qt
+<figcaption><strong>Video 2.</strong> Example footage of Nemotron 3 Nano 4B handling natural-language Q&A tasks.</figcaption>
 
 Nemotron 3 Nano 4B via llama-cpp-python is the reasoning layer. It handles summarization, risk assessment, natural-language Q&A, and the TTS script.
 
@@ -135,10 +129,8 @@ One thing we did not fully solve: the LLM's context window is 4,096 tokens, and 
 
 ### Translation (TinyAya): cheaper than you'd think
 
-<figure>
-  <video controls src="https://cdn-uploads.huggingface.co/production/uploads/667db115d29e971c591a8031/tgxtr1wWg8CXxWUDs064S.qt"></video>
-  <figcaption><strong>Video 3.</strong> TinyAya translation demo showing local Korean summaries generated from Eyas security events.</figcaption>
-</figure>
+https://cdn-uploads.huggingface.co/production/uploads/667db115d29e971c591a8031/tgxtr1wWg8CXxWUDs064S.qt
+<figcaption><strong>Video 3.</strong> TinyAya translation demo showing local Korean summaries generated from Eyas security events.</figcaption>
 
 TinyAya handles Korean translation of LLM outputs. It runs via llama-cpp-python and caches outputs per source string. In practice, translation is fast (~2–4 seconds per short paragraph) and the quality is good enough for a security summary context.
 
@@ -146,7 +138,7 @@ We only translate LLM-generated text (summary, alert narrative). UI strings are 
 
 ### VoxCPM2 TTS: the fun feature that does not run on CPU
 
-VoxCPM2 (MiniCPM-o-2_6) produces natural-sounding speech from the event summary. On a machine with CUDA it is genuinely impressive — the audio brief sounds like a calm security system readout.
+VoxCPM2 produces natural-sounding speech from the event summary. On a machine with CUDA it is genuinely impressive — the audio brief sounds like a calm security system readout.
 
 The problem: it requires CUDA. On HF Spaces CPU tier and on machines without a GPU, we skip TTS gracefully (the Audio Report tab shows an explanatory message). This is the one part of the pipeline that is not truly CPU-friendly, and we knew it going in. The architecture marks TTS as optional throughout; if `torch.cuda.is_available()` is false, the endpoint returns an empty audio object and the UI adapts.
 
@@ -158,10 +150,8 @@ The hackathon requires a Gradio app. It does not require a Gradio *UI*.
 
 Gradio's `gr.Blocks` lets you expose all pipeline logic as Gradio API endpoints while serving a completely custom frontend as static files. The React frontend communicates with Gradio via `@gradio/client` exactly as the default UI would; from Gradio's perspective nothing is different.
 
-<figure>
-  <video controls src="https://cdn-uploads.huggingface.co/production/uploads/667db115d29e971c591a8031/E27q87wFn15LWEDIVrPEX.qt"></video>
-  <figcaption><strong>Video 4.</strong> Eyas frontend demo. The custom SPA supports multi-camera review with resizable split panels, annotated playback, event timelines, and live pipeline progress.</figcaption>
-</figure>
+https://cdn-uploads.huggingface.co/production/uploads/667db115d29e971c591a8031/E27q87wFn15LWEDIVrPEX.qt
+<figcaption><strong>Video 4.</strong>  Eyas frontend demo. The custom SPA supports multi-camera review with resizable split panels, annotated playback, event timelines, and live pipeline progress.</figcaption>
 
 This was worth doing. The default Gradio UI makes tabbed analysis tools look like form submissions. A proper SPA with resizable split panels, a scatter-chart event timeline, and a live-updating pipeline progress view changes how the tool *feels* to use. Our target users — the people we built this for — understood what the annotated video and event table were within 30 seconds. That would not have happened with a Gradio Dataframe and a Gradio Video component on the same page.
 
@@ -195,15 +185,15 @@ The cost: the custom UI takes real time to build and debug. We spent roughly a t
 
 ## Field test — Joy Convenience Store
 
-We filmed the demo at Joy Convenience Store, the convenience store we used as our filming location. It is a close real-world proxy for our target store — same layout, same CCTV setup — but a separate business from our teammate's family's shop. It was the first time we ran Eyas on footage from an actual operating store rather than test clips we found online.
+We filmed the demo at Joy Convenience Store. It is a close real-world proxy for our target store — similar layout, CCTV setup but a separate business from our teammate's family's shop. It was the first time we ran Eyas on footage from an actual operating store rather than test clips we found online.
 
 Four camera angles were covered: aisle 1, aisle 2, aisle 3, and aisle 4 (the main shopping corridor). We named each clip using the filename convention (`20260615_130000_aisle1.m4v`, etc.) so the zone labels map automatically without any configuration.
 
 **What we learned from running on real footage:**
 
-The pipeline handled the real-world conditions better than expected. Store CCTV is typically high-angle, wide-FOV, compressed H.264 — different from the online footage we had been testing on. YOLO tracked people reliably despite the unflattering angle; the bounding-box padding helped the VLM get enough context from the tighter crops.
+The pipeline handled the real-world conditions better than expected. Store CCTV is typically high-angle, wide-FOV, compressed H.264 — different from the online footage we had been testing on. YOLO tracked people reliably despite the unconventional angle; the bounding-box padding helped the VLM get enough context from the tighter crops.
 
-The most useful output in the store context turned out to be the per-zone activity count in the Detection Metrics tab. The store operators could immediately see which aisle had the most foot traffic and which periods were quiet. This is the kind of operational question — "how busy was aisle 3 this afternoon?" — that does not require a full event narrative to answer.
+The most useful output in the store context turned out to be the per-zone activity count in the Detection Metrics tab. The store operators could immediately see which aisle had the most foot traffic and which periods were quiet. This is the kind of operational question: "how busy was aisle 3 this afternoon?" that does not require a full event narrative to answer.
 
 The event timeline resonated as a communication tool. Showing a scatter chart of timestamped events and then clicking through to a six-second clip for each one made the footage review feel like a triage task rather than a search task. The owner could review a full afternoon session in under three minutes.
 
@@ -221,7 +211,7 @@ The demo video was recorded at Joy Convenience Store using these four aisle clip
 - [MiniCPM-V 4.6](https://huggingface.co/openbmb/MiniCPM-V-4.6) — OpenBMB
 - [Nemotron 3 Nano 4B GGUF](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF) — NVIDIA
 - [TinyAya](https://huggingface.co/CohereLabs/tiny-aya-global-GGUF) — Cohere Labs
-- [VoxCPM2 / MiniCPM-o-2_6](https://huggingface.co/openbmb/MiniCPM-o-2_6) — OpenBMB
+- [VoxCPM2](https://github.com/OpenBMB/VoxCPM) — OpenBMB
 - [llama-cpp-python](https://github.com/abetlen/llama-cpp-python) — Andrei Betlen et al.
 - [React](https://react.dev/), [Vite](https://vitejs.dev/), [MUI](https://mui.com/), [Recharts](https://recharts.org/), [Framer Motion](https://www.framer.com/motion/)
 
