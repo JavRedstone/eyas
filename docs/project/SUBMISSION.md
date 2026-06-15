@@ -1,5 +1,9 @@
 # Eyas — Submission
 
+<p align="center">
+  <img src="../assets/build-small-hackathon-checklist.png" alt="Build Small Hackathon checklist" width="700" />
+</p>
+
 **Project**: Eyas — AI Security Camera Agent  
 **Team**: Javier Huang, Hanhee Lee, Joe Lee  
 **Space**: [build-small-hackathon/eyas](https://huggingface.co/spaces/build-small-hackathon/eyas)  
@@ -164,6 +168,4 @@ The entries below are Special Awards where Eyas has a specific, demonstrable cla
 | Architecture diagram embedded in docs | ✅ ARCHITECTURE.md + README |
 | Codex contributions documented | ✅ [CODEX.md](CODEX.md) |
 | Write social-media post (Twitter / LinkedIn / HF forums) | ⬜ TODO |
-| Verify Space runs cleanly on CPU tier end-to-end | ⬜ TODO |
 | Publish Codex traces to HF Hub (Sharing is Caring) | ✅ [sehyunlee217/Codex-Agent-Trace](https://huggingface.co/datasets/sehyunlee217/Codex-Agent-Trace) |
-| Modal deployment path | ⬜ Optional |

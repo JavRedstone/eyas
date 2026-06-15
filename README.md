@@ -107,3 +107,7 @@ All models download automatically on first run. No API keys required.
 | [Hackathon](docs/project/HACKATHON.md) | Track info and award categories |
 
 Live space: [build-small-hackathon/eyas](https://huggingface.co/spaces/build-small-hackathon/eyas)
+
+<p align="center">
+  <img src="docs/assets/build-small-hackathon-checklist.png" alt="Build Small Hackathon checklist" width="700" />
+</p>
