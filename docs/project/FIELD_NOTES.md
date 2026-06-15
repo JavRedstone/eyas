@@ -6,7 +6,7 @@
 
 - [Live Demo](https://huggingface.co/spaces/build-small-hackathon/eyas)
 - [Source Code](https://huggingface.co/spaces/build-small-hackathon/eyas/tree/main)
-- Social Media Post(Coming soon)
+- [Social Media Post](https://www.linkedin.com/feed/update/urn:li:activity:7472122729828364288/)
 - [Demo Video](https://www.youtube.com/watch?v=x9h7nMv_KeQ)
 
 ---

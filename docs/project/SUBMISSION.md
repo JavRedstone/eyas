@@ -95,7 +95,7 @@ The checklist below explains why Eyas satisfies all three hard constraints. The 
 - [x] **Gradio app** — `eyas/app.py` is a `gr.Blocks` app; all pipeline logic is exposed as Gradio API endpoints consumed by the React frontend via `@gradio/client`.
 - [x] **Hugging Face Space** — [build-small-hackathon/eyas](https://huggingface.co/spaces/build-small-hackathon/eyas) (CPU tier; ZeroGPU-ready via `EYAS_ZERO_GPU=1`).
 - [x] **Demo video** — Filmed at Joy Convenience Store. Shows the full pipeline: multi-clip upload → YOLO tracking → VLM captioning → event timeline → Summary & Alerts → Ask Footage Q&A → Audio Report.
-- [ ] **Social-media post** — *(Draft and post before final submission.)*
+- [x] **Social-media post** — [LinkedIn post](https://www.linkedin.com/feed/update/urn:li:activity:7472122729828364288/) · [YouTube social video](https://www.youtube.com/watch?v=KSGNbswNRSI)
 
 ---
 
@@ -161,11 +161,11 @@ The entries below are Special Awards where Eyas has a specific, demonstrable cla
 
 | Item | Status |
 |---|---|
-| Record demo video (full pipeline, all tabs visible) | ✅ Filmed at Joy Convenience Store (demo filming location) |
+| Record demo video (full pipeline, all tabs visible) | ✅ [YouTube](https://www.youtube.com/watch?v=x9h7nMv_KeQ) — filmed at Joy Convenience Store |
 | Real-user evidence | ✅ Target: teammate's family's store. Demo footage: Joy Convenience Store. See [FIELD_NOTES.md](FIELD_NOTES.md) |
 | Field Notes | ✅ [FIELD_NOTES.md](FIELD_NOTES.md) |
 | Model documentation (one doc per model) | ✅ [docs/models/](../models/) |
 | Architecture diagram embedded in docs | ✅ ARCHITECTURE.md + README |
 | Codex contributions documented | ✅ [CODEX.md](CODEX.md) |
-| Write social-media post (Twitter / LinkedIn / HF forums) | ⬜ TODO |
+| Write social-media post | ✅ [LinkedIn](https://www.linkedin.com/feed/update/urn:li:activity:7472122729828364288/) · [YouTube](https://www.youtube.com/watch?v=KSGNbswNRSI) |
 | Publish Codex traces to HF Hub (Sharing is Caring) | ✅ [sehyunlee217/Codex-Agent-Trace](https://huggingface.co/datasets/sehyunlee217/Codex-Agent-Trace) |
