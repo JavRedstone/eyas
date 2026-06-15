@@ -23,7 +23,8 @@ The prompt asks the model to respond with structured JSON covering:
   "description":       "Full scene description with all people visible",
   "activity":          "What the tracked person is specifically doing",
   "held_objects":      [{"name": "...", "count": 1}],
-  "pickup_confirmed":  true
+  "pickup_confirmed":  true,
+  "picked_up_items":   [{"name": "...", "count": 1}]
 }
 ```
 
@@ -49,7 +50,7 @@ class PersonObservation:
 ```python
 MODEL_ID = "openbmb/MiniCPM-V-4.6"
 
-model = AutoModel.from_pretrained(MODEL_ID, trust_remote_code=True, ...)
+model = AutoModelForImageTextToText.from_pretrained(MODEL_ID, ...)
 processor = AutoProcessor.from_pretrained(MODEL_ID, trust_remote_code=True)
 
 # Inference

@@ -36,7 +36,7 @@ Each track also carries a padded crop of the bounding box. Those crops are buffe
 PersonTracker(
     weights = "eyas/models/yolo11n.pt",  # nano — fastest, ~6 MB
     tracker = "botsort.yaml",            # Re-ID: survives occlusion, best for store footage
-    conf    = 0.3,                       # confidence threshold
+    conf    = 0.6,                       # confidence threshold
     classes = [0],                       # COCO class 0 = person only
 )
 ```
