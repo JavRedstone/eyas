@@ -63,11 +63,11 @@ Full localization without restart:
 
 ## Main Track: Backyard AI
 
-The checklist below explains why Eyas is the strongest submission for the Backyard AI track. Eyas was built for a real person — the owners of our teammate's family's Korean-owned convenience store — who today manually scrub overnight CCTV footage after suspected theft. We demoed on real four-camera aisle footage filmed at Joy Convenience Store (a Korean-run store with the same layout and CCTV setup as our target), and the full pipeline — tracking, event log, bilingual summary, spoken audio brief — ran on that footage and produced reports the store operators could read immediately. The problem is specific, the user is real, and the evidence is on film.
+The checklist below explains why Eyas is the strongest submission for the Backyard AI track. Eyas was built for a real person — the owners of our teammate's family's Korean-owned convenience store — who today manually scrub overnight CCTV footage after suspected theft. We demoed on real four-camera aisle footage filmed at Joy Convenience Store (a convenience store used as our filming location, with the same layout and CCTV setup as our target), and the full pipeline — tracking, event log, bilingual summary, spoken audio brief — ran on that footage and produced reports the store operators could read immediately. The problem is specific, the user is real, and the evidence is on film.
 
 - [x] **Specific, real problem** — Small retail owners have no affordable tool to automatically review CCTV footage for theft, loitering, and unusual activity. Manual review of 8-hour overnight recordings is impractical.
 - [x] **Built for a real person** — Built for our teammate's family, who runs a small Korean-owned convenience store. The tool runs on their existing laptop with no subscription, no cloud account, and no API keys.
-- [x] **Evidence of real use** — Demo filmed at Joy Convenience Store (a Korean-run store used as our filming location; same profile as the target store). Pipeline run on actual four-camera aisle footage. Field notes at [FIELD_NOTES.md](FIELD_NOTES.md).
+- [x] **Evidence of real use** — Demo filmed at Joy Convenience Store (our filming location; same layout and CCTV profile as the target store). Pipeline run on actual four-camera aisle footage. Field notes at [FIELD_NOTES.md](FIELD_NOTES.md).
 - [x] **Honest small-model fit** — Total loaded weight ~8.7 B params / ~6 GB. Runs fully on a laptop CPU; GPU optional.
 - [x] **Polished Gradio app** — Custom React + MUI frontend; resizable panels; scatter-chart event timeline; animated splash; dark/light mode.
 

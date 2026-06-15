@@ -195,7 +195,7 @@ The cost: the custom UI takes real time to build and debug. We spent roughly a t
 
 ## Field test — Joy Convenience Store
 
-We filmed the demo at Joy Convenience Store, a Korean-run convenience store we used as our filming location. It is a close real-world proxy for our target store — same layout, same CCTV setup, Korean-speaking operators — but a separate business from our teammate's family's shop. It was the first time we ran Eyas on footage from an actual operating store rather than test clips we found online.
+We filmed the demo at Joy Convenience Store, the convenience store we used as our filming location. It is a close real-world proxy for our target store — same layout, same CCTV setup — but a separate business from our teammate's family's shop. It was the first time we ran Eyas on footage from an actual operating store rather than test clips we found online.
 
 Four camera angles were covered: aisle 1, aisle 2, aisle 3, and aisle 4 (the main shopping corridor). We named each clip using the filename convention (`20260615_130000_aisle1.m4v`, etc.) so the zone labels map automatically without any configuration.
 
