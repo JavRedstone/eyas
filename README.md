@@ -16,6 +16,11 @@ tags:
   - sponsor:nvidia
   - sponsor:openai
   - sponsor:cohere
+  - achievement:offgrid
+  - achievement:offbrand
+  - achievement:llama
+  - achievement:sharing
+  - achievement:fieldnotes
 ---
 
 <p align="center">
