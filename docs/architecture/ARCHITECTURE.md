@@ -5,7 +5,7 @@ Linear processing pipeline: raw video → tracks → observations → events →
 ## Pipeline overview
 
 <p align="center">
-  <img src="eyas-architecture-diagram.png" alt="Eyas architecture diagram" width="900" />
+  <img src="../assets/eyas-architecture-diagram.png" alt="Eyas architecture diagram" width="900" />
 </p>
 
 ```
@@ -73,7 +73,7 @@ The pipeline runs in a background thread; Gradio streams progress updates to the
 - **Frontend**: React + Vite SPA served as static files from `eyas/ui/dist/`
 - **Communication**: `@gradio/client` JS SDK via `/gradio_api`
 - Resizable split layout: video + footage controls on the left, analysis tabs on the right
-- See [ui/README.md](../eyas/ui/README.md) for the full tab breakdown
+- See [ui/README.md](../../eyas/ui/README.md) for the full tab breakdown
 
 ## Data flow (single pipeline run)
 
@@ -128,4 +128,4 @@ A structured event as produced by `event_structuring/` and consumed by `llm/`:
 
 ## Deployment
 
-See the root [README.md](../README.md) for Docker and HF Spaces deployment details.
+See the root [README.md](../../README.md) for Docker and HF Spaces deployment details.

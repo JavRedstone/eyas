@@ -254,7 +254,7 @@ That migration is not currently planned. The `gr.Blocks` + hidden-components app
 | `eyas/ui/gradio_app.py` | All API endpoints as closures |
 | `eyas/app.py` | Launch entry point, preferences |
 | `eyas/ui/README.md` | Tab structure, i18n, component tree |
-| `docs/ARCHITECTURE.md` | Full pipeline and data-flow description |
+| `docs/architecture/ARCHITECTURE.md` | Full pipeline and data-flow description |
 
 ---
 

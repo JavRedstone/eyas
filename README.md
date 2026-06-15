@@ -19,11 +19,16 @@ tags:
 ---
 
 <p align="center">
-  <img src="docs/eyas_logo_wide.png" alt="Eyas" width="600" />
+  <img src="docs/assets/eyas_logo_wide.png" alt="Eyas" width="600" />
 </p>
 
 # Eyas: AI Security Camera Agent
-### By: Javier Huang, Hanhee Lee, Joe Lee
+
+| | Name | HuggingFace |
+|---|---|---|
+| | Javier Huang | [@JavRedstone](https://huggingface.co/JavRedstone) |
+| | Hanhee Lee | [@hanheelee](https://huggingface.co/hanheelee) |
+| | Joe Lee | [@sehyunlee217](https://huggingface.co/sehyunlee217) |
 
 Eyas is an on-device security camera agent built for our teammate's family's convenience store. It runs person tracking, event detection, and LLM reasoning over CCTV footage to surface theft, loitering, and suspicious activity as a structured, searchable log.
 
@@ -42,7 +47,7 @@ Eyas is an on-device security camera agent built for our teammate's family's con
 ## Architecture
 
 <p align="center">
-  <img src="docs/eyas-architecture-diagram.png" alt="Eyas architecture diagram" width="900" />
+  <img src="docs/assets/eyas-architecture-diagram.png" alt="Eyas architecture diagram" width="900" />
 </p>
 
 ## Models
@@ -61,14 +66,37 @@ All models download automatically on first run. No API keys required.
 
 ## Docs
 
+**Guides**
+
 | Document | Contents |
 |---|---|
-| [Setup & Development](docs/SETUP.md) | Quick start, local dev, Docker, HF Spaces deploy |
-| [Architecture](docs/ARCHITECTURE.md) | Pipeline diagram, component breakdown, event schema |
-| [Field Notes](docs/FIELD_NOTES.md) | Build log — design decisions, lessons from each stage, store field test |
-| [AI Theft Detection](docs/AI_THEFT_DETECTION.md) | Capabilities, limits, and best practices |
-| [Codex Contributions](docs/CODEX.md) | Agent-assisted commits, reasoning traces |
-| [Off-Brand Frontend](docs/OFF_BRAND.md) | Why and how the UI is a React SPA instead of Gradio components |
-| [Hackathon](docs/HACKATHON.md) | Track info and submission details |
+| [Setup & Development](docs/guides/SETUP.md) | Quick start, local dev, Docker, HF Spaces deploy |
+| [AI Theft Detection](docs/guides/AI_THEFT_DETECTION.md) | Capabilities, limits, and best practices |
+| [Codex Contributions](docs/project/CODEX.md) | Agent-assisted commits, reasoning traces |
+
+**Architecture**
+
+| Document | Contents |
+|---|---|
+| [Architecture](docs/architecture/ARCHITECTURE.md) | Pipeline diagram, component breakdown, event schema |
+| [Off-Brand Frontend](docs/architecture/OFF_BRAND.md) | Why and how the UI is a React SPA instead of Gradio components |
+
+**Models**
+
+| Document | Contents |
+|---|---|
+| [YOLO11n](docs/models/yolo11n.md) | Person detection + BotSORT tracking |
+| [MiniCPM-V 4.6](docs/models/minicpm-v.md) | Vision-language observer (VLM) |
+| [Nemotron 3 Nano 4B](docs/models/nemotron-nano.md) | LLM reasoner — summary, Q&A, alerts |
+| [TinyAya Global](docs/models/tinyaya.md) | Korean translation |
+| [VoxCPM2](docs/models/voxcpm2.md) | Text-to-speech audio report |
+
+**Project**
+
+| Document | Contents |
+|---|---|
+| [Field Notes](docs/project/FIELD_NOTES.md) | Build log — design decisions, lessons from each stage, store field test |
+| [Submission](docs/project/SUBMISSION.md) | Hackathon checklist and what we built |
+| [Hackathon](docs/project/HACKATHON.md) | Track info and award categories |
 
 Live space: [build-small-hackathon/eyas](https://huggingface.co/spaces/build-small-hackathon/eyas)

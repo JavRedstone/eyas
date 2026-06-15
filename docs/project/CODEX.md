@@ -3,7 +3,7 @@
 This document records the work done by [OpenAI Codex](https://openai.com/codex) on the Eyas pipeline during the Build Small Hackathon.
 All Codex commits carry the git co-author trailer `Co-Authored-By: Codex <codex@openai.com>` and can be verified on GitHub.
 
-Full session-by-session reasoning traces are stored in [`docs/codex-traces/`](codex-traces/) as JSONL files.
+Full session-by-session reasoning traces are stored in [`docs/../codex-traces/`](../codex-traces/) as JSONL files.
 
 ---
 
@@ -75,17 +75,17 @@ Removed the `_draw_zoom_inset` function that pasted a cropped close-up into the 
 
 ## Reasoning traces
 
-Codex session logs (tool calls, reasoning steps, file edits) are stored in [`docs/codex-traces/`](codex-traces/). Each date folder contains a `trace.jsonl` with one JSON object per agent step.
+Codex session logs (tool calls, reasoning steps, file edits) are stored in [`docs/../codex-traces/`](../codex-traces/). Each date folder contains a `trace.jsonl` with one JSON object per agent step.
 
 | Session | Entries | Focus |
 |---------|---------|-------|
-| [2026-06-07](codex-traces/2026-06-07/trace.jsonl) | 1709 | Initial pipeline, LLM integration, Gradio API backend |
-| [2026-06-08](codex-traces/2026-06-08/trace.jsonl) | 1273 | Multi-camera support, event structuring, frontend grid |
-| [2026-06-09](codex-traces/2026-06-09/trace.jsonl) | 1114 | Summary quality, LLM prompt tuning, Korean locale |
-| [2026-06-10](codex-traces/2026-06-10/trace.jsonl) | 173  | HF Spaces deployment fixes, GPU/CPU switching |
-| [2026-06-12](codex-traces/2026-06-12/trace.jsonl) | 182  | Session restore, All-view aggregation, architecture diagram |
-| [2026-06-13](codex-traces/2026-06-13/trace.jsonl) | 330  | Pickup detection accuracy, bounding box states, event UI |
+| [2026-06-07](../codex-traces/2026-06-07/trace.jsonl) | 1709 | Initial pipeline, LLM integration, Gradio API backend |
+| [2026-06-08](../codex-traces/2026-06-08/trace.jsonl) | 1273 | Multi-camera support, event structuring, frontend grid |
+| [2026-06-09](../codex-traces/2026-06-09/trace.jsonl) | 1114 | Summary quality, LLM prompt tuning, Korean locale |
+| [2026-06-10](../codex-traces/2026-06-10/trace.jsonl) | 173  | HF Spaces deployment fixes, GPU/CPU switching |
+| [2026-06-12](../codex-traces/2026-06-12/trace.jsonl) | 182  | Session restore, All-view aggregation, architecture diagram |
+| [2026-06-13](../codex-traces/2026-06-13/trace.jsonl) | 330  | Pickup detection accuracy, bounding box states, event UI |
 
 ---
 
-For the structured event schema that flows between these stages, see [ARCHITECTURE.md — Event schema](ARCHITECTURE.md#event-schema).
+For the structured event schema that flows between these stages, see [ARCHITECTURE.md — Event schema](../architecture/ARCHITECTURE.md#event-schema).
