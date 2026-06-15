@@ -1,5 +1,4 @@
-# Eyas
-### AI Security Camera Agent
+# Eyas: AI Security Camera Agent
 
 *Field Notes from the Build Small Hackathon. Eyas, which stands for a* small *hawk, is an offline CCTV intelligence agent that turns raw footage into a structured security event log using a chain of* small *models: YOLO11n → MiniCPM-V 4.6 → Nemotron 3 Nano 4B → TinyAya → VoxCPM2, all running locally with no cloud APIs.*
 
@@ -190,7 +189,7 @@ We filmed our social media post at Joy Convenience Store using mock camera angle
 - [MiniCPM-V 4.6](https://huggingface.co/openbmb/MiniCPM-V-4.6), OpenBMB
 - [Nemotron 3 Nano 4B GGUF](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF), NVIDIA
 - [TinyAya](https://huggingface.co/CohereLabs/tiny-aya-global-GGUF), Cohere Labs
-- [VoxCPM2](https://github.com/OpenBMB/VoxCPM), OpenBMB
+- [VoxCPM2](https://huggingface.co/openbmb/VoxCPM2), OpenBMB
 - [llama-cpp-python](https://github.com/abetlen/llama-cpp-python), Andrei Betlen et al.
 - [React](https://react.dev/), [Vite](https://vitejs.dev/), [MUI](https://mui.com/), [Recharts](https://recharts.org/), [Framer Motion](https://www.framer.com/motion/)
 
