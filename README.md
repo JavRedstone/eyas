@@ -35,6 +35,8 @@ tags:
 | | Hanhee Lee | [@hanheelee](https://huggingface.co/hanheelee) |
 | | Joe Lee | [@sehyunlee217](https://huggingface.co/sehyunlee217) |
 
+**[HuggingFace Space](https://huggingface.co/spaces/build-small-hackathon/eyas)** · **[GitHub](https://github.com/JavRedstone/eyas)**
+
 Eyas is an on-device security camera agent built for our teammate's family's convenience store. It runs person tracking, event detection, and LLM reasoning over CCTV footage to surface theft, loitering, and suspicious activity as a structured, searchable log.
 
 ---
