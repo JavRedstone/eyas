@@ -61,7 +61,7 @@ The question we started with: can a chain of genuinely small models — the kind
 ## The pipeline design
 
 <figure>
-  <img src="https://cdn-uploads.huggingface.co/production/uploads/667db115d29e971c591a8031/RaQNiYclDdLtanvmZ7Uam.png" alt="Eyas architecture diagram">
+  <img src="https://media.githubusercontent.com/media/JavRedstone/eyas/refs/heads/main/docs/assets/eyas-architecture-diagram.png" alt="Eyas architecture diagram">
   <figcaption><strong>Figure 1.</strong> Eyas architecture diagram. Raw CCTV footage is processed locally through YOLO11n for detection, MiniCPM-V 4.6 for visual analysis, and Nemotron 3 Nano 4B for structured event-log reasoning.</figcaption>
 </figure>
 
