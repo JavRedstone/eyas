@@ -1,12 +1,56 @@
-# Field Notes — Building Eyas
+# Eyas — Field Notes
 
-*A build log from the Build Small Hackathon. Eyas is an offline CCTV intelligence agent that turns raw footage into a structured security event log using a chain of small models — YOLO11n → MiniCPM-V 4.6 → Nemotron 3 Nano 4B — all running locally with no cloud APIs.*
+*Field Notes from the Build Small Hackathon. Eyas, which stands for a* small *hawk, is an offline CCTV intelligence agent that turns raw footage into a structured security event log using a chain of* small *models: YOLO11n → MiniCPM-V 4.6 → Nemotron 3 Nano 4B → TinyAya → VoxCPM2 — all running locally with no cloud APIs.*
+
+#### Project Links
+
+- [Live Demo](https://huggingface.co/spaces/build-small-hackathon/eyas)
+- [Source Code](https://huggingface.co/spaces/build-small-hackathon/eyas/tree/main)
+- [Social Media Post](Coming soon)
+- [Demo Video](Coming soon)
 
 ---
 
-## Why this project
+## Why we built this
 
-The problem is embarrassingly concrete. One of our teammates has family who runs Joy Convenience Store, a small retail shop with CCTV cameras covering the aisles, entrance, and counter. When something goes missing or a dispute arises, reviewing footage means sitting with a laptop and scrubbing through four to eight hours of video. It takes 30–60 minutes of tedious skimming to find a two-minute window.
+<figure>
+  <audio controls src="https://cdn-uploads.huggingface.co/production/uploads/667db115d29e971c591a8031/Q3pRX9Gr0n6CcKeq6973O.mpga"></audio>
+  <figcaption>
+    <strong>Audio 1.</strong> Interview with one of our teammate's family who runs a retail shop (Korean)
+  </figcaption>
+</figure>
+
+Our motivation for building this is quite straightforward.
+
+One of our teammates has family who runs a small retail shop, and shoplifting is a problem they experience firsthand. The owners speak Korean and have no affordable tool to review footage automatically.
+
+Like many small businesses, they already have CCTV cameras covering the aisles, entrance, and counter. But in reality, it is impossible to constantly watch every camera, especially when there are multiple groups of customers in the store at the same time. Shoplifters often take advantage of those busy moments.
+
+Even when the owner is almost certain that something has been stolen, they cannot immediately accuse someone without first reviewing the footage and confirming what happened. By the time they check the video, verify the incident, and understand what was taken, the person has usually already left the store.
+
+The financial loss is only one part of the problem. The emotional toll can be even greater.
+
+That is why this problem felt worth solving to us.
+
+Repeated theft makes owners more suspicious of customers, creates constant stress, and can ruin their entire day. Because each incident may seem small on its own, shoplifting is often not treated as a high priority. Over time, many small business owners simply stop reporting it.
+
+But ignoring the problem does not make it disappear. In many cases, the same people continue stealing, not only from one store, but from many others.
+
+We believe the key may not be harsher punishment, but immediate deterrence.
+
+If a theft attempt can be detected the moment it happens and staff can be alerted right away, the shoplifter realizes that stealing from this store is not easy. More importantly, the owner gets a chance to respond before the person leaves.
+
+> **"Security cameras are usually used to identify a shoplifter after an incident has already happened."**
+> <small>보안카메라는 보통 일이 다 끝난 다음에 절도자를 확인하는 용도로 쓰이잖아요.</small>
+
+That is the gap we want to address. Instead of using CCTV only after the fact, we want to help store owners use it in the moment.
+
+> **"A simple alert like 'you might want to check this' would allow us to act right away and potentially prevent shoplifting."**
+> <small>지금처럼 "이건 확인이 한 번 필요하다"는 식으로 알려주기만 해도, 바로 움직여서 상황을 막을 수 있거든요.</small>
+
+An AI-powered detection system could identify suspicious behavior, notify employees immediately, and give them the opportunity to respond before a theft is completed.
+
+The goal is not to accuse people automatically or replace human judgment. The goal is to give small business owners an extra set of eyes when they cannot watch everything themselves.
 
 The usual pitch for "AI security cameras" is a cloud subscription that ships footage off-site, stores it indefinitely, and charges per camera per month. That is not what a family-run shop wants to sign up for.
 
@@ -16,11 +60,18 @@ The question we started with: can a chain of genuinely small models — the kind
 
 ## The pipeline design
 
+<figure>
+  <img src="https://cdn-uploads.huggingface.co/production/uploads/667db115d29e971c591a8031/RaQNiYclDdLtanvmZ7Uam.png" alt="Eyas architecture diagram">
+  <figcaption><strong>Figure 1.</strong> Eyas architecture diagram. Raw CCTV footage is processed locally through YOLO11n for detection, MiniCPM-V 4.6 for visual analysis, and Nemotron 3 Nano 4B for structured event-log reasoning.</figcaption>
+</figure>
+
 We went through several designs before landing on the one we shipped.
 
-**First instinct: VLM end-to-end.** Run the vision-language model directly on video. Every N frames, ask the VLM "is anything suspicious happening?" This worked in the notebook but was painfully slow (MiniCPM-V 4.6 on CPU takes 3–8 seconds per image, not per second of video) and produced a wall of narrative text with no structure. We could not reliably extract *when* or *where* from the output.
+### Our first instinct: VLM end-to-end
 
-**What we actually shipped:** a three-stage chain where each model does only what it is good at.
+Run the vision-language model directly on video. Every `N` frames, ask the VLM "is anything suspicious happening?" This worked in the notebook but was painfully slow (MiniCPM-V 4.6 on CPU takes 3–8 seconds per image, not per second of video) and produced a wall of narrative text with no structure. We could not reliably extract *when* or *where* from the output.
+
+### What we actually shipped: a three-stage chain where each model does only what it is good at
 
 ```
 YOLO11n (6 MB)          — detect and track people frame by frame
@@ -32,7 +83,7 @@ heuristic structurer    — convert observations into typed events with timestam
 Nemotron 3 Nano 4B      — reason over the event log, answer questions, write the report
 ```
 
-The heuristic structurer in the middle turned out to be the most important piece. It converts the VLM's free-form observations into a crisp event log before the LLM ever sees them. The LLM never has to look at pixels; it reasons over structured JSON. This made the LLM's job much easier and its outputs far more consistent.
+The heuristic structurer in the middle turned out to be the most important piece. It converts the VLM's free-form observations into event logs before the LLM ever sees them. The LLM never has to look at the raw pixels. Instead it reasons over structured JSON of the actual events. This made the LLM's job much easier and its outputs far more consistent.
 
 ---
 
@@ -44,15 +95,20 @@ YOLO11n is impressively fast even on CPU — about 30–80 ms per frame dependin
 
 The tricky part was deciding which frames to send to the VLM. Sending every frame per track would take hours. We settled on sub-sampling to at most `k` frames per track (currently k=4), selecting frames spread across the track's lifetime to capture entry, mid-dwell, and exit states.
 
-The crop size matters more than we expected. If a person is partially visible or in poor lighting, the VLM produces vague or hedged descriptions. We added padding to bounding boxes (15% on each side) which improved VLM confidence noticeably.
+The crop size mattered more than we expected. If a person is partially visible or in poor lighting, the VLM produces vague or incorrect descriptions. We added padding to bounding boxes (15% on each side) which improved VLM confidence and gave the model enough context to identify interactions between the person and nearby objects.
 
 ### MiniCPM-V 4.6: surprisingly good at CCTV, with one major catch
+
+<figure>
+  <video controls src="https://cdn-uploads.huggingface.co/production/uploads/667db115d29e971c591a8031/UKcQLiZujktPQ2RD8_wF7.qt"></video>
+  <figcaption><strong>Video 1.</strong> Example VLM observation from a CCTV crop. MiniCPM-V 4.6 does not directly confirm theft, but describes visible actions such as a person reaching toward, picking up, or handling an item.</figcaption>
+</figure>
 
 MiniCPM-V 4.6 was not trained on security footage, but it turned out to be a reasonable observer. Give it a crop of someone reaching toward a shelf and it will often correctly note "person appearing to pick up or handle item." Give it someone lingering near an exit and it notes the positioning. It does not pretend to see things it cannot.
 
 The major catch: **it will not confirm a pickup unless it is confident.** The model is well-calibrated about uncertainty, which means `pickup_confirmed: false` is the common case even for genuine pickups captured at low resolution or from an oblique angle. We ended up leaning on the heuristics more than the VLM's explicit judgment — the VLM's description text was more useful than its boolean output.
 
-We prompt the VLM to return structured JSON (`description`, `activity`, `held_objects`, `pickup_confirmed`). In practice the JSON is parseable about 85% of the time; the rest requires a fallback extraction pass. We have a `_try_parse_vlm_json` helper that strips markdown fences, handles trailing commas, and falls back to regex extraction for the fields we need. Not elegant, but robust.
+We prompt the VLM to return structured JSON (`description`, `activity`, `held_objects`, `pickup_confirmed`). In practice the JSON is parseable about 85% of the time; the rest requires a fallback extraction pass. We have a `_try_parse_vlm_json` helper that strips markdown fences, handles trailing commas, and falls back to regex extraction for the fields we need.
 
 ### Event structuring: the glue nobody talks about
 
@@ -64,6 +120,11 @@ Zone assignment uses configurable polygons from the filename convention (`202406
 
 ### Nemotron 3 Nano 4B: fast enough, but prompting is everything
 
+<figure>
+  <video controls src="https://cdn-uploads.huggingface.co/production/uploads/667db115d29e971c591a8031/jhM_YmkKLJnIC1GpsKg35.qt"></video>
+  <figcaption><strong>Video 2.</strong> Example footage of Nemotron 3 Nano 4B summarizing outputs and handling natural-language Q&A tasks.</figcaption>
+</figure>
+
 Nemotron 3 Nano 4B via llama-cpp-python is the reasoning layer. It handles summarization, risk assessment, natural-language Q&A, and the TTS script.
 
 On CPU (M-series Mac), the Q4_K_M GGUF runs at roughly 12–18 tokens/second. For a summary of 15–20 events, this is 15–25 seconds of wait time — acceptable for a security review tool that is not real-time. On HF Spaces CPU (shared x86), it is closer to 4–7 tokens/second, which is slow but usable.
@@ -73,6 +134,11 @@ The prompt structure matters enormously. Asking the LLM to reason over a raw JSO
 One thing we did not fully solve: the LLM's context window is 4,096 tokens, and a busy night's event log (50+ events with VLM descriptions) can exceed that. We truncate by recency and priority (pickups and high-confidence events first), but the right answer is a retrieval step that we did not have time to implement.
 
 ### Translation (TinyAya): cheaper than you'd think
+
+<figure>
+  <video controls src="https://cdn-uploads.huggingface.co/production/uploads/667db115d29e971c591a8031/tgxtr1wWg8CXxWUDs064S.qt"></video>
+  <figcaption><strong>Video 3.</strong> TinyAya translation demo showing local Korean summaries generated from Eyas security events.</figcaption>
+</figure>
 
 TinyAya handles Korean translation of LLM outputs. It runs via llama-cpp-python and caches outputs per source string. In practice, translation is fast (~2–4 seconds per short paragraph) and the quality is good enough for a security summary context.
 
@@ -90,9 +156,14 @@ The problem: it requires CUDA. On HF Spaces CPU tier and on machines without a G
 
 The hackathon requires a Gradio app. It does not require a Gradio *UI*.
 
-Gradio's `gr.Server` lets you serve static files from a path while still exposing all the pipeline logic as Gradio API endpoints. The React frontend communicates with Gradio via `@gradio/client` exactly as the default UI would; from Gradio's perspective nothing is different.
+Gradio's `gr.Blocks` lets you expose all pipeline logic as Gradio API endpoints while serving a completely custom frontend as static files. The React frontend communicates with Gradio via `@gradio/client` exactly as the default UI would; from Gradio's perspective nothing is different.
 
-This was worth doing. The default Gradio UI makes tabbed analysis tools look like form submissions. A proper SPA with resizable split panels, a scatter-chart event timeline, and a live-updating pipeline progress view changes how the tool *feels* to use. Our teammate's family — the people we built this for — understood what the annotated video and event table were within 30 seconds. That would not have happened with a Gradio Dataframe and a Gradio Video component on the same page.
+<figure>
+  <video controls src="https://cdn-uploads.huggingface.co/production/uploads/667db115d29e971c591a8031/E27q87wFn15LWEDIVrPEX.qt"></video>
+  <figcaption><strong>Video 4.</strong> Eyas frontend demo. The custom SPA supports multi-camera review with resizable split panels, annotated playback, event timelines, and live pipeline progress.</figcaption>
+</figure>
+
+This was worth doing. The default Gradio UI makes tabbed analysis tools look like form submissions. A proper SPA with resizable split panels, a scatter-chart event timeline, and a live-updating pipeline progress view changes how the tool *feels* to use. Our target users — the people we built this for — understood what the annotated video and event table were within 30 seconds. That would not have happened with a Gradio Dataframe and a Gradio Video component on the same page.
 
 The cost: the custom UI takes real time to build and debug. We spent roughly a third of the build time on the frontend. For a hackathon that comes at the expense of more model experimentation, but we think it was right for the Backyard AI track, where "polished Gradio app" is an explicit judging criterion.
 
@@ -124,7 +195,7 @@ The cost: the custom UI takes real time to build and debug. We spent roughly a t
 
 ## Field test — Joy Convenience Store
 
-We filmed the demo at Joy Convenience Store — our teammate's family's shop and the real-world target the system was designed for. It was the first time we ran Eyas on footage from an actual operating store rather than our own test clips.
+We filmed the demo at Joy Convenience Store, a Korean-run convenience store we used as our filming location. It is a close real-world proxy for our target store — same layout, same CCTV setup, Korean-speaking operators — but a separate business from our teammate's family's shop. It was the first time we ran Eyas on footage from an actual operating store rather than test clips we found online.
 
 Four camera angles were covered: aisle 1, aisle 2, aisle 3, and aisle 4 (the main shopping corridor). We named each clip using the filename convention (`20260615_130000_aisle1.m4v`, etc.) so the zone labels map automatically without any configuration.
 
@@ -132,7 +203,7 @@ Four camera angles were covered: aisle 1, aisle 2, aisle 3, and aisle 4 (the mai
 
 The pipeline handled the real-world conditions better than expected. Store CCTV is typically high-angle, wide-FOV, compressed H.264 — different from the online footage we had been testing on. YOLO tracked people reliably despite the unflattering angle; the bounding-box padding helped the VLM get enough context from the tighter crops.
 
-The most useful output in the store context turned out to be the per-zone activity count in the Detection Metrics tab. Our teammate's family could immediately see which aisle had the most foot traffic and which periods were quiet. This is the kind of operational question — "how busy was aisle 3 this afternoon?" — that does not require a full event narrative to answer.
+The most useful output in the store context turned out to be the per-zone activity count in the Detection Metrics tab. The store operators could immediately see which aisle had the most foot traffic and which periods were quiet. This is the kind of operational question — "how busy was aisle 3 this afternoon?" — that does not require a full event narrative to answer.
 
 The event timeline resonated as a communication tool. Showing a scatter chart of timestamped events and then clicking through to a six-second clip for each one made the footage review feel like a triage task rather than a search task. The owner could review a full afternoon session in under three minutes.
 

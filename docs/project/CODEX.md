@@ -3,7 +3,7 @@
 This document records the work done by [OpenAI Codex](https://openai.com/codex) on the Eyas pipeline during the Build Small Hackathon.
 All Codex commits carry the git co-author trailer `Co-Authored-By: Codex <codex@openai.com>` and can be verified on GitHub.
 
-Full session-by-session reasoning traces are stored in [`docs/../codex-traces/`](../codex-traces/) as JSONL files.
+Full session-by-session reasoning traces are stored in [`docs/codex-traces/`](../codex-traces/) as JSONL files and published to the Hugging Face Hub at [sehyunlee217/Codex-Agent-Trace](https://huggingface.co/datasets/sehyunlee217/Codex-Agent-Trace).
 
 ---
 
@@ -75,7 +75,7 @@ Removed the `_draw_zoom_inset` function that pasted a cropped close-up into the 
 
 ## Reasoning traces
 
-Codex session logs (tool calls, reasoning steps, file edits) are stored in [`docs/../codex-traces/`](../codex-traces/). Each date folder contains a `trace.jsonl` with one JSON object per agent step.
+Codex session logs (tool calls, reasoning steps, file edits) are stored in [`docs/codex-traces/`](../codex-traces/) and on the Hugging Face Hub at [sehyunlee217/Codex-Agent-Trace](https://huggingface.co/datasets/sehyunlee217/Codex-Agent-Trace). Each date folder contains a `trace.jsonl` with one JSON object per agent step.
 
 | Session | Entries | Focus |
 |---------|---------|-------|

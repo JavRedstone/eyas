@@ -9,7 +9,7 @@
 
 ## What we built
 
-Eyas is an on-device security camera agent built for our teammate's family's convenience store. It runs an automated pipeline over CCTV footage to surface theft, loitering, and suspicious activity as a structured, searchable log — replacing hours of manual footage review with a single click.
+Eyas is an on-device security camera agent built for our teammate's family's convenience store. It runs person tracking, event detection, and LLM reasoning over CCTV footage to surface theft, loitering, and suspicious activity as a structured, searchable log.
 
 ### Visual pipeline
 
@@ -63,15 +63,19 @@ Full localization without restart:
 
 ## Main Track: Backyard AI
 
+The checklist below explains why Eyas is the strongest submission for the Backyard AI track. Eyas was built for a real person — the owners of our teammate's family's Korean-owned convenience store — who today manually scrub overnight CCTV footage after suspected theft. We demoed on real four-camera aisle footage filmed at Joy Convenience Store (a Korean-run store with the same layout and CCTV setup as our target), and the full pipeline — tracking, event log, bilingual summary, spoken audio brief — ran on that footage and produced reports the store operators could read immediately. The problem is specific, the user is real, and the evidence is on film.
+
 - [x] **Specific, real problem** — Small retail owners have no affordable tool to automatically review CCTV footage for theft, loitering, and unusual activity. Manual review of 8-hour overnight recordings is impractical.
-- [x] **Built for a real person** — Built for our teammate's family who runs Joy Convenience Store. The tool runs on their existing laptop with no subscription, no cloud account, and no API keys.
-- [x] **Evidence of real use** — Demo filmed at Joy Convenience Store on actual four-camera aisle footage. The family reviewed the event timeline and per-zone summary on their own recordings. Field notes at [FIELD_NOTES.md](FIELD_NOTES.md).
+- [x] **Built for a real person** — Built for our teammate's family, who runs a small Korean-owned convenience store. The tool runs on their existing laptop with no subscription, no cloud account, and no API keys.
+- [x] **Evidence of real use** — Demo filmed at Joy Convenience Store (a Korean-run store used as our filming location; same profile as the target store). Pipeline run on actual four-camera aisle footage. Field notes at [FIELD_NOTES.md](FIELD_NOTES.md).
 - [x] **Honest small-model fit** — Total loaded weight ~8.7 B params / ~6 GB. Runs fully on a laptop CPU; GPU optional.
 - [x] **Polished Gradio app** — Custom React + MUI frontend; resizable panels; scatter-chart event timeline; animated splash; dark/light mode.
 
 ---
 
 ## Hard Constraints
+
+The checklist below explains why Eyas satisfies all three hard constraints. The full model stack totals ~8.7 B parameters — well under the 32 B ceiling, with no single model exceeding 4 B. All pipeline logic is exposed through a `gr.Blocks` Gradio app; the custom React SPA is layered on top but does not replace the Gradio backend. The Space is live on HF Spaces CPU tier, and the demo video shows the full pipeline end-to-end.
 
 - [x] **≤ 32 B parameters total**
 
@@ -93,16 +97,20 @@ Full localization without restart:
 
 ## Bonus Quests
 
+The checklist below explains our Bonus Quest coverage. Eyas qualifies for 5 of the 6 available quests. The single missing one — Well-Tuned — would require labelled retail-theft training data we did not have time to collect; every other quest is fulfilled by load-bearing components already in the pipeline.
+
 - [x] **Off the Grid** — Zero cloud API calls at inference time. YOLO via `ultralytics`, VLM via `transformers` locally, both LLMs via `llama-cpp-python` from GGUF weights on disk. Fully offline after the one-time model download.
 - [ ] **Well-Tuned** — No custom fine-tuning. All models used off-the-shelf. *(Potential: fine-tune YOLO on retail theft datasets.)*
 - [x] **Off-Brand** — The entire UI is a custom React + Vite + MUI SPA served as static files. Gradio is invisible to the user and acts as a pure API layer. No default Gradio component styling is visible. See [OFF_BRAND.md](../architecture/OFF_BRAND.md).
 - [x] **Llama Champion** — Nemotron 3 Nano 4B and TinyAya Global both run through `llama-cpp-python` with Q4_K_M GGUF quantization. Metal on Apple Silicon; CPU fallback on HF Spaces.
-- [ ] **Sharing is Caring** — Agent traces stored in `docs/codex-traces/` locally but not yet published to the Hub.
+- [x] **Sharing is Caring** — Agent traces published to the Hugging Face Hub at [sehyunlee217/Codex-Agent-Trace](https://huggingface.co/datasets/sehyunlee217/Codex-Agent-Trace).
 - [x] **Field Notes** — [FIELD_NOTES.md](FIELD_NOTES.md) covers the pipeline design decisions, per-model lessons, what surprised us, and what we would do differently.
 
 ---
 
 ## Sponsor Awards
+
+Each sponsor's model below is a required, load-bearing stage in the Eyas pipeline. Removing any one of them breaks a specific output — not a peripheral integration but a named tab or core capability that stops working without it.
 
 ### OpenBMB (`$10,000` total)
 
@@ -119,7 +127,6 @@ Full localization without restart:
 ### OpenAI Track (`$10,000` total)
 
 - [x] All Codex-assisted development is attributed via `Co-Authored-By: Codex <codex@openai.com>` git trailers. Full session reasoning traces in [`docs/codex-traces/`](../codex-traces/). See [CODEX.md](CODEX.md) for the commit-by-commit breakdown.
-- [ ] No OpenAI inference models used at runtime.
 
 ### Cohere / TinyAya
 
@@ -134,13 +141,15 @@ Full localization without restart:
 
 ## Special Awards
 
-- [x] **Off-Brand Award** (`$1,500`) — Strongest candidate. The UI is a fully custom React 19 + Vite 8 + MUI 6 SPA. Gradio owns zero pixels; all its native components are hidden. The frontend communicates with Gradio exclusively via the JS SDK streaming API.
-- [x] **Best Agent** (`$1,000`) — Five-model agentic chain: YOLO detects → MiniCPM-V observes → heuristic structurer reasons → Nemotron synthesizes → TinyAya translates → VoxCPM2 narrates. Each stage's output is the next stage's input.
-- [x] **Tiny Titan** (`$1,500`) — 8.7 B total params, fully CPU-capable, no GPU required. Fits within the "laptop" framing of the hackathon.
-- [ ] **Best Demo** (`$1,000`) — Depends on video quality. Show the full pipeline end-to-end: upload → analysis → annotated video + timeline + audio report, all on real convenience store footage.
-- [x] **Bonus Quest Champion** (`$2,000`) — 4 of 6 quests fulfilled: Off the Grid, Off-Brand, Llama Champion, Field Notes.
-- [ ] **Judges' Wildcard** (`$1,000`) — No specific action; polish and story matter.
-- [ ] **Community Choice** (`$2,000`) — Needs HF community engagement; post on HF forums and social media.
+The entries below are Special Awards where Eyas has a specific, demonstrable claim — not aspirational entries. Each description explains what was actually built and why it satisfies the award criteria.
+
+- [x] **Off-Brand Award** (`$1,500`) — Gradio's native component library is not used at all. The interface is a React 19 + Vite 8 + MUI 6 SPA compiled to static files and served by FastAPI alongside the Gradio process. All Gradio `Blocks` components are hidden; the frontend calls Gradio exclusively through the `@gradio/client` JS SDK streaming API. The result is a resizable split-panel security dashboard — video left, tabbed analysis right — that would be impossible to build within Gradio's component constraints. Full write-up in [OFF_BRAND.md](../architecture/OFF_BRAND.md).
+- [x] **Best Agent** (`$1,000`) — Six models work in sequence with no human intervention between stages: YOLO11n tracks people → MiniCPM-V observes each track and outputs structured JSON → a heuristic event structurer merges observations and resolves pickup ambiguity → Nemotron 3 Nano reasons over the full event log → TinyAya translates output to Korean → VoxCPM2 narrates a spoken brief. Each stage produces structured output that the next stage consumes; the chain runs end-to-end from raw video to spoken security report with a single button press.
+- [x] **Tiny Titan** (`$1,500`) — Six models totaling ~8.7 B parameters run on a laptop CPU with no GPU requirement. MiniCPM-V (1.3B) and VoxCPM2 (2.4B) use PyTorch; Nemotron (4B) and TinyAya (1B) run via llama-cpp-python with Q4_K_M GGUF quantization, which brings both under 3 GB combined on disk. The system was built and tested on standard consumer hardware and deployed to a CPU-tier HF Space.
+- [x] **Best Demo** (`$1,000`) — The demo shows the full pipeline end-to-end on four-camera footage from a real operating store: batch upload → YOLO tracking with annotated bounding boxes → event timeline with click-to-seek → cross-camera Summary & Alerts → Ask Footage Q&A → spoken Audio Report. Every tab is used. The subject is a genuine security use case, not a toy dataset.
+- [x] **Bonus Quest Champion** (`$2,000`) — 5 of 6 quests fulfilled: Off the Grid (fully offline inference), Off-Brand (custom React SPA), Llama Champion (two GGUF models via llama.cpp), Sharing is Caring ([Codex agent traces on HF Hub](https://huggingface.co/datasets/sehyunlee217/Codex-Agent-Trace)), Field Notes ([FIELD_NOTES.md](FIELD_NOTES.md)). Only Well-Tuned (fine-tuning) is missing.
+- [ ] **Judges' Wildcard** (`$1,000`)
+- [ ] **Community Choice** (`$2,000`)
 
 ---
 
@@ -148,13 +157,13 @@ Full localization without restart:
 
 | Item | Status |
 |---|---|
-| Record demo video (full pipeline, all tabs visible) | ✅ Filmed at Joy Convenience Store |
-| Real-user evidence | ✅ Joy Convenience Store field test in [FIELD_NOTES.md](FIELD_NOTES.md) |
+| Record demo video (full pipeline, all tabs visible) | ✅ Filmed at Joy Convenience Store (demo filming location) |
+| Real-user evidence | ✅ Target: teammate's family's store. Demo footage: Joy Convenience Store. See [FIELD_NOTES.md](FIELD_NOTES.md) |
 | Field Notes | ✅ [FIELD_NOTES.md](FIELD_NOTES.md) |
 | Model documentation (one doc per model) | ✅ [docs/models/](../models/) |
 | Architecture diagram embedded in docs | ✅ ARCHITECTURE.md + README |
 | Codex contributions documented | ✅ [CODEX.md](CODEX.md) |
 | Write social-media post (Twitter / LinkedIn / HF forums) | ⬜ TODO |
 | Verify Space runs cleanly on CPU tier end-to-end | ⬜ TODO |
-| Publish Codex traces to HF Hub (Sharing is Caring) | ⬜ Optional |
+| Publish Codex traces to HF Hub (Sharing is Caring) | ✅ [sehyunlee217/Codex-Agent-Trace](https://huggingface.co/datasets/sehyunlee217/Codex-Agent-Trace) |
 | Modal deployment path | ⬜ Optional |
