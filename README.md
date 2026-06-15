@@ -68,6 +68,7 @@ All models download automatically on first run. No API keys required.
 | [Field Notes](docs/FIELD_NOTES.md) | Build log — design decisions, lessons from each stage, store field test |
 | [AI Theft Detection](docs/AI_THEFT_DETECTION.md) | Capabilities, limits, and best practices |
 | [Codex Contributions](docs/CODEX.md) | Agent-assisted commits, reasoning traces |
+| [Off-Brand Frontend](docs/OFF_BRAND.md) | Why and how the UI is a React SPA instead of Gradio components |
 | [Hackathon](docs/HACKATHON.md) | Track info and submission details |
 
 Live space: [build-small-hackathon/eyas](https://huggingface.co/spaces/build-small-hackathon/eyas)
